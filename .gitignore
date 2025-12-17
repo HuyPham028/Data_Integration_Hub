@@ -1,0 +1,63 @@
+############################
+# LaTeX core build files
+############################
+*.aux
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.synctex(busy)
+*.nav
+*.snm
+*.vrb
+
+############################
+# Bibliography / index
+############################
+*.bbl
+*.blg
+*.bcf
+*.run.xml
+*.idx
+*.ilg
+*.ind
+
+############################
+# Latexmk / build directories
+############################
+latexmk/
+build/
+out/
+_output/
+
+############################
+# LaTeX Workshop (VS Code)
+############################
+.vscode/.latex-workshop/
+.vscode/*.log
+
+############################
+# MiKTeX specific
+############################
+*.gz
+*.ps
+*.dvi
+*.xdv
+
+############################
+# Temporary / backup files
+############################
+*~
+*.bak
+*.tmp
+*.swp
+
+############################
+# OS / editor noise
+############################
+.DS_Store
+Thumbs.db

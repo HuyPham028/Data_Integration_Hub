@@ -1,0 +1,97 @@
+% 'draft' mode can be used to speed up compilation
+\documentclass[twoside,final]{hcmut-report}
+
+% Draft watermark
+% https://github.com/callegar/LaTeX-draftwatermark
+
+% Encodings
+\usepackage{gensymb,textcomp}
+
+% Better tables
+% Wide tables go to https://tex.stackexchange.com/q/332902
+\usepackage{array,multirow,siunitx,tabularx}
+
+% Better enum
+\usepackage{enumitem}
+
+% Graphics
+\usepackage{caption,float}
+
+% Add options for figures, like max width, framing, etc.
+\usepackage[export]{adjustbox}
+
+% References
+% Use \Cref{} instead of \ref{}
+\usepackage[nameinlink]{cleveref}
+
+\usepackage{tikz}
+\usetikzlibrary{shapes, arrows, positioning}
+
+% FOR DEMONSTRATION PURPOSES, REMOVE IN PRODUCTION
+\usepackage{mwe}
+
+% Sub-preambles
+% https://github.com/MartinScharrer/standalone
+
+% Configurations
+\coursename{Đồ án chuyên ngành}
+\reporttype{Báo cáo}
+\title{Trục tích hợp dữ liệu \\(Data Integration Hub)}
+\advisor{
+  & ThS. Nguyễn Cao Đạt &\\
+  & ThS. Nguyễn Quang Sang &
+}
+\stuname{%
+  & Trần Mạnh Tuấn & 2213807 \\
+  & Phạm Lê Huy & 2252260 \\
+}
+
+\begin{document}
+\coverpage%
+
+\tableofcontents
+\listoffigures
+\listoftables
+
+\clearpage
+\chapter*{Danh mục ký hiệu và từ viết tắt}
+\addcontentsline{toc}{chapter}{Danh mục ký hiệu và từ viết tắt}
+
+\begin{itemize}[leftmargin=3cm, labelsep=1cm]
+    \item[\textbf{API}] Application Programming Interface (Giao diện lập trình ứng dụng)
+    \item[\textbf{AWS}] Amazon Web Services
+    \item[\textbf{BI}] Business Intelligence (Trí tuệ doanh nghiệp)
+    \item[\textbf{CI/CD}] Continuous Integration / Continuous Deployment
+    \item[\textbf{CSDL}] Cơ sở dữ liệu
+    \item[\textbf{ELK}] Elasticsearch, Logstash, Kibana
+    \item[\textbf{ESB}] Enterprise Service Bus (Trục dịch vụ doanh nghiệp)
+    \item[\textbf{HRM}] Human Resource Management (Hệ thống quản lý nhân sự)
+    \item[\textbf{JWT}] JSON Web Token
+    \item[\textbf{LMS}] Learning Management System (Hệ thống quản lý học tập)
+    \item[\textbf{MVP}] Minimum Viable Product (Sản phẩm khả thi tối thiểu)
+    \item[\textbf{ODS}] Operational Data Store (Kho dữ liệu hoạt động)
+    \item[\textbf{OLAP}] Online Analytical Processing (Xử lý phân tích trực tuyến)
+    \item[\textbf{OLTP}] Online Transaction Processing (Xử lý giao dịch trực tuyến)
+    \item[\textbf{P2P}] Point-to-Point (Mô hình điểm - điểm)
+    \item[\textbf{RBAC}] Role-Based Access Control (Kiểm soát truy cập dựa trên vai trò)
+    \item[\textbf{SIS}] Student Information System (Hệ thống thông tin sinh viên)
+\end{itemize}
+\clearpage
+% --------------------------------------
+
+\clearpage
+\include{chapters/Introduction.tex}
+\include{chapters/Theory.tex}
+\include{chapters/ArchitectureImp.tex}
+\include{chapters/Technologies}
+\include{chapters/Deployment}
+\include{chapters/CI-CD}
+\include{chapters/timeline_conclusion}
+
+\clearpage
+
+\bibliographystyle{plain}
+\bibliography{refs/example.bib}
+\nocite{*}
+
+\end{document}

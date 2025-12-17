@@ -1,0 +1,189 @@
+\chapter{Các công nghệ sử dụng trong hệ thống}
+\section{Nền tảng Backend: NestJS}
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=12cm]{graphics/NestJS.png} 
+    \label{fig:auth_flow}
+\end{figure}
+
+NestJS là framework backend hiện đại xây dựng trên Node.js và được sử dụng để triển khai Data Integration Server và Data Sharing Server của trục tích hợp dữ liệu. Lựa chọn NestJS mang lại các lợi ích chính:
+
+\begin{itemize}
+    \item \textbf{Hiệu năng cao và dễ mở rộng} NestJS dựa trên mô hình bất đồng bộ của Node.js và có thể chạy với Express hoặc Fastify, đảm bảo xử lý lượng lớn yêu cầu từ MyBK App, LMS và các dịch vụ nội bộ. Hệ thống cũng dễ dàng mở rộng theo chiều ngang bằng Docker hoặc Kubernetes.
+    \item \textbf{Kiến trúc Module hóa – dễ phát triển và bảo trì}. NestJS áp dụng kiến trúc module theo domain (Student, Course, LMS, HR, …), giúp mã nguồn rõ ràng, dễ mở rộng và phù hợp cho các dự án lớn. TypeScript hỗ trợ kiểm tra kiểu dữ liệu tĩnh, giảm lỗi runtime.
+    \item \textbf{Xác thực và chuẩn hóa dữ liệu mạnh mẽ}. NestJS hỗ trợ các thư viện class-validator, class-transformer, Zod/Joi để định nghĩa và kiểm tra schema dữ liệu. Điều này đặc biệt quan trọng khi ingest dữ liệu từ SIS, LMS, HRM và các hệ thống nguồn khác vào trục tích hợp.
+    \item \textbf{Dependency Injection mạnh – theo chuẩn enterprise} Cơ chế DI của NestJS giúp tách biệt rõ logic nghiệp vụ, data access và adapter tích hợp, góp phần tăng độ linh hoạt và khả năng kiểm thử.
+    \item \textbf{Tự động sinh tài liệu API – phù hợp kiến trúc API-led}. NestJS tích hợp Swagger/OpenAPI để tự động sinh tài liệu API, đảm bảo API Contract luôn rõ ràng và đồng bộ – một yếu tố quan trọng trong kiến trúc API-led Connectivity.
+\end{itemize}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|p{3cm}|p{3cm}|p{3cm}|p{3cm}|}
+\hline
+\textbf{Tiêu chí} & \textbf{NestJS} & \textbf{FastAPI} & \textbf{Spring Boot} \\
+\hline
+Ngôn ngữ & TypeScript (Node.js) & Python & Java \\
+\hline
+Hiệu năng & Cao, bất đồng bộ & Cao, dùng Starlette/Uvicorn & Rất cao nhưng nặng \\
+\hline
+Kiến trúc & Module hoá, giống Spring & Không có module pattern chuẩn & Enterprise mạnh mẽ \\
+\hline
+Tốc độ phát triển & Nhanh, TS hỗ trợ tốt & Nhanh nhất & Chậm hơn do Java verbose \\
+\hline
+ORM hỗ trợ & Prisma, TypeORM & SQLAlchemy & JPA/Hibernate \\
+\hline
+Tài liệu API & Swagger tự động & Swagger tự động & Swagger phụ thuộc config \\
+\hline
+Phù hợp trục tích hợp & X &  &  \\
+\hline
+\end{tabular}
+\caption{So sánh các backend framework}
+\end{table}
+
+
+\section{ORM \& Database Migration Tool cho NestJS: Prisma}
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=10cm]{graphics/Prisma.png} 
+    \label{fig:auth_flow}
+\end{figure}
+
+\begin{itemize}
+    \item \textbf{Prisma ORM}
+Vai trò: Công cụ ORM giúp NestJS tương tác với các cơ sở dữ liệu quan hệ như PostgreSQL, MySQL, SQL Server hoặc MongoDB.
+
+Lý do chọn Prisma: Hiệu năng cao, cú pháp truy vấn đơn giản. Hỗ trợ TypeScript mạnh mẽ (type-safe). Tự động sinh type → giảm lỗi runtime. Phù hợp với mô hình chuẩn hóa dữ liệu trong trục tích hợp.
+
+    \item \textbf{Prisma Migrate (Migration Tool)} Vai trò: Quản lý thay đổi schema của Data Hub thông qua các file migration tự động, giúp: Theo dõi phiên bản schema; Đồng bộ schema giữa các môi trường ; Thực hiện migrate/rollback an toàn
+
+Ưu điểm: Tích hợp chặt với Prisma ORM, tự động sinh SQL migration từ file schema, dễ dùng trong CI/CD.
+\end{itemize}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|p{3cm}|p{3cm}|p{3cm}|p{3cm}|}
+\hline
+\textbf{Tiêu chí} & \textbf{Prisma} & \textbf{TypeORM} & \textbf{Sequelize} \\
+\hline
+Kiểu ORM & Schema-first & Decorator-based & Active Record \\
+\hline
+Type-safety & Rất tốt (tự sinh type) & Tốt & Trung bình \\
+\hline
+Xu hướng phát triển & Hiện đại, mạnh & Ổn định & Cũ, ít phát triển \\
+\hline
+Cú pháp truy vấn & Rõ ràng, dễ đọc & Khá phức tạp & Ngắn gọn nhưng ít an toàn \\
+\hline
+Migration & Prisma Migrate tự động & Không ổn định, dễ lỗi & Kém linh hoạt \\
+\hline
+Hiệu năng & Cao & Khá cao & Trung bình \\
+\hline
+Phù hợp Data Hub & X &  &  \\
+\hline
+\end{tabular}
+\caption{So sánh các ORM phổ biến trong hệ sinh thái Nest.js}
+\end{table}
+
+
+\section{Cơ sở dữ liệu trung tâm: PostgreSQL}
+
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=7cm]{graphics/PostgreSQL.png} 
+    \label{fig:auth_flow}
+\end{figure}
+
+\textbf{Lý do chọn PostgreSQL}. Tính toàn vẹn và nhất quán dữ liệu: Dữ liệu của một trường đại học có tính cấu trúc và quan hệ rất cao (sinh viên thuộc về lớp, lớp thuộc về khoa, sinh viên đăng ký môn học...). PostgreSQL, với cơ chế ràng buộc khóa ngoại (foreign keys), transactions (ACID), đảm bảo tính toàn vẹn và nhất quán của dữ liệu ở mức cao nhất, điều mà các CSDL NoSQL thường đánh đổi để lấy sự linh hoạt.
+
+\textbf{Truy vấn phức tạp}. Nhu cầu báo cáo, thống kê trong môi trường đại học thường đòi hỏi các truy vấn phức tạp, kết hợp dữ liệu từ nhiều bảng. Ngôn ngữ SQL của PostgreSQL cực kỳ mạnh mẽ và được tối ưu cho các tác vụ này.
+
+Tính linh hoạt với JSONB: PostgreSQL hỗ trợ kiểu dữ liệu JSONB, cho phép lưu trữ và truy vấn dữ liệu dạng JSON một cách hiệu quả. Điều này mang lại sự linh hoạt cần thiết để lưu trữ các thuộc tính dữ liệu không đồng nhất từ các hệ thống nguồn, kết hợp ưu điểm của cả hai thế giới SQL và NoSQL.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|p{3cm}|p{3cm}|p{3cm}|p{3cm}|}
+\hline
+\textbf{Tiêu chí} & \textbf{PostgreSQL} & \textbf{MySQL} & \textbf{MongoDB} \\
+\hline
+Loại CSDL & Quan hệ (RDBMS) & Quan hệ (RDBMS) & NoSQL (Document) \\
+\hline
+Mức độ ACID & Rất mạnh & Trung bình & Không phải ACID hoàn toàn \\
+\hline
+Hỗ trợ JSON & JSONB mạnh mẽ & JSON yếu hơn & Native JSON \\
+\hline
+Khả năng mở rộng & Tốt & Tốt & Rất tốt \\
+\hline
+Truy vấn phức tạp & Rất tốt (window function, CTE) & Tốt & Yếu \\
+\hline
+Phù hợp Data Hub & X & & \\
+\hline
+\end{tabular}
+\caption{So sánh các hệ quản trị cơ sở dữ liệu}
+\end{table}
+
+
+\section{Giao diện Quản trị (System Management Dashboard): Next.js \& TailwindCSS}
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=10cm]{graphics/NextJS.png}
+    \label{fig:auth_flow}
+\end{figure}
+
+\begin{itemize}
+    \item \textbf{Nextjs:} một framework của thư viện frontend React phổ biển, có các tính nănnăng
+Phát triển giao diện phức tạp: System Management Dashboard sẽ bao gồm nhiều biểu đồ, bảng biểu, form cấu hình. Next.js, với hệ sinh thái React phong phú, cung cấp nền tảng vững chắc để xây dựng các thành phần UI phức tạp và có tính tương tác cao.
+
+    \item \textbf{Tối ưu hiệu năng:} Các tính năng tích hợp sẵn như Server-Side Rendering (SSR) và Static Site Generation (SSG) giúp trang dashboard có tốc độ tải ban đầu rất nhanh, mang lại trải nghiệm tốt cho người quản trị.
+
+    \item \textbf{Cấu trúc dự án rõ ràng:} Tính năng File-based routing giúp tổ chức các trang quản lý một cách trực quan và dễ dàng mở rộng.
+
+    \textbf{TailwindCSS:} Là một framework utility-first CSS, giúp tăng tốc quá trình xây dựng giao diện tùy chỉnh một cách nhất quán và hiệu quả, cho phép tập trung vào chức năng thay vì viết CSS thủ công.
+    
+\end{itemize}
+
+\section{Kong API Gateway}
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=6cm]{graphics/KongGW.png}
+    \label{fig:auth_flow}
+\end{figure}
+
+
+\begin{itemize}
+    \item \textbf{Quản lý tập trung:} Kong cung cấp một điểm quản lý duy nhất cho tất cả các API, giúp dễ dàng theo dõi và kiểm soát luồng dữ liệu vào/ra hệ thống.
+
+    \item \textbf{Bảo mật và Xác thực:} Dễ dàng tích hợp các cơ chế bảo mật thông qua các plugin như JWT, OAuth 2.0, API Keys... để đảm bảo chỉ những người dùng và ứng dụng hợp lệ mới có quyền truy cập vào dữ liệu.
+
+    \item \textbf{Hiệu năng cao và Khả năng mở rộng:} Kong được xây dựng cho hiệu năng cao, độ trễ thấp và có thể mở rộng theo chiều ngang để đáp ứng lưu lượng truy cập lớn.
+
+    \item \textbf{Giám sát và Điều tiết:} Cung cấp các tính năng quan trọng như Rate Limiting (giới hạn tần suất truy cập để chống tấn công DoS) và Logging (ghi lại nhật ký truy cập), tích hợp liền mạch với các công cụ giám sát để theo dõi "sức khỏe" của hệ thống.
+\end{itemize}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|p{3cm}|p{3cm}|p{3cm}|p{3cm}|}
+\hline
+\textbf{Tiêu chí} & \textbf{Kong} & \textbf{NGINX} & \textbf{Traefik} \\
+\hline
+Mục đích chính & API Gateway & Reverse Proxy & Reverse Proxy / Gateway \\
+\hline
+Plugin & Rất nhiều (JWT, Rate limit, Keycloak...) & Ít & Trung bình \\
+\hline
+Hiệu năng & Rất cao & Rất cao & Cao \\
+\hline
+Khả năng mở rộng & Rất tốt & Tốt & Rất tốt \\
+\hline
+Tính năng API Management & Đầy đủ & Không có & Cơ bản \\
+\hline
+Phù hợp trục tích hợp & X &  &  \\
+\hline
+\end{tabular}
+\caption{So sánh các API Gateway phổ biến}
+\end{table}
+
+
+

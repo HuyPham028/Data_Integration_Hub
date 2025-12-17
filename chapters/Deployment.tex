@@ -1,0 +1,130 @@
+\chapter{Giám sát, Ghi log và Cảnh báo hệ thống}
+
+Trong kiến trúc trục tích hợp dữ liệu phân tán, khả năng quan sát toàn diện (Observability) đóng vai trò then chốt. Nó không chỉ giúp theo dõi hiệu năng (Performance Monitoring) mà còn là công cụ chính để truy vết lỗi (Troubleshooting), giám sát bảo mật và phân tích hành vi hệ thống. Để đáp ứng các yêu cầu này, nhóm thực hiện triển khai giải pháp giám sát tập trung dựa trên \textbf{Elastic Stack (ELK)}, kết hợp giữa thu thập Log và Metric.
+
+\section{Kiến trúc Observability tổng quan}
+
+Hệ thống giám sát được thiết kế theo mô hình tập trung hóa, bao gồm các thành phần chính:
+
+\begin{itemize}
+    \item \textbf{Data Sources (Nguồn dữ liệu):} Bao gồm Kong Gateway, Data Integration Server (NestJS), Database và Hệ điều hành máy chủ.
+    \item \textbf{Data Shippers (Bộ thu thập):} Sử dụng \textbf{Filebeat} để thu thập log và \textbf{Metricbeat} để thu thập chỉ số tài nguyên hệ thống.
+    \item \textbf{Indexing \& Storage:} \textbf{Elasticsearch} đóng vai trò là kho lưu trữ dữ liệu log phân tán và hỗ trợ truy vấn full-text search.
+    \item \textbf{Visualization:} \textbf{Kibana} cung cấp giao diện dashboard để trực quan hóa dữ liệu và quản lý cảnh báo.
+\end{itemize}
+
+% Sơ đồ TikZ đã được cập nhật để logic hơn
+\begin{figure}[h]
+\centering
+\tikzstyle{block} = [
+    rectangle,
+    draw,
+    text centered,
+    minimum height=1cm,
+    minimum width=3cm,
+    rounded corners,
+    fill=blue!10
+]
+
+\tikzstyle{arrow} = [
+    thick,
+    ->,
+    >=stealth
+]
+
+
+
+\begin{tikzpicture}[node distance=1.5cm]
+
+% Main flow
+\node[block] (client) {Client};
+\node[block, right=of client] (kong) {Kong Gateway};
+\node[block, right=of kong] (nest) {NestJS Services};
+\node[block, right=of nest] (pg) {PostgreSQL};
+
+% Downward flow
+\node[block, below=1.5cm of kong, minimum width=4cm] (filebeat) {Filebeat / Logstash};
+\node[block, below=of filebeat, minimum width=4cm] (es) {Elasticsearch Cluster};
+\node[block, below=of es, minimum width=4cm] (kibana) {Kibana};
+\node[block, below=of kibana, minimum width=4cm] (alerting) {Alerting};
+
+% Horizontal arrows
+\draw[arrow] (client) -- (kong);
+\draw[arrow] (kong) -- (nest);
+\draw[arrow] (nest) -- (pg);
+
+% Vertical arrows
+\draw[arrow] (kong.south) -- (filebeat.north);
+\draw[arrow] (filebeat) -- (es);
+\draw[arrow] (es) -- (kibana);
+\draw[arrow] (kibana) -- (alerting);
+
+\end{tikzpicture}
+\caption{Kiến trúc dòng chảy dữ liệu giám sát (Log Flow)}
+\end{figure}
+
+\section{Chiến lược ghi log (Logging Strategy)}
+
+Một thách thức lớn trong hệ thống microservices là khả năng truy vết (trace) một yêu cầu đi qua nhiều thành phần. Hệ thống áp dụng các chiến lược sau:
+
+\subsection{Structured Logging (Log có cấu trúc)}
+Thay vì ghi log dạng văn bản thuần túy (plain text), toàn bộ log ứng dụng được chuẩn hóa dưới dạng \textbf{JSON}. Định dạng này giúp Elasticsearch đánh chỉ mục (index) dễ dàng và cho phép lọc dữ liệu chính xác.
+Một mẫu log chuẩn bao gồm:
+\begin{itemize}
+    \item \texttt{@timestamp}: Thời gian xảy ra sự kiện.
+    \item \texttt{level}: Mức độ (INFO, WARN, ERROR).
+    \item \texttt{correlation\_id}: Mã định danh duy nhất của request (quan trọng).
+    \item \texttt{service}: Tên dịch vụ (vd: data-integration-service).
+    \item \texttt{context}: Ngữ cảnh (vd: StudentModule, AuthGuard).
+    \item \texttt{message}: Nội dung log.
+\end{itemize}
+
+\subsection{Distributed Tracing với Correlation ID}
+Mỗi request khi đi vào từ \textbf{Kong Gateway} sẽ được gán một \texttt{X-Request-ID}. ID này được truyền xuống các service phía sau (NestJS) thông qua HTTP Header. Nhờ đó, quản trị viên có thể tìm kiếm theo ID này trên Kibana để xem toàn bộ hành trình của request từ khi vào cổng đến khi lưu xuống database.
+
+\section{Các thành phần thu thập chi tiết}
+
+\subsection{Kong API Gateway Logs}
+Kong được cấu hình sử dụng plugin \textit{File-Log} hoặc \textit{TCP-Log} để xuất log truy cập. Thông tin thu thập bao gồm: Latency (độ trễ), Upstream service, Status code và Consumer ID (người gọi API).
+
+\subsection{Application Logs (NestJS)}
+Sử dụng thư viện \textbf{Winston} để quản lý log. Winston được cấu hình để tự động che (mask) các dữ liệu nhạy cảm (PII) như mật khẩu, email sinh viên trước khi ghi xuống file. Log bao gồm log nghiệp vụ (Business logic) và log lỗi (Exceptions).
+
+\subsection{Database \& System Logs}
+\begin{itemize}
+    \item \textbf{PostgreSQL:} Kích hoạt module \texttt{log\_min\_duration\_statement} để ghi lại các truy vấn chậm (Slow queries) vượt quá 200ms, giúp tối ưu hóa hiệu năng.
+    \item \textbf{Metricbeat:} Thu thập các chỉ số hạ tầng như CPU Usage, Memory, Disk I/O và Network Traffic từ Docker Container để phát hiện điểm nghẽn hệ thống.
+\end{itemize}
+
+\section{Dashboard giám sát và Cảnh báo}
+
+\subsection{Dashboard (Kibana)}
+Hệ thống trực quan hóa dữ liệu thông qua các Dashboard thời gian thực:
+\begin{enumerate}
+    \item \textbf{API Performance Dashboard:} Theo dõi lưu lượng truy cập (RPS), tỷ lệ lỗi 4xx/5xx, và thời gian phản hồi trung bình của từng API.
+    \item \textbf{Integration Health Dashboard:} Giám sát trạng thái các tác vụ đồng bộ dữ liệu (Sync Jobs), số lượng bản ghi được thêm mới/cập nhật và các lỗi xảy ra trong quá trình ETL.
+    \item \textbf{Infrastructure Dashboard:} Theo dõi sức khỏe của các Container và Database.
+\end{enumerate}
+
+\subsection{Cơ chế Cảnh báo (Alerting)}
+Dựa trên tính năng \textit{Kibana Alerting}, hệ thống thiết lập các quy tắc (rules) để gửi thông báo tự động qua Email hoặc Webhook (Slack/Telegram) khi xảy ra sự cố:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|p{6cm}|p{4cm}|}
+\hline
+\textbf{Mức độ} & \textbf{Điều kiện kích hoạt} & \textbf{Hành động} \\
+\hline
+Critical & Tỷ lệ lỗi 5xx > 5\% trong 1 phút & Gửi SMS, Email Admin \\
+\hline
+Critical & Database Connection Failed & Gửi SMS, Email Admin \\
+\hline
+Warning & CPU Usage > 85\% trong 5 phút & Gửi Email cảnh báo \\
+\hline
+Warning & Phát hiện Slow Query > 1s & Log lại để tối ưu sau \\
+\hline
+Info & Job đồng bộ dữ liệu hoàn tất & Gửi báo cáo qua Slack \\
+\hline
+\end{tabular}
+\caption{Ma trận quy tắc cảnh báo}
+\end{table}
