@@ -67,7 +67,7 @@ Hệ thống giám sát được thiết kế theo mô hình tập trung hóa, b
 
 Một thách thức lớn trong hệ thống microservices là khả năng truy vết (trace) một yêu cầu đi qua nhiều thành phần. Hệ thống áp dụng các chiến lược sau:
 
-\subsection{Structured Logging (Log có cấu trúc)}
+\subsection{Log có cấu trúc (Structured Logging)}
 Thay vì ghi log dạng văn bản thuần túy (plain text), toàn bộ log ứng dụng được chuẩn hóa dưới dạng \textbf{JSON}. Định dạng này giúp Elasticsearch đánh chỉ mục (index) dễ dàng và cho phép lọc dữ liệu chính xác.
 Một mẫu log chuẩn bao gồm:
 \begin{itemize}
@@ -79,7 +79,7 @@ Một mẫu log chuẩn bao gồm:
     \item \texttt{message}: Nội dung log.
 \end{itemize}
 
-\subsection{Distributed Tracing với Correlation ID}
+\subsection{Truy vết phân tán với Correlation ID}
 Mỗi request khi đi vào từ \textbf{Kong Gateway} sẽ được gán một \texttt{X-Request-ID}. ID này được truyền xuống các service phía sau (NestJS) thông qua HTTP Header. Nhờ đó, quản trị viên có thể tìm kiếm theo ID này trên Kibana để xem toàn bộ hành trình của request từ khi vào cổng đến khi lưu xuống database.
 
 \section{Các thành phần thu thập chi tiết}

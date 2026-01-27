@@ -1,9 +1,9 @@
-\chapter{Data Governance và Quy trình Tích hợp liên tục (CI/CD)}
+\chapter{Quản trị dữ liệu và quy trình CI/CD}
 \label{ch:data_gov}
 
 \section{Quản trị Dữ liệu (Data Governance) và Chất lượng Dữ liệu (Data Quality)}
 
-Trong kiến trúc trục tích hợp dữ liệu của trường đại học, tính đa dạng của các nguồn dữ liệu (SIS, LMS, HRM, Tài chính) đặt ra thách thức lớn về tính nhất quán. Do đó, việc thiết lập cơ chế quản trị dữ liệu (Data Governance) song hành với các giải pháp kỹ thuật là yêu cầu bắt buộc.
+Trong kiến trúc trục tích hợp dữ liệu của trường đại học, tính đa dạng của các nguồn dữ liệu đặt ra thách thức lớn về tính nhất quán. Do đó, việc thiết lập cơ chế quản trị dữ liệu (Data Governance) song hành với các giải pháp kỹ thuật là yêu cầu bắt buộc.
 
 Hệ thống áp dụng ba trụ cột quản trị chính:
 
@@ -67,7 +67,7 @@ Quy trình tự động hóa bao gồm các bước sau:
   \label{fig:cicd_process}
 \end{figure}
 
-\chapter{Chiến lược Sao lưu và Phục hồi Dữ liệu (Backup Strategy)}
+\chapter{Chiến lược Sao lưu và Phục hồi Dữ liệu}
 \label{ch:backup_strategy}
 
 Nhóm thực hiện đề xuất giải pháp sao lưu sử dụng \textbf{pgBackRest} kết hợp với hệ thống lưu trữ đối tượng \textbf{MinIO} triển khai nội bộ. Giải pháp này đảm bảo tính bảo mật dữ liệu của trường đại học trong khi vẫn tận dụng được sự linh hoạt của kiến trúc S3.
