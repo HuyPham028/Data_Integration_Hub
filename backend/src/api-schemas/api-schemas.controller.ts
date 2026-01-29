@@ -11,7 +11,7 @@ export class ApiSchemasController {
   }
 
   @Get(':tableName')
-  findOne(@Param('tablename') tableName: string) {
+  findOne(@Param('tableName') tableName: string) {
     return this.apiSchemasService.findOne(tableName);
   }
 }
