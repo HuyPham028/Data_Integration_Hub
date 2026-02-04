@@ -1,0 +1,313 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============= MASTER DATA TABLES =============
+
+/// Bảng dữ liệu tham chiếu - Văn bằng/Lý lịch công tác
+model DmDtVanBangLLCT {
+  id        Int     @id @default(autoincrement())
+  ma        String  @unique @db.VarChar(5)
+  ten       String  @db.VarChar(100)
+  active    Boolean @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp()
+  updatedAt DateTime @updatedAt @db.Timestamp()
+
+  @@tableName("dm_dt_van_bang_llct")
+  @@index([ma])
+}
+
+/// Bảng dữ liệu tham chiếu - Hình thức kỷ luật
+model DmHinhThucKyLuat {
+  id        Int     @id @default(autoincrement())
+  ma        String  @unique @db.VarChar(50)
+  ten       String  @db.VarChar(500)
+  active    Boolean @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp()
+  updatedAt DateTime @updatedAt @db.Timestamp()
+
+  @@tableName("dm_hinh_thuc_ky_luat")
+  @@index([ma])
+}
+
+/// Bảng dữ liệu tham chiếu - Loại cán bộ
+model DmLoaiCanBo {
+  id        Int     @id @default(autoincrement())
+  ma        String  @unique @db.VarChar(5)
+  ten       String  @db.VarChar(50)
+  active    Boolean @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp()
+  updatedAt DateTime @updatedAt @db.Timestamp()
+
+  @@tableName("dm_loai_can_bo")
+  @@index([ma])
+}
+
+/// Bảng dữ liệu tham chiếu - Loại chức vụ
+model DmLoaiChucVu {
+  id        Int     @id @default(autoincrement())
+  ma        String  @unique @db.VarChar(5)
+  ten       String  @db.VarChar(70)
+  active    Boolean @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp()
+  updatedAt DateTime @updatedAt @db.Timestamp()
+
+  @@tableName("dm_loai_chuc_vu")
+  @@index([ma])
+}
+
+/// Bảng dữ liệu tham chiếu - Loại phụ cấp
+model DmLoaiPhuCap {
+  id        Int     @id @default(autoincrement())
+  ma        String  @unique @db.VarChar(10)
+  ten       String  @db.VarChar(100)
+  active    Boolean @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp()
+  updatedAt DateTime @updatedAt @db.Timestamp()
+
+  @@tableName("dm_loai_phu_cap")
+  @@index([ma])
+}
+
+/// Bảng dữ liệu tham chiếu - Ngạch CDNN
+model DmNgachCDNN {
+  id        Int     @id @default(autoincrement())
+  ma        String  @unique @db.VarChar(20)
+  ten       String  @db.VarChar(100)
+  active    Boolean @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp()
+  updatedAt DateTime @updatedAt @db.Timestamp()
+
+  @@tableName("dm_ngach_cdnn")
+  @@index([ma])
+}
+
+/// Bảng dữ liệu tham chiếu - Ngân hàng
+model DmNganHang {
+  id        Int     @id @default(autoincrement())
+  ma        String  @unique @db.VarChar(20)
+  ten       String  @db.VarChar(200)
+  active    Boolean @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp()
+  updatedAt DateTime @updatedAt @db.Timestamp()
+
+  @@tableName("dm_ngan_hang")
+  @@index([ma])
+}
+
+/// Bảng dữ liệu tham chiếu - Nhóm máu
+model DmNhomMau {
+  id        Int     @id @default(autoincrement())
+  ma        String  @unique @db.VarChar(5)
+  ten       String  @db.VarChar(50)
+  active    Boolean @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp()
+  updatedAt DateTime @updatedAt @db.Timestamp()
+
+  @@tableName("dm_nhom_mau")
+  @@index([ma])
+}
+
+/// Bảng dữ liệu tham chiếu - Nơi cấp CCCD
+model DmNoiCapCCCD {
+  id        Int     @id @default(autoincrement())
+  ma        String  @unique @db.VarChar(10)
+  ten       String  @db.VarChar(100)
+  active    Boolean @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp()
+  updatedAt DateTime @updatedAt @db.Timestamp()
+
+  @@tableName("dm_noi_cap_cccd")
+  @@index([ma])
+}
+
+/// Bảng dữ liệu tham chiếu - Quân hàm
+model DmQuanHam {
+  id        Int     @id @default(autoincrement())
+  ma        String  @unique @db.VarChar(10)
+  ten       String  @db.VarChar(50)
+  active    Boolean @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp()
+  updatedAt DateTime @updatedAt @db.Timestamp()
+
+  @@tableName("dm_quan_ham")
+  @@index([ma])
+}
+
+/// Bảng dữ liệu tham chiếu - Quan hệ gia đình
+model DmQuanHeGiaDinh {
+  id        Int     @id @default(autoincrement())
+  ma        String  @unique @db.VarChar(5)
+  ten       String  @db.VarChar(50)
+  active    Boolean @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp()
+  updatedAt DateTime @updatedAt @db.Timestamp()
+
+  @@tableName("dm_quan_he_gia_dinh")
+  @@index([ma])
+}
+
+/// Bảng dữ liệu tham chiếu - Quốc gia
+model DmQuocGia {
+  id        Int     @id @default(autoincrement())
+  ma        String  @unique @db.VarChar(5)
+  ten       String  @db.VarChar(100)
+  maChauLuc String? @db.VarChar(10)
+  active    Boolean @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp()
+  updatedAt DateTime @updatedAt @db.Timestamp()
+
+  @@tableName("dm_quoc_gia")
+  @@index([ma])
+}
+
+/// Bảng dữ liệu tham chiếu - Thành phần xuất thân
+model DmThanhPhanXuatThan {
+  id        Int     @id @default(autoincrement())
+  ma        String  @unique @db.VarChar(10)
+  ten       String  @db.VarChar(100)
+  active    Boolean @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp()
+  updatedAt DateTime @updatedAt @db.Timestamp()
+
+  @@tableName("dm_thanh_phan_xuat_than")
+  @@index([ma])
+}
+
+/// Bảng dữ liệu tham chiếu - Tôn giáo
+model DmTonGiao {
+  id        Int     @id @default(autoincrement())
+  ma        String  @unique @db.VarChar(5)
+  ten       String  @db.VarChar(100)
+  active    Boolean @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp()
+  updatedAt DateTime @updatedAt @db.Timestamp()
+
+  @@tableName("dm_ton_giao")
+  @@index([ma])
+}
+
+/// Bảng dữ liệu tham chiếu - Trình độ chuyên môn
+model DmTrinhDoChuyenMon {
+  id        Int     @id @default(autoincrement())
+  ma        String  @unique @db.VarChar(5)
+  ten       String  @db.VarChar(50)
+  active    Boolean @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp()
+  updatedAt DateTime @updatedAt @db.Timestamp()
+
+  @@tableName("dm_trinh_do_chuyen_mon")
+  @@index([ma])
+}
+
+/// Bảng dữ liệu tham chiếu - Trình độ phổ thông
+model DmTrinhDoPhoThong {
+  id        Int     @id @default(autoincrement())
+  ma        String  @unique @db.VarChar(5)
+  ten       String  @db.VarChar(50)
+  active    Boolean @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp()
+  updatedAt DateTime @updatedAt @db.Timestamp()
+
+  @@tableName("dm_trinh_do_pho_thong")
+  @@index([ma])
+}
+
+/// Bảng dữ liệu tham chiếu - Xếp loại chuyên môn
+model DmXepLoaiChuyenMon {
+  id        Int     @id @default(autoincrement())
+  ma        String  @unique @db.VarChar(50)
+  ten       String  @db.VarChar(500)
+  active    Boolean @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp()
+  updatedAt DateTime @updatedAt @db.Timestamp()
+
+  @@tableName("dm_xep_loai_chuyen_mon")
+  @@index([ma])
+}
+
+/// Bảng dữ liệu tham chiếu - Nhóm lương
+model DmNhomLuong {
+  id            Int     @id @default(autoincrement())
+  nhomLuong     String  @unique @db.VarChar(10)
+  maBacLuong    Int
+  tenBacLuong   String  @db.VarChar(10)
+  heSoLuong     Decimal @db.Numeric(10, 2)
+  createdAt     DateTime @default(now()) @db.Timestamp()
+  updatedAt     DateTime @updatedAt @db.Timestamp()
+
+  @@tableName("dm_nhom_luong")
+  @@index([nhomLuong])
+}
+
+/// Bảng dữ liệu tham chiếu - Vị trí việc làm
+model DmViTriViecLam {
+  id        Int     @id @default(autoincrement())
+  ma        String  @unique @db.VarChar(20)
+  ten       String  @db.VarChar(100)
+  loaiVtvl  String? @db.VarChar(20)
+  active    Boolean @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp()
+  updatedAt DateTime @updatedAt @db.Timestamp()
+
+  @@tableName("dm_vi_tri_viec_lam")
+  @@index([ma])
+}
+
+// ============= EMPLOYEE DATA TABLES =============
+
+/// Bảng lý lịch cán bộ
+model TcnsLyLich {
+  id                  Int      @id @default(autoincrement())
+  shcc                String   @unique @db.VarChar(255)
+  maNhanVien          String   @db.VarChar(20)
+  ho                  String   @db.VarChar(150)
+  ten                 String   @db.VarChar(50)
+  ngaySinh            DateTime? @db.Timestamp()
+  thanhPhanGiaDinh    String?  @db.VarChar(5)
+  thanhPhanBanThan    String?  @db.VarChar(5)
+  gioiTinh            String?  @db.VarChar(5)
+  danToc              String?  @db.VarChar(5)
+  tonGiao             String?  @db.VarChar(5)
+  quocTich            String?  @db.VarChar(5)
+  emailCaNhan         String?  @db.VarChar(70)
+  chieuCao            Int?
+  canNang             Int?
+  nhomMau             String?  @db.VarChar(5)
+  ngayNhapNgu         DateTime? @db.Timestamp()
+  ngayXuatNgu         DateTime? @db.Timestamp()
+  quanHam             String?  @db.VarChar(5)
+  ngayVaoDang         DateTime? @db.Timestamp()
+  ngayVaoDangCt       DateTime? @db.Timestamp()
+  ngayVaoDoan         DateTime? @db.Timestamp()
+  maSoThue            String?  @db.VarChar(20)
+  stk                 String?  @db.VarChar(20)
+  nganHang            String?  @db.VarChar(100)
+  email               String?  @db.VarChar(70)
+  chiNhanh            String?  @db.VarChar(200)
+  biDanh              String?  @db.VarChar(100)
+  cccd                String?  @db.VarChar(20)
+  sucKhoe             String?  @db.Text
+  isDangVien          Boolean? @default(false)
+  ngayVaoCongDoan     DateTime? @db.Timestamp()
+  bhxh                String?  @db.VarChar(20)
+  doiTuongChinhSach   String?  @db.VarChar(100)
+  bhyt                String?  @db.VarChar(20)
+  ngayCapCccd         DateTime? @db.Timestamp()
+  noiCapCccd          String?  @db.VarChar(5)
+  sdt                 String?  @db.VarChar(20)
+  createdAt           DateTime @default(now()) @db.Timestamp()
+  updatedAt           DateTime @updatedAt @db.Timestamp()
+
+  @@tableName("tcns_ly_lich")
+  @@index([shcc])
+  @@index([maNhanVien])
+}
