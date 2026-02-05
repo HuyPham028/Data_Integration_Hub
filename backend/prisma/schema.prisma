@@ -2,12 +2,12 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output = "../generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // ============= MASTER DATA TABLES =============
@@ -21,7 +21,7 @@ model DmDtVanBangLLCT {
   createdAt DateTime @default(now()) @db.Timestamp()
   updatedAt DateTime @updatedAt @db.Timestamp()
 
-  @@tableName("dm_dt_van_bang_llct")
+  @@map("dm_dt_van_bang_llct")
   @@index([ma])
 }
 
@@ -34,7 +34,7 @@ model DmHinhThucKyLuat {
   createdAt DateTime @default(now()) @db.Timestamp()
   updatedAt DateTime @updatedAt @db.Timestamp()
 
-  @@tableName("dm_hinh_thuc_ky_luat")
+  @@map("dm_hinh_thuc_ky_luat")
   @@index([ma])
 }
 
@@ -47,7 +47,7 @@ model DmLoaiCanBo {
   createdAt DateTime @default(now()) @db.Timestamp()
   updatedAt DateTime @updatedAt @db.Timestamp()
 
-  @@tableName("dm_loai_can_bo")
+  @@map("dm_loai_can_bo")
   @@index([ma])
 }
 
@@ -60,7 +60,7 @@ model DmLoaiChucVu {
   createdAt DateTime @default(now()) @db.Timestamp()
   updatedAt DateTime @updatedAt @db.Timestamp()
 
-  @@tableName("dm_loai_chuc_vu")
+  @@map("dm_loai_chuc_vu")
   @@index([ma])
 }
 
@@ -73,7 +73,7 @@ model DmLoaiPhuCap {
   createdAt DateTime @default(now()) @db.Timestamp()
   updatedAt DateTime @updatedAt @db.Timestamp()
 
-  @@tableName("dm_loai_phu_cap")
+  @@map("dm_loai_phu_cap")
   @@index([ma])
 }
 
@@ -86,7 +86,7 @@ model DmNgachCDNN {
   createdAt DateTime @default(now()) @db.Timestamp()
   updatedAt DateTime @updatedAt @db.Timestamp()
 
-  @@tableName("dm_ngach_cdnn")
+  @@map("dm_ngach_cdnn")
   @@index([ma])
 }
 
@@ -99,7 +99,7 @@ model DmNganHang {
   createdAt DateTime @default(now()) @db.Timestamp()
   updatedAt DateTime @updatedAt @db.Timestamp()
 
-  @@tableName("dm_ngan_hang")
+  @@map("dm_ngan_hang")
   @@index([ma])
 }
 
@@ -112,7 +112,7 @@ model DmNhomMau {
   createdAt DateTime @default(now()) @db.Timestamp()
   updatedAt DateTime @updatedAt @db.Timestamp()
 
-  @@tableName("dm_nhom_mau")
+  @@map("dm_nhom_mau")
   @@index([ma])
 }
 
@@ -125,7 +125,7 @@ model DmNoiCapCCCD {
   createdAt DateTime @default(now()) @db.Timestamp()
   updatedAt DateTime @updatedAt @db.Timestamp()
 
-  @@tableName("dm_noi_cap_cccd")
+  @@map("dm_noi_cap_cccd")
   @@index([ma])
 }
 
@@ -138,7 +138,7 @@ model DmQuanHam {
   createdAt DateTime @default(now()) @db.Timestamp()
   updatedAt DateTime @updatedAt @db.Timestamp()
 
-  @@tableName("dm_quan_ham")
+  @@map("dm_quan_ham")
   @@index([ma])
 }
 
@@ -151,7 +151,7 @@ model DmQuanHeGiaDinh {
   createdAt DateTime @default(now()) @db.Timestamp()
   updatedAt DateTime @updatedAt @db.Timestamp()
 
-  @@tableName("dm_quan_he_gia_dinh")
+  @@map("dm_quan_he_gia_dinh")
   @@index([ma])
 }
 
@@ -165,7 +165,7 @@ model DmQuocGia {
   createdAt DateTime @default(now()) @db.Timestamp()
   updatedAt DateTime @updatedAt @db.Timestamp()
 
-  @@tableName("dm_quoc_gia")
+  @@map("dm_quoc_gia")
   @@index([ma])
 }
 
@@ -178,7 +178,7 @@ model DmThanhPhanXuatThan {
   createdAt DateTime @default(now()) @db.Timestamp()
   updatedAt DateTime @updatedAt @db.Timestamp()
 
-  @@tableName("dm_thanh_phan_xuat_than")
+  @@map("dm_thanh_phan_xuat_than")
   @@index([ma])
 }
 
@@ -191,7 +191,7 @@ model DmTonGiao {
   createdAt DateTime @default(now()) @db.Timestamp()
   updatedAt DateTime @updatedAt @db.Timestamp()
 
-  @@tableName("dm_ton_giao")
+  @@map("dm_ton_giao")
   @@index([ma])
 }
 
@@ -204,7 +204,7 @@ model DmTrinhDoChuyenMon {
   createdAt DateTime @default(now()) @db.Timestamp()
   updatedAt DateTime @updatedAt @db.Timestamp()
 
-  @@tableName("dm_trinh_do_chuyen_mon")
+  @@map("dm_trinh_do_chuyen_mon")
   @@index([ma])
 }
 
@@ -217,7 +217,7 @@ model DmTrinhDoPhoThong {
   createdAt DateTime @default(now()) @db.Timestamp()
   updatedAt DateTime @updatedAt @db.Timestamp()
 
-  @@tableName("dm_trinh_do_pho_thong")
+  @@map("dm_trinh_do_pho_thong")
   @@index([ma])
 }
 
@@ -230,7 +230,7 @@ model DmXepLoaiChuyenMon {
   createdAt DateTime @default(now()) @db.Timestamp()
   updatedAt DateTime @updatedAt @db.Timestamp()
 
-  @@tableName("dm_xep_loai_chuyen_mon")
+  @@map("dm_xep_loai_chuyen_mon")
   @@index([ma])
 }
 
@@ -240,11 +240,11 @@ model DmNhomLuong {
   nhomLuong     String  @unique @db.VarChar(10)
   maBacLuong    Int
   tenBacLuong   String  @db.VarChar(10)
-  heSoLuong     Decimal @db.Numeric(10, 2)
+  heSoLuong     Decimal @db.Decimal(10, 2)
   createdAt     DateTime @default(now()) @db.Timestamp()
   updatedAt     DateTime @updatedAt @db.Timestamp()
 
-  @@tableName("dm_nhom_luong")
+  @@map("dm_nhom_luong")
   @@index([nhomLuong])
 }
 
@@ -258,7 +258,7 @@ model DmViTriViecLam {
   createdAt DateTime @default(now()) @db.Timestamp()
   updatedAt DateTime @updatedAt @db.Timestamp()
 
-  @@tableName("dm_vi_tri_viec_lam")
+  @@map("dm_vi_tri_viec_lam")
   @@index([ma])
 }
 
@@ -307,7 +307,7 @@ model TcnsLyLich {
   createdAt           DateTime @default(now()) @db.Timestamp()
   updatedAt           DateTime @updatedAt @db.Timestamp()
 
-  @@tableName("tcns_ly_lich")
+  @@map("tcns_ly_lich")
   @@index([shcc])
   @@index([maNhanVien])
 }
