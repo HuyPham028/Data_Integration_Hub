@@ -14,24 +14,35 @@ export class AuthService {
 
   async validateUser(username: string, pass: string) {
     const user = await this.usersService.findByUsername(username);
-    if (user && (await bcrypt.compare(pass, user.password_hash))) {
-      const { password_hash, ...result } = user;
+
+    if (user && (await bcrypt.compare(pass, user.passwordHash))) {
+      const { passwordHash, ...result } = user;
       return result;
     }
+
     return null;
   }
 
   async login(dto: LoginDto) {
     const user = await this.validateUser(dto.username, dto.password);
+
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
+
+    const roles = user.userRoles.map((ur) => ur.role.roleName);
+
+    const permissions = user.userRoles.flatMap((ur) =>
+      ur.role.rolePermissions.map((rp) => rp.permission.permissionKey),
+    );
+
     const payload = {
       sub: user.id,
       username: user.username,
-      roles: user.roles,
-      permissions: user.permissions,
+      roles,
+      permissions,
     };
+
     return {
       accessToken: this.jwtService.sign(payload),
     };
@@ -39,10 +50,11 @@ export class AuthService {
 
   async register(dto: RegisterDto) {
     const hashed = await bcrypt.hash(dto.password, 10);
+
     return this.usersService.createUser({
       username: dto.username,
       email: dto.email,
-      password_hash: hashed,
+      password: hashed,
     });
   }
 

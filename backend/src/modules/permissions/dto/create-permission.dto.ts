@@ -2,8 +2,8 @@ import { IsString } from 'class-validator';
 
 export class CreatePermissionDto {
   @IsString()
-  permission_key: string;
+  permissionKey: string;
 
   @IsString()
-  description: string;
+  description?: string;
 }

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreatePermissionDto } from './dto/create-permission.dto';
-import { Permission } from './entities/permission.entity';
+import { PrismaClient, Permission } from '@prisma/client';
 
 @Injectable()
 export class PermissionsService {
@@ -10,21 +10,21 @@ export class PermissionsService {
   async createPermission(dto: CreatePermissionDto): Promise<Permission> {
     return this.prisma.permission.create({
       data: {
-        permission_key: dto.permission_key,
+        permissionKey: dto.permissionKey,
         description: dto.description,
       },
     });
   }
 
-  async findById(id: string): Promise<Permission | null> {
+  async findById(id: number): Promise<Permission | null> {
     return this.prisma.permission.findUnique({
       where: { id },
     });
   }
 
-  async findByKey(permission_key: string): Promise<Permission | null> {
+  async findByKey(permissionKey: string): Promise<Permission | null> {
     return this.prisma.permission.findUnique({
-      where: { permission_key },
+      where: { permissionKey },
     });
   }
 
@@ -33,7 +33,7 @@ export class PermissionsService {
   }
 
   async updatePermission(
-    id: string,
+    id: number,
     dto: Partial<CreatePermissionDto>,
   ): Promise<Permission> {
     return this.prisma.permission.update({
@@ -42,7 +42,7 @@ export class PermissionsService {
     });
   }
 
-  async deletePermission(id: string): Promise<void> {
+  async deletePermission(id: number): Promise<void> {
     await this.prisma.permission.delete({
       where: { id },
     });

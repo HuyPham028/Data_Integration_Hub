@@ -2,7 +2,7 @@ import { IsString } from 'class-validator';
 
 export class CreateRoleDto {
   @IsString()
-  role_name: string;
+  roleName: string;
 
   @IsString()
   description: string;

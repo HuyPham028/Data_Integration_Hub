@@ -18,6 +18,11 @@ import { Roles } from '../auth/decorators/roles.decorator';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  @Get('test-db')
+  async testDb() {
+    return this.usersService.testConnection();
+  }
+
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('system_admin')
   @Get()
@@ -27,7 +32,7 @@ export class UsersController {
 
   @UseGuards(JwtAuthGuard)
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id') id: number) {
     return this.usersService.findById(id);
   }
 
@@ -41,14 +46,14 @@ export class UsersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('system_admin')
   @Put(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
+  update(@Param('id') id: number, @Body() dto: UpdateUserDto) {
     return this.usersService.updateUser(id, dto);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('system_admin')
   @Post(':userId/roles/:roleId')
-  assignRole(@Param('userId') userId: string, @Param('roleId') roleId: string) {
+  assignRole(@Param('userId') userId: number, @Param('roleId') roleId: number) {
     return this.usersService.assignRole(userId, roleId);
   }
 }

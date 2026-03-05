@@ -13,6 +13,7 @@ import { CreatePermissionDto } from './dto/create-permission.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { ParseIntPipe } from '@nestjs/common';
 
 @Controller('permissions')
 export class PermissionsController {
@@ -28,7 +29,7 @@ export class PermissionsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('system_admin')
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id', ParseIntPipe) id: number) {
     return this.permissionsService.findById(id);
   }
 
@@ -42,14 +43,17 @@ export class PermissionsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('system_admin')
   @Put(':id')
-  update(@Param('id') id: string, @Body() dto: Partial<CreatePermissionDto>) {
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: Partial<CreatePermissionDto>,
+  ) {
     return this.permissionsService.updatePermission(id, dto);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('system_admin')
   @Delete(':id')
-  delete(@Param('id') id: string) {
+  delete(@Param('id', ParseIntPipe) id: number) {
     return this.permissionsService.deletePermission(id);
   }
 }
