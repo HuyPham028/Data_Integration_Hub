@@ -78,9 +78,4 @@ export class UsersService {
       },
     });
   }
-
-  async testConnection() {
-    const result = await this.prisma.$queryRawUnsafe('SELECT 1');
-    return result;
-  }
 }

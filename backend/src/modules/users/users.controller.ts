@@ -18,11 +18,6 @@ import { Roles } from '../auth/decorators/roles.decorator';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @Get('test-db')
-  async testDb() {
-    return this.usersService.testConnection();
-  }
-
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('system_admin')
   @Get()
