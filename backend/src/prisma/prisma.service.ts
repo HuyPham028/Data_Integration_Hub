@@ -5,7 +5,13 @@ import { PrismaPg } from '@prisma/adapter-pg';
 @Injectable()
 export class PrismaService extends PrismaClient {
   constructor() {
-    const adapter = new PrismaPg({ url: process.env.DATABASE_URL })
+    const databaseUrl = process.env.DATABASE_URL;
+
+    if (!databaseUrl || typeof databaseUrl !== 'string') {
+      throw new Error('DATABASE_URL is missing or invalid. Please check your .env file.');
+    }
+
+    const adapter = new PrismaPg({ connectionString: databaseUrl });
     super({ adapter });
   }
 
