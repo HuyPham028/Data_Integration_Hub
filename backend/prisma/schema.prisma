@@ -1,269 +1,259 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
-  moduleFormat = "cjs"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
 }
 
-// ============= MASTER DATA TABLES =============
-
 /// Bảng dữ liệu tham chiếu - Văn bằng/Lý lịch công tác
 model DmDtVanBangLLCT {
-  id        Int     @id @default(autoincrement())
-  ma        String  @unique @db.VarChar(5)
-  ten       String  @db.VarChar(100)
-  active    Boolean @default(true)
-  createdAt DateTime @default(now()) @db.Timestamp()
-  updatedAt DateTime @updatedAt @db.Timestamp()
+  id        Int      @id @default(autoincrement())
+  ma        String   @unique @db.VarChar(5)
+  ten       String   @db.VarChar(100)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
 
-  @@map("dm_dt_van_bang_llct")
   @@index([ma])
+  @@map("dm_dt_van_bang_llct")
 }
 
 /// Bảng dữ liệu tham chiếu - Hình thức kỷ luật
 model DmHinhThucKyLuat {
-  id        Int     @id @default(autoincrement())
-  ma        String  @unique @db.VarChar(50)
-  ten       String  @db.VarChar(500)
-  active    Boolean @default(true)
-  createdAt DateTime @default(now()) @db.Timestamp()
-  updatedAt DateTime @updatedAt @db.Timestamp()
+  id        Int      @id @default(autoincrement())
+  ma        String   @unique @db.VarChar(50)
+  ten       String   @db.VarChar(500)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
 
-  @@map("dm_hinh_thuc_ky_luat")
   @@index([ma])
+  @@map("dm_hinh_thuc_ky_luat")
 }
 
 /// Bảng dữ liệu tham chiếu - Loại cán bộ
 model DmLoaiCanBo {
-  id        Int     @id @default(autoincrement())
-  ma        String  @unique @db.VarChar(5)
-  ten       String  @db.VarChar(50)
-  active    Boolean @default(true)
-  createdAt DateTime @default(now()) @db.Timestamp()
-  updatedAt DateTime @updatedAt @db.Timestamp()
+  id        Int      @id @default(autoincrement())
+  ma        String   @unique @db.VarChar(5)
+  ten       String   @db.VarChar(50)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
 
-  @@map("dm_loai_can_bo")
   @@index([ma])
+  @@map("dm_loai_can_bo")
 }
 
 /// Bảng dữ liệu tham chiếu - Loại chức vụ
 model DmLoaiChucVu {
-  id        Int     @id @default(autoincrement())
-  ma        String  @unique @db.VarChar(5)
-  ten       String  @db.VarChar(70)
-  active    Boolean @default(true)
-  createdAt DateTime @default(now()) @db.Timestamp()
-  updatedAt DateTime @updatedAt @db.Timestamp()
+  id        Int      @id @default(autoincrement())
+  ma        String   @unique @db.VarChar(5)
+  ten       String   @db.VarChar(70)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
 
-  @@map("dm_loai_chuc_vu")
   @@index([ma])
+  @@map("dm_loai_chuc_vu")
 }
 
 /// Bảng dữ liệu tham chiếu - Loại phụ cấp
 model DmLoaiPhuCap {
-  id        Int     @id @default(autoincrement())
-  ma        String  @unique @db.VarChar(10)
-  ten       String  @db.VarChar(100)
-  active    Boolean @default(true)
-  createdAt DateTime @default(now()) @db.Timestamp()
-  updatedAt DateTime @updatedAt @db.Timestamp()
+  id        Int      @id @default(autoincrement())
+  ma        String   @unique @db.VarChar(10)
+  ten       String   @db.VarChar(100)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
 
-  @@map("dm_loai_phu_cap")
   @@index([ma])
+  @@map("dm_loai_phu_cap")
 }
 
 /// Bảng dữ liệu tham chiếu - Ngạch CDNN
 model DmNgachCDNN {
-  id        Int     @id @default(autoincrement())
-  ma        String  @unique @db.VarChar(20)
-  ten       String  @db.VarChar(100)
-  active    Boolean @default(true)
-  createdAt DateTime @default(now()) @db.Timestamp()
-  updatedAt DateTime @updatedAt @db.Timestamp()
+  id        Int      @id @default(autoincrement())
+  ma        String   @unique @db.VarChar(20)
+  ten       String   @db.VarChar(100)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
 
-  @@map("dm_ngach_cdnn")
   @@index([ma])
+  @@map("dm_ngach_cdnn")
 }
 
 /// Bảng dữ liệu tham chiếu - Ngân hàng
 model DmNganHang {
-  id        Int     @id @default(autoincrement())
-  ma        String  @unique @db.VarChar(20)
-  ten       String  @db.VarChar(200)
-  active    Boolean @default(true)
-  createdAt DateTime @default(now()) @db.Timestamp()
-  updatedAt DateTime @updatedAt @db.Timestamp()
+  id        Int      @id @default(autoincrement())
+  ma        String   @unique @db.VarChar(20)
+  ten       String   @db.VarChar(200)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
 
-  @@map("dm_ngan_hang")
   @@index([ma])
+  @@map("dm_ngan_hang")
 }
 
 /// Bảng dữ liệu tham chiếu - Nhóm máu
 model DmNhomMau {
-  id        Int     @id @default(autoincrement())
-  ma        String  @unique @db.VarChar(5)
-  ten       String  @db.VarChar(50)
-  active    Boolean @default(true)
-  createdAt DateTime @default(now()) @db.Timestamp()
-  updatedAt DateTime @updatedAt @db.Timestamp()
+  id        Int      @id @default(autoincrement())
+  ma        String   @unique @db.VarChar(5)
+  ten       String   @db.VarChar(50)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
 
-  @@map("dm_nhom_mau")
   @@index([ma])
+  @@map("dm_nhom_mau")
 }
 
 /// Bảng dữ liệu tham chiếu - Nơi cấp CCCD
 model DmNoiCapCCCD {
-  id        Int     @id @default(autoincrement())
-  ma        String  @unique @db.VarChar(10)
-  ten       String  @db.VarChar(100)
-  active    Boolean @default(true)
-  createdAt DateTime @default(now()) @db.Timestamp()
-  updatedAt DateTime @updatedAt @db.Timestamp()
+  id        Int      @id @default(autoincrement())
+  ma        String   @unique @db.VarChar(10)
+  ten       String   @db.VarChar(100)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
 
-  @@map("dm_noi_cap_cccd")
   @@index([ma])
+  @@map("dm_noi_cap_cccd")
 }
 
 /// Bảng dữ liệu tham chiếu - Quân hàm
 model DmQuanHam {
-  id        Int     @id @default(autoincrement())
-  ma        String  @unique @db.VarChar(10)
-  ten       String  @db.VarChar(50)
-  active    Boolean @default(true)
-  createdAt DateTime @default(now()) @db.Timestamp()
-  updatedAt DateTime @updatedAt @db.Timestamp()
+  id        Int      @id @default(autoincrement())
+  ma        String   @unique @db.VarChar(10)
+  ten       String   @db.VarChar(50)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
 
-  @@map("dm_quan_ham")
   @@index([ma])
+  @@map("dm_quan_ham")
 }
 
 /// Bảng dữ liệu tham chiếu - Quan hệ gia đình
 model DmQuanHeGiaDinh {
-  id        Int     @id @default(autoincrement())
-  ma        String  @unique @db.VarChar(5)
-  ten       String  @db.VarChar(50)
-  active    Boolean @default(true)
-  createdAt DateTime @default(now()) @db.Timestamp()
-  updatedAt DateTime @updatedAt @db.Timestamp()
+  id        Int      @id @default(autoincrement())
+  ma        String   @unique @db.VarChar(5)
+  ten       String   @db.VarChar(50)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
 
-  @@map("dm_quan_he_gia_dinh")
   @@index([ma])
+  @@map("dm_quan_he_gia_dinh")
 }
 
 /// Bảng dữ liệu tham chiếu - Quốc gia
 model DmQuocGia {
-  id        Int     @id @default(autoincrement())
-  ma        String  @unique @db.VarChar(5)
-  ten       String  @db.VarChar(100)
-  maChauLuc String? @db.VarChar(10)
-  active    Boolean @default(true)
-  createdAt DateTime @default(now()) @db.Timestamp()
-  updatedAt DateTime @updatedAt @db.Timestamp()
+  id        Int      @id @default(autoincrement())
+  ma        String   @unique @db.VarChar(5)
+  ten       String   @db.VarChar(100)
+  maChauLuc String?  @db.VarChar(10)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
 
-  @@map("dm_quoc_gia")
   @@index([ma])
+  @@map("dm_quoc_gia")
 }
 
 /// Bảng dữ liệu tham chiếu - Thành phần xuất thân
 model DmThanhPhanXuatThan {
-  id        Int     @id @default(autoincrement())
-  ma        String  @unique @db.VarChar(10)
-  ten       String  @db.VarChar(100)
-  active    Boolean @default(true)
-  createdAt DateTime @default(now()) @db.Timestamp()
-  updatedAt DateTime @updatedAt @db.Timestamp()
+  id        Int      @id @default(autoincrement())
+  ma        String   @unique @db.VarChar(10)
+  ten       String   @db.VarChar(100)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
 
-  @@map("dm_thanh_phan_xuat_than")
   @@index([ma])
+  @@map("dm_thanh_phan_xuat_than")
 }
 
 /// Bảng dữ liệu tham chiếu - Tôn giáo
 model DmTonGiao {
-  id        Int     @id @default(autoincrement())
-  ma        String  @unique @db.VarChar(5)
-  ten       String  @db.VarChar(100)
-  active    Boolean @default(true)
-  createdAt DateTime @default(now()) @db.Timestamp()
-  updatedAt DateTime @updatedAt @db.Timestamp()
+  id        Int      @id @default(autoincrement())
+  ma        String   @unique @db.VarChar(5)
+  ten       String   @db.VarChar(100)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
 
-  @@map("dm_ton_giao")
   @@index([ma])
+  @@map("dm_ton_giao")
 }
 
 /// Bảng dữ liệu tham chiếu - Trình độ chuyên môn
 model DmTrinhDoChuyenMon {
-  id        Int     @id @default(autoincrement())
-  ma        String  @unique @db.VarChar(5)
-  ten       String  @db.VarChar(50)
-  active    Boolean @default(true)
-  createdAt DateTime @default(now()) @db.Timestamp()
-  updatedAt DateTime @updatedAt @db.Timestamp()
+  id        Int      @id @default(autoincrement())
+  ma        String   @unique @db.VarChar(5)
+  ten       String   @db.VarChar(50)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
 
-  @@map("dm_trinh_do_chuyen_mon")
   @@index([ma])
+  @@map("dm_trinh_do_chuyen_mon")
 }
 
 /// Bảng dữ liệu tham chiếu - Trình độ phổ thông
 model DmTrinhDoPhoThong {
-  id        Int     @id @default(autoincrement())
-  ma        String  @unique @db.VarChar(5)
-  ten       String  @db.VarChar(50)
-  active    Boolean @default(true)
-  createdAt DateTime @default(now()) @db.Timestamp()
-  updatedAt DateTime @updatedAt @db.Timestamp()
+  id        Int      @id @default(autoincrement())
+  ma        String   @unique @db.VarChar(5)
+  ten       String   @db.VarChar(50)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
 
-  @@map("dm_trinh_do_pho_thong")
   @@index([ma])
+  @@map("dm_trinh_do_pho_thong")
 }
 
 /// Bảng dữ liệu tham chiếu - Xếp loại chuyên môn
 model DmXepLoaiChuyenMon {
-  id        Int     @id @default(autoincrement())
-  ma        String  @unique @db.VarChar(50)
-  ten       String  @db.VarChar(500)
-  active    Boolean @default(true)
-  createdAt DateTime @default(now()) @db.Timestamp()
-  updatedAt DateTime @updatedAt @db.Timestamp()
+  id        Int      @id @default(autoincrement())
+  ma        String   @unique @db.VarChar(50)
+  ten       String   @db.VarChar(500)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
 
-  @@map("dm_xep_loai_chuyen_mon")
   @@index([ma])
+  @@map("dm_xep_loai_chuyen_mon")
 }
 
 /// Bảng dữ liệu tham chiếu - Nhóm lương
 model DmNhomLuong {
-  id            Int     @id @default(autoincrement())
-  nhomLuong     String  @unique @db.VarChar(10)
-  maBacLuong    Int
-  tenBacLuong   String  @db.VarChar(10)
-  heSoLuong     Decimal @db.Decimal(10, 2)
-  createdAt     DateTime @default(now()) @db.Timestamp()
-  updatedAt     DateTime @updatedAt @db.Timestamp()
+  id          Int      @id @default(autoincrement())
+  nhomLuong   String   @unique @db.VarChar(10)
+  maBacLuong  Int
+  tenBacLuong String   @db.VarChar(10)
+  heSoLuong   Decimal  @db.Decimal(10, 2)
+  createdAt   DateTime @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @db.Timestamp(6)
 
-  @@map("dm_nhom_luong")
   @@index([nhomLuong])
+  @@map("dm_nhom_luong")
 }
 
 /// Bảng dữ liệu tham chiếu - Vị trí việc làm
 model DmViTriViecLam {
-  id        Int     @id @default(autoincrement())
-  ma        String  @unique @db.VarChar(20)
-  ten       String  @db.VarChar(100)
-  loaiVtvl  String? @db.VarChar(20)
-  active    Boolean @default(true)
-  createdAt DateTime @default(now()) @db.Timestamp()
-  updatedAt DateTime @updatedAt @db.Timestamp()
+  id        Int      @id @default(autoincrement())
+  ma        String   @unique @db.VarChar(20)
+  ten       String   @db.VarChar(100)
+  loaiVtvl  String?  @db.VarChar(20)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
 
-  @@map("dm_vi_tri_viec_lam")
   @@index([ma])
+  @@map("dm_vi_tri_viec_lam")
 }
 
 model DmGioiTinh {
@@ -274,8 +264,8 @@ model DmGioiTinh {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("dm_gioi_tinh")
   @@index([ma])
+  @@map("dm_gioi_tinh")
 }
 
 model DmChauLuc {
@@ -286,8 +276,8 @@ model DmChauLuc {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("dm_chau_luc")
   @@index([ma])
+  @@map("dm_chau_luc")
 }
 
 model DmChucDanhKhoaHoc {
@@ -298,24 +288,24 @@ model DmChucDanhKhoaHoc {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("dm_chuc_danh_khoa_hoc")
   @@index([ma])
+  @@map("dm_chuc_danh_khoa_hoc")
 }
 
 model DmChucVu {
-  id          Int      @id @default(autoincrement())
-  ma          String   @unique @db.VarChar(5)
-  ten         String   @db.VarChar(200)
-  heSoPhuCap  Float?
-  prefixText  String?  @db.VarChar(50)
-  loaiChucVu  String?  @db.VarChar(5)
-  priority    Int?
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         Int      @id @default(autoincrement())
+  ma         String   @unique @db.VarChar(5)
+  ten        String   @db.VarChar(200)
+  heSoPhuCap Float?
+  prefixText String?  @db.VarChar(50)
+  loaiChucVu String?  @db.VarChar(5)
+  priority   Int?
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
-  @@map("dm_chuc_vu")
   @@index([ma])
+  @@map("dm_chuc_vu")
 }
 
 model DmChuyenNganhBGD {
@@ -326,8 +316,8 @@ model DmChuyenNganhBGD {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("dm_chuyen_nganh_bgd")
   @@index([ma])
+  @@map("dm_chuyen_nganh_bgd")
 }
 
 model DmDanToc {
@@ -338,8 +328,8 @@ model DmDanToc {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("dm_dan_toc")
   @@index([ma])
+  @@map("dm_dan_toc")
 }
 
 model DmDanhHieuNhaNuoc {
@@ -350,8 +340,8 @@ model DmDanhHieuNhaNuoc {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("dm_danh_hieu_nha_nuoc")
   @@index([ma])
+  @@map("dm_danh_hieu_nha_nuoc")
 }
 
 model DmDoiTuongChinhSach {
@@ -362,8 +352,8 @@ model DmDoiTuongChinhSach {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("dm_doi_tuong_chinh_sach")
   @@index([ma])
+  @@map("dm_doi_tuong_chinh_sach")
 }
 
 model DmDtChungChiBDNV {
@@ -374,8 +364,8 @@ model DmDtChungChiBDNV {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("dm_dt_chung_chi_bdnv")
   @@index([ma])
+  @@map("dm_dt_chung_chi_bdnv")
 }
 
 model DmDtChungChiNgoaiNgu {
@@ -387,8 +377,8 @@ model DmDtChungChiNgoaiNgu {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("dm_dt_chung_chi_ngoai_ngu")
   @@index([ma])
+  @@map("dm_dt_chung_chi_ngoai_ngu")
 }
 
 model DmDtChungChiTinHoc {
@@ -399,8 +389,8 @@ model DmDtChungChiTinHoc {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("dm_dt_chung_chi_tin_hoc")
   @@index([ma])
+  @@map("dm_dt_chung_chi_tin_hoc")
 }
 
 model DmDtDoiTuongAnqp {
@@ -411,8 +401,8 @@ model DmDtDoiTuongAnqp {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("dm_dt_doi_tuong_anqp")
   @@index([ma])
+  @@map("dm_dt_doi_tuong_anqp")
 }
 
 model DmDtHinhThucCM {
@@ -423,8 +413,8 @@ model DmDtHinhThucCM {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("dm_dt_hinh_thuc_cm")
   @@index([ma])
+  @@map("dm_dt_hinh_thuc_cm")
 }
 
 model DmDtHinhThucLLCT {
@@ -435,8 +425,8 @@ model DmDtHinhThucLLCT {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("dm_dt_hinh_thuc_llct")
   @@index([ma])
+  @@map("dm_dt_hinh_thuc_llct")
 }
 
 model DmDtNgoaiNgu {
@@ -447,230 +437,261 @@ model DmDtNgoaiNgu {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("dm_dt_ngoai_ngu")
   @@index([ma])
+  @@map("dm_dt_ngoai_ngu")
 }
-
-// ============= EMPLOYEE DATA TABLES =============
 
 /// Bảng lý lịch cán bộ
 model TcnsLyLich {
-  id                  Int      @id @default(autoincrement())
-  shcc                String   @unique @db.VarChar(255)
-  maNhanVien          String   @db.VarChar(20)
-  ho                  String   @db.VarChar(150)
-  ten                 String   @db.VarChar(50)
-  ngaySinh            DateTime? @db.Timestamp()
-  thanhPhanGiaDinh    String?  @db.VarChar(5)
-  thanhPhanBanThan    String?  @db.VarChar(5)
-  gioiTinh            String?  @db.VarChar(5)
-  danToc              String?  @db.VarChar(5)
-  tonGiao             String?  @db.VarChar(5)
-  quocTich            String?  @db.VarChar(5)
-  emailCaNhan         String?  @db.VarChar(70)
-  chieuCao            Int?
-  canNang             Int?
-  nhomMau             String?  @db.VarChar(5)
-  ngayNhapNgu         DateTime? @db.Timestamp()
-  ngayXuatNgu         DateTime? @db.Timestamp()
-  quanHam             String?  @db.VarChar(5)
-  ngayVaoDang         DateTime? @db.Timestamp()
-  ngayVaoDangCt       DateTime? @db.Timestamp()
-  ngayVaoDoan         DateTime? @db.Timestamp()
-  maSoThue            String?  @db.VarChar(20)
-  stk                 String?  @db.VarChar(20)
-  nganHang            String?  @db.VarChar(100)
-  email               String?  @db.VarChar(70)
-  chiNhanh            String?  @db.VarChar(200)
-  biDanh              String?  @db.VarChar(100)
-  cccd                String?  @db.VarChar(20)
-  sucKhoe             String?  @db.Text
-  isDangVien          Boolean? @default(false)
-  ngayVaoCongDoan     DateTime? @db.Timestamp()
-  bhxh                String?  @db.VarChar(20)
-  doiTuongChinhSach   String?  @db.VarChar(100)
-  bhyt                String?  @db.VarChar(20)
-  ngayCapCccd         DateTime? @db.Timestamp()
-  noiCapCccd          String?  @db.VarChar(5)
-  sdt                 String?  @db.VarChar(20)
-  createdAt           DateTime @default(now()) @db.Timestamp()
-  updatedAt           DateTime @updatedAt @db.Timestamp()
+  id                Int       @id @default(autoincrement())
+  shcc              String    @unique @db.VarChar(255)
+  maNhanVien        String    @db.VarChar(20)
+  ho                String    @db.VarChar(150)
+  ten               String    @db.VarChar(50)
+  ngaySinh          DateTime? @db.Timestamp(6)
+  thanhPhanGiaDinh  String?   @db.VarChar(5)
+  thanhPhanBanThan  String?   @db.VarChar(5)
+  gioiTinh          String?   @db.VarChar(5)
+  danToc            String?   @db.VarChar(5)
+  tonGiao           String?   @db.VarChar(5)
+  quocTich          String?   @db.VarChar(5)
+  emailCaNhan       String?   @db.VarChar(70)
+  chieuCao          Int?
+  canNang           Int?
+  nhomMau           String?   @db.VarChar(5)
+  ngayNhapNgu       DateTime? @db.Timestamp(6)
+  ngayXuatNgu       DateTime? @db.Timestamp(6)
+  quanHam           String?   @db.VarChar(5)
+  ngayVaoDang       DateTime? @db.Timestamp(6)
+  ngayVaoDangCt     DateTime? @db.Timestamp(6)
+  ngayVaoDoan       DateTime? @db.Timestamp(6)
+  maSoThue          String?   @db.VarChar(20)
+  stk               String?   @db.VarChar(20)
+  nganHang          String?   @db.VarChar(100)
+  email             String?   @db.VarChar(70)
+  chiNhanh          String?   @db.VarChar(200)
+  biDanh            String?   @db.VarChar(100)
+  cccd              String?   @db.VarChar(20)
+  sucKhoe           String?
+  isDangVien        Boolean?  @default(false)
+  ngayVaoCongDoan   DateTime? @db.Timestamp(6)
+  bhxh              String?   @db.VarChar(20)
+  doiTuongChinhSach String?   @db.VarChar(100)
+  bhyt              String?   @db.VarChar(20)
+  ngayCapCccd       DateTime? @db.Timestamp(6)
+  noiCapCccd        String?   @db.VarChar(5)
+  sdt               String?   @db.VarChar(20)
+  createdAt         DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt         DateTime  @updatedAt @db.Timestamp(6)
 
-  @@map("tcns_ly_lich")
   @@index([shcc])
   @@index([maNhanVien])
+  @@map("tcns_ly_lich")
 }
-
-// ============= DATA TABLES (NHAN SU & NGUOI HOC) =============
 
 /// Bảng cán bộ
 model TcnsCanBo {
-  id          Int       @id @default(autoincrement())
-  shcc        String?   @unique @db.VarChar(20)
-  ho          String?   @db.VarChar(150)
-  ten         String?   @db.VarChar(50)
-  ngaySinh    DateTime? @db.Timestamp()
-  gioiTinh    String?   @db.VarChar(5)
-  maNhanVien  String?   @db.VarChar(20)
-  email       String?   @db.VarChar(70)
-  sdt         String?   @db.VarChar(20)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id         Int       @id @default(autoincrement())
+  shcc       String?   @unique @db.VarChar(20)
+  ho         String?   @db.VarChar(150)
+  ten        String?   @db.VarChar(50)
+  ngaySinh   DateTime? @db.Timestamp(6)
+  gioiTinh   String?   @db.VarChar(5)
+  maNhanVien String?   @db.VarChar(20)
+  email      String?   @db.VarChar(70)
+  sdt        String?   @db.VarChar(20)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   @@map("tcns_can_bo")
 }
 
 /// Bảng Người học (Sinh viên)
 model NguoiHoc {
-  id                  Int       @id @default(autoincrement())
-  cccdSo              String?   @unique @db.VarChar(20)
-  cccdNgayCap         DateTime?
-  cccdNoiCap          String?   @db.VarChar(255)
-  ho                  String?   @db.VarChar(255)
-  ten                 String?   @db.VarChar(255)
-  ngaySinh            DateTime?
-  noiSinhPhuongXa     String?   @db.VarChar(50)
-  emailCaNhan         String?   @db.VarChar(255)
-  soDienThoai         String?   @db.VarChar(50)
-  gioiTinh            String?   @db.VarChar(5)
-  quocTich            String?   @db.VarChar(50)
-  tonGiao             String?   @db.VarChar(50)
-  danToc              String?   @db.VarChar(50)
-  
-  // Thông tin gia đình
-  chaHoTen            String?   @db.VarChar(255)
-  chaNamSinh          Int?      @db.SmallInt
-  chaNgheNghiep       String?   @db.VarChar(255)
-  chaNoiCongTac       String?   @db.VarChar(50)
-  chaDienThoai        String?   @db.VarChar(50)
-  meHoTen             String?   @db.VarChar(255)
-  meNamSinh           Int?      @db.SmallInt
-  meNgheNghiep        String?   @db.VarChar(255)
-  meNoiCongTac        String?   @db.VarChar(50)
-  meDienThoai         String?   @db.VarChar(50)
-  
-  // Thông tin liên hệ
-  nguoiLienHeHoTen    String?   @db.VarChar(255)
-  nguoiLienHePhuongXa String?   @db.VarChar(50)
-  nguoiLienHeSoNha    String?   @db.VarChar(255)
-  nguoiLienHeDienThoai String?  @db.VarChar(50)
-  lienLacSoNhaDuong   String?   @db.VarChar(255)
-  lienLacPhuongXa     String?   @db.VarChar(50)
-  thuongTruSoNhaDuong String?   @db.VarChar(255)
-  thuongTruPhuongXa   String?   @db.VarChar(50)
-  thuongTruQuocGia    String?   @db.VarChar(50)
-  
-  // Thông tin Đảng/Đoàn/Bảo hiểm
-  doanNgayVao         DateTime?
-  dangNgayVao         DateTime?
-  bhytSoThe           String?   @db.VarChar(255)
-  bhtnSoThe           String?   @db.VarChar(255)
-
-  // Quan hệ 1-N với quá trình đào tạo
-  nhDaoTaos           NhDaoTao[]
-  
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  id                   Int        @id @default(autoincrement())
+  cccdSo               String?    @unique @db.VarChar(20)
+  cccdNgayCap          DateTime?
+  cccdNoiCap           String?    @db.VarChar(255)
+  ho                   String?    @db.VarChar(255)
+  ten                  String?    @db.VarChar(255)
+  ngaySinh             DateTime?
+  noiSinhPhuongXa      String?    @db.VarChar(50)
+  emailCaNhan          String?    @db.VarChar(255)
+  soDienThoai          String?    @db.VarChar(50)
+  gioiTinh             String?    @db.VarChar(5)
+  quocTich             String?    @db.VarChar(50)
+  tonGiao              String?    @db.VarChar(50)
+  danToc               String?    @db.VarChar(50)
+  chaHoTen             String?    @db.VarChar(255)
+  chaNamSinh           Int?       @db.SmallInt
+  chaNgheNghiep        String?    @db.VarChar(255)
+  chaNoiCongTac        String?    @db.VarChar(50)
+  chaDienThoai         String?    @db.VarChar(50)
+  meHoTen              String?    @db.VarChar(255)
+  meNamSinh            Int?       @db.SmallInt
+  meNgheNghiep         String?    @db.VarChar(255)
+  meNoiCongTac         String?    @db.VarChar(50)
+  meDienThoai          String?    @db.VarChar(50)
+  nguoiLienHeHoTen     String?    @db.VarChar(255)
+  nguoiLienHePhuongXa  String?    @db.VarChar(50)
+  nguoiLienHeSoNha     String?    @db.VarChar(255)
+  nguoiLienHeDienThoai String?    @db.VarChar(50)
+  lienLacSoNhaDuong    String?    @db.VarChar(255)
+  lienLacPhuongXa      String?    @db.VarChar(50)
+  thuongTruSoNhaDuong  String?    @db.VarChar(255)
+  thuongTruPhuongXa    String?    @db.VarChar(50)
+  thuongTruQuocGia     String?    @db.VarChar(50)
+  doanNgayVao          DateTime?
+  dangNgayVao          DateTime?
+  bhytSoThe            String?    @db.VarChar(255)
+  bhtnSoThe            String?    @db.VarChar(255)
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+  nhDaoTaos            NhDaoTao[]
 
   @@map("nguoi_hoc")
 }
 
 /// Bảng Người học - Đào tạo
 model NhDaoTao {
-  id                  Int       @id @default(autoincrement())
-  cccdSo              String?   @db.VarChar(20)
-  maNguoiHoc          String?   @db.VarChar(20)
-  trinhDoDaoTao       String?   @db.VarChar(50)
-  emailTruong         String?   @db.VarChar(50)
-  maTuyenSinh         String?   @db.VarChar(50)
-  tsMaNganh           String?   @db.VarChar(20)
-  doiTuongUuTien      String?   @db.VarChar(50)
-  khuVucTuyenSinh     String?   @db.VarChar(50)
-  truongThpt          String?   @db.VarChar(50)
-  trungTuyenSoQd      String?   @db.VarChar(50)
+  id                  Int              @id @default(autoincrement())
+  cccdSo              String?          @db.VarChar(20)
+  maNguoiHoc          String?          @db.VarChar(20)
+  trinhDoDaoTao       String?          @db.VarChar(50)
+  emailTruong         String?          @db.VarChar(50)
+  maTuyenSinh         String?          @db.VarChar(50)
+  tsMaNganh           String?          @db.VarChar(20)
+  doiTuongUuTien      String?          @db.VarChar(50)
+  khuVucTuyenSinh     String?          @db.VarChar(50)
+  truongThpt          String?          @db.VarChar(50)
+  trungTuyenSoQd      String?          @db.VarChar(50)
   trungTuyenNgayQd    DateTime?
-  trungTuyenToHopMon  String?   @db.VarChar(50)
-  diemMon1            String?   @db.VarChar(10)
-  diemMon2            String?   @db.VarChar(10)
-  diemMon3            String?   @db.VarChar(10)
-  diemUuTien          String?   @db.VarChar(10)
-  tongDiemXetTuyen    String?   @db.VarChar(10)
-  dtMaCtdt            String?   @db.VarChar(50)
-  dtMaNganh           String?   @db.VarChar(50)
-  loaiHinhDaoTao      String?   @db.VarChar(50)
-  heDaoTao            String?   @db.VarChar(50)
-  buoiDaoTao          String?   @db.VarChar(50)
-  thangVao            Int?      @db.SmallInt
-  namVao              Int?      @db.SmallInt
-  namRa               Int?      @db.SmallInt
-  maLop               String?   @db.VarChar(50)
-  khoa                String?   @db.VarChar(50)
-  donViQuanLy         String?   @db.VarChar(50)
-  coSoDaoTao          String?   @db.VarChar(50)
-  hkGiaHan            Int?      @db.SmallInt
+  trungTuyenToHopMon  String?          @db.VarChar(50)
+  diemMon1            String?          @db.VarChar(10)
+  diemMon2            String?          @db.VarChar(10)
+  diemMon3            String?          @db.VarChar(10)
+  diemUuTien          String?          @db.VarChar(10)
+  tongDiemXetTuyen    String?          @db.VarChar(10)
+  dtMaCtdt            String?          @db.VarChar(50)
+  dtMaNganh           String?          @db.VarChar(50)
+  loaiHinhDaoTao      String?          @db.VarChar(50)
+  heDaoTao            String?          @db.VarChar(50)
+  buoiDaoTao          String?          @db.VarChar(50)
+  thangVao            Int?             @db.SmallInt
+  namVao              Int?             @db.SmallInt
+  namRa               Int?             @db.SmallInt
+  maLop               String?          @db.VarChar(50)
+  khoa                String?          @db.VarChar(50)
+  donViQuanLy         String?          @db.VarChar(50)
+  coSoDaoTao          String?          @db.VarChar(50)
+  hkGiaHan            Int?             @db.SmallInt
   ngayNhapHoc         DateTime?
-  trangThaiNguoiHoc   String?   @db.VarChar(50)
+  trangThaiNguoiHoc   String?          @db.VarChar(50)
   ngayChuyenTrangThai DateTime?
-  qlctdtCtdt          String?   @db.VarChar(255)
-
-  // Khóa ngoại liên kết với NguoiHoc
+  qlctdtCtdt          String?          @db.VarChar(255)
   nguoiHocId          Int?
-  nguoiHoc            NguoiHoc? @relation(fields: [nguoiHocId], references: [id])
-  
-  // Quan hệ 1-N với văn bằng và kỷ luật
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  nguoiHoc            NguoiHoc?        @relation(fields: [nguoiHocId], references: [id])
   nhVanBangs          NhVanBang[]
   nhViPhamKyLuats     NhViPhamKyLuat[]
 
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
-
-  @@map("nh_dao_tao")
   @@index([maNguoiHoc])
+  @@map("nh_dao_tao")
 }
 
 /// Bảng Người học - Văn bằng
 model NhVanBang {
-  id            Int       @id @default(autoincrement())
-  maNguoiHoc    String?   @db.VarChar(20)
-  cccdSo        String?   @db.VarChar(20)
-  maCtdt        String?   @db.VarChar(50)
-  maNganh       String?   @db.VarChar(50)
-  tnSoQd        String?   @db.VarChar(50)
-  tnNgayQd      DateTime?
-  tnXepLoai     String?   @db.VarChar(50)
-  vbNgayCap     DateTime?
-  vbSoHieu      String?   @db.VarChar(50)
-  vbSoVaoSoGoc  String?   @db.VarChar(50)
-
-  // Khóa ngoại liên kết với NhDaoTao
-  nhDaoTaoId    Int?
-  nhDaoTao      NhDaoTao? @relation(fields: [nhDaoTaoId], references: [id])
-
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id           Int       @id @default(autoincrement())
+  maNguoiHoc   String?   @db.VarChar(20)
+  cccdSo       String?   @db.VarChar(20)
+  maCtdt       String?   @db.VarChar(50)
+  maNganh      String?   @db.VarChar(50)
+  tnSoQd       String?   @db.VarChar(50)
+  tnNgayQd     DateTime?
+  tnXepLoai    String?   @db.VarChar(50)
+  vbNgayCap    DateTime?
+  vbSoHieu     String?   @db.VarChar(50)
+  vbSoVaoSoGoc String?   @db.VarChar(50)
+  nhDaoTaoId   Int?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  nhDaoTao     NhDaoTao? @relation(fields: [nhDaoTaoId], references: [id])
 
   @@map("nh_van_bang")
 }
 
 /// Bảng Người học - Vi phạm kỷ luật
 model NhViPhamKyLuat {
-  id            Int       @id @default(autoincrement())
-  maNguoiHoc    String?   @db.VarChar(20)
-  cccdSo        String?   @db.VarChar(20)
-  loaiViPham    String?   @db.VarChar(50)
-  hinhThucXuLy  String?   @db.VarChar(255)
-  noiDungLyDo   String?   @db.VarChar(500)
-  loaiKyLuat    String?   @db.VarChar(50)
-  soQd          String?   @db.VarChar(50)
-  ngayQd        DateTime?
-  namHocHocKy   Int?      @db.SmallInt
-
-  // Khóa ngoại liên kết với NhDaoTao
-  nhDaoTaoId    Int?
-  nhDaoTao      NhDaoTao? @relation(fields: [nhDaoTaoId], references: [id])
-
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id           Int       @id @default(autoincrement())
+  maNguoiHoc   String?   @db.VarChar(20)
+  cccdSo       String?   @db.VarChar(20)
+  loaiViPham   String?   @db.VarChar(50)
+  hinhThucXuLy String?   @db.VarChar(255)
+  noiDungLyDo  String?   @db.VarChar(500)
+  loaiKyLuat   String?   @db.VarChar(50)
+  soQd         String?   @db.VarChar(50)
+  ngayQd       DateTime?
+  namHocHocKy  Int?      @db.SmallInt
+  nhDaoTaoId   Int?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  nhDaoTao     NhDaoTao? @relation(fields: [nhDaoTaoId], references: [id])
 
   @@map("nh_vi_pham_ky_luat")
+}
+
+model Permission {
+  id             Int              @id @default(autoincrement())
+  permissionKey  String           @unique @map("permission_key") @db.VarChar(150)
+  description    String?
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       Int  @map("role_id")
+  permissionId Int  @map("permission_id")
+
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model Role {
+  id              Int              @id @default(autoincrement())
+  roleName        String           @unique @map("role_name") @db.VarChar(100)
+  description     String?
+  rolePermissions RolePermission[]
+  userRoles       UserRole[]
+
+  @@map("roles")
+}
+
+model UserRole {
+  userId Int @map("user_id")
+  roleId Int @map("role_id")
+
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+model User {
+  id           Int        @id @default(autoincrement())
+  username     String     @unique @db.VarChar(100)
+  email        String     @unique @db.VarChar(150)
+  passwordHash String     @map("password_hash")
+  fullName     String?    @map("full_name") @db.VarChar(150)
+  isActive     Boolean?   @default(true) @map("is_active")
+  createdAt    DateTime?  @default(now()) @map("created_at") @db.Timestamp(6)
+
+  userRoles    UserRole[]
+
+  @@map("users")
 }
