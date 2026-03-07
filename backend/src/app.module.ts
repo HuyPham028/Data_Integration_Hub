@@ -9,6 +9,7 @@ import { PrismaModule } from './prisma/prisma.module';
 // import { PermissionsModule } from './modules/permissions/permissions.module';
 import { SyncModule } from './sync/sync.module';
 import { MasterDataModule } from './master-data/master-data.module';
+import { NguoiHocModule } from './modules/nguoi-hoc/nguoi-hoc.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { MasterDataModule } from './master-data/master-data.module';
     // PermissionsModule,
     SyncModule,
     MasterDataModule,
+    NguoiHocModule,
   ],
   controllers: [AppController],
   providers: [AppService],
