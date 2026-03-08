@@ -6,7 +6,7 @@ import { DATA_VERSION_1, DATA_VERSION_2 } from './mock-data';
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
-  @Get('sinh-vien')
+  @Get('nguoi-hoc')
   getSinhVien(@Query('version') version: string) {
     if (version === '2') {
       return {

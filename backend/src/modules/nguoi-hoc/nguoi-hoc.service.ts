@@ -7,7 +7,7 @@ export class NguoiHocService {
 
   constructor(private prisma: PrismaService) {}
 
-  // Hàm này nhận cục data từ Mock Server và xử lý
+  // Hàm này nhận data từ Mock Server và xử lý
   async syncBatch(data: any[]) {
     const results = {
       total: data.length,
@@ -30,10 +30,10 @@ export class NguoiHocService {
     return results;
   }
 
-  // Logic xử lý cho 1 sinh viên (Dùng Transaction)
+  // xử lý cho 1 sinh viên (Dùng Transaction)
   private async syncOneStudent(rawData: any) {
     // 1. Tách dữ liệu quan hệ (bảng con) ra khỏi dữ liệu cha
-    // Lưu ý: Tên field 'nhDaoTaos' phải khớp với JSON từ Mock Server trả về
+    // Tên field 'nhDaoTaos' phải khớp với JSON từ Mock Server trả về
     const { nhDaoTaos, ...studentInfoRaw } = rawData;
 
     // 2. Làm sạch dữ liệu Cha (Chuyển string ngày tháng thành Date)
@@ -54,8 +54,7 @@ export class NguoiHocService {
         create: studentInfo,
       });
 
-      // B. XỬ LÝ QUÁ TRÌNH ĐÀO TẠO (CON) - CHIẾN LƯỢC SNAPSHOT
-      // Giải quyết vấn đề: "Dữ liệu con không có ID, làm sao update?" -> Xóa hết thêm lại.
+      // B.SNAPSHOT
       
       // B1. Xóa toàn bộ quá trình đào tạo cũ của SV này
       await tx.nhDaoTao.deleteMany({
@@ -67,6 +66,8 @@ export class NguoiHocService {
         const daoTaoData = nhDaoTaos.map((dt) => ({
           ...this.convertDates(dt), // Convert ngày tháng cho bảng con
           nguoiHocId: student.id,   // Gán ID cha
+          cccdSo: student.cccdSo,
+          maNguoiHoc: studentInfo.maNguoiHoc
         }));
 
         await tx.nhDaoTao.createMany({
@@ -76,11 +77,10 @@ export class NguoiHocService {
     });
   }
 
-  // --- HÀM TIỆN ÍCH: Convert String -> Date ---
-  // Prisma sẽ lỗi nếu bạn ném string vào trường DateTime
+  // Convert String -> Date
   private convertDates(obj: any) {
     const newObj = { ...obj };
-    // Danh sách các cột là DateTime trong schema của bạn
+    // Danh sách các cột là DateTime trong schema
     const dateFields = [
       'cccdNgayCap', 'ngaySinh', 'doanNgayVao', 'dangNgayVao', 
       'createdAt', 'updatedAt', 
