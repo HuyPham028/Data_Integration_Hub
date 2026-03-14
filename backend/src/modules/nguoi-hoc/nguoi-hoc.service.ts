@@ -1,45 +1,60 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service'; // Đảm bảo đường dẫn đúng
+import { EventLogService } from 'src/common/event-log.service';
 
 @Injectable()
 export class NguoiHocService {
   private readonly logger = new Logger(NguoiHocService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private logService: EventLogService
+  ) {}
 
-  // Hàm này nhận data từ Mock Server và xử lý
   async syncBatch(data: any[]) {
-    const results = {
-      total: data.length,
-      success: 0,
-      failed: 0,
-      errors: [] as Array<{ id: any; msg: string }>,
-    };
+    const jobLog = await this.logService.createJobLog(
+      'Synchronize người học',
+      'NguoiHoc_Mock',
+      'scheduled_sync'
+    )
+
+    const metrics = { nguoi_hoc: { total: data.length, success: 0, failed: 0 } };
+    const errorsList = [] as Array<{ id: any; msg: string }>; 
 
     for (const item of data) {
       try {
         await this.syncOneStudent(item);
-        results.success++;
+        metrics.nguoi_hoc.success++;
       } catch (error) {
         this.logger.error(`Lỗi đồng bộ SV ${item.cccdSo}: ${error.message}`);
-        results.failed++;
-        results.errors.push({ id: item.cccdSo, msg: error.message });
+        metrics.nguoi_hoc.failed++;
+        errorsList.push({ id: item.cccdSo, msg: error.message });
       }
     }
 
-    return results;
+    // update log status when the job is done
+    const finalStatus = metrics.nguoi_hoc.failed === 0 ? 'done' : 
+                       (metrics.nguoi_hoc.success === 0 ? 'failed' : 'partial_success');
+                       
+    await this.logService.finishJobLog(
+      jobLog._id.toString(), 
+      finalStatus, 
+      metrics, 
+      errorsList
+    );
+
+    return {
+      total: metrics.nguoi_hoc.total,
+      success: metrics.nguoi_hoc.success,
+      failed: metrics.nguoi_hoc.failed
+    };
   }
 
-  // xử lý cho 1 sinh viên (Dùng Transaction)
   private async syncOneStudent(rawData: any) {
-    // 1. Tách dữ liệu quan hệ (bảng con) ra khỏi dữ liệu cha
-    // Tên field 'nhDaoTaos' phải khớp với JSON từ Mock Server trả về
     const { nhDaoTaos, ...studentInfoRaw } = rawData;
 
-    // 2. Làm sạch dữ liệu Cha (Chuyển string ngày tháng thành Date)
     const studentInfo = this.convertDates(studentInfoRaw);
 
-    // 3. Bắt đầu Transaction
     await this.prisma.$transaction(async (tx) => {
       
       // A. UPSERT NGƯỜI HỌC (CHA)
@@ -56,16 +71,14 @@ export class NguoiHocService {
 
       // B.SNAPSHOT
       
-      // B1. Xóa toàn bộ quá trình đào tạo cũ của SV này
       await tx.nhDaoTao.deleteMany({
         where: { nguoiHocId: student.id },
       });
 
-      // B2. Thêm mới toàn bộ danh sách từ API
       if (nhDaoTaos && Array.isArray(nhDaoTaos) && nhDaoTaos.length > 0) {
         const daoTaoData = nhDaoTaos.map((dt) => ({
-          ...this.convertDates(dt), // Convert ngày tháng cho bảng con
-          nguoiHocId: student.id,   // Gán ID cha
+          ...this.convertDates(dt),
+          nguoiHocId: student.id,
           cccdSo: student.cccdSo,
           maNguoiHoc: studentInfo.maNguoiHoc
         }));
@@ -77,10 +90,8 @@ export class NguoiHocService {
     });
   }
 
-  // Convert String -> Date
   private convertDates(obj: any) {
     const newObj = { ...obj };
-    // Danh sách các cột là DateTime trong schema
     const dateFields = [
       'cccdNgayCap', 'ngaySinh', 'doanNgayVao', 'dangNgayVao', 
       'createdAt', 'updatedAt', 
@@ -88,10 +99,8 @@ export class NguoiHocService {
     ];
 
     for (const key of Object.keys(newObj)) {
-      // Nếu key nằm trong danh sách dateFields VÀ giá trị là chuỗi
       if (dateFields.includes(key) && typeof newObj[key] === 'string') {
         const dateVal = new Date(newObj[key]);
-        // Kiểm tra nếu date hợp lệ thì gán, không thì để null
         if (!isNaN(dateVal.getTime())) {
           newObj[key] = dateVal;
         } else {

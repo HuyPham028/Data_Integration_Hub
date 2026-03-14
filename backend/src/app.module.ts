@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
@@ -10,11 +10,21 @@ import { PermissionsModule } from './modules/permissions/permissions.module';
 import { SyncModule } from './sync/sync.module';
 import { MasterDataModule } from './master-data/master-data.module';
 import { NguoiHocModule } from './modules/nguoi-hoc/nguoi-hoc.module';
+import { MongooseModule } from '@nestjs/mongoose';
+import { EventLogModule } from './common/event-log.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
-      isGlobal: true,
+      isGlobal: true, 
+    }),
+
+    MongooseModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        uri: configService.get<string>('MONGO_URI'), 
+      }),
+      inject: [ConfigService],
     }),
     PrismaModule,
     UsersModule,
@@ -24,6 +34,7 @@ import { NguoiHocModule } from './modules/nguoi-hoc/nguoi-hoc.module';
     SyncModule,
     MasterDataModule,
     NguoiHocModule,
+    EventLogModule,
   ],
   controllers: [AppController],
   providers: [AppService],
