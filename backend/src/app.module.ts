@@ -11,7 +11,8 @@ import { SyncModule } from './sync/sync.module';
 import { MasterDataModule } from './master-data/master-data.module';
 import { NguoiHocModule } from './modules/nguoi-hoc/nguoi-hoc.module';
 import { MongooseModule } from '@nestjs/mongoose';
-import { EventLogModule } from './common/event-log.module';
+import { EventLogModule } from './common/event-log/event-log.module';
+import { SchemaRegistryModule } from './common/schema-registry/schema-registry.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { EventLogModule } from './common/event-log.module';
     MasterDataModule,
     NguoiHocModule,
     EventLogModule,
+    SchemaRegistryModule,
   ],
   controllers: [AppController],
   providers: [AppService],

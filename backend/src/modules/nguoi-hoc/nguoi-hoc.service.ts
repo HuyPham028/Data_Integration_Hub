@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service'; // Đảm bảo đường dẫn đúng
-import { EventLogService } from 'src/common/event-log.service';
+import { EventLogService } from 'src/common/event-log/event-log.service';
 
 @Injectable()
 export class NguoiHocService {
