@@ -1,4 +1,4 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Body, Get } from '@nestjs/common';
 import { SchemaRegistryService } from './schema-registry.service';
 
 @Controller('api/v1/schema-registry')
@@ -8,5 +8,10 @@ export class SchemaRegistryController {
   @Post('import')
   async importMetadata(@Body() rawData: any[]) {
     return await this.schemaRegistryService.importSchemaData(rawData);
+  }
+
+  @Get()
+  async getAllSchema() {
+    return await this.schemaRegistryService.getAllSchema();
   }
 }

@@ -63,6 +63,10 @@ export class SchemaRegistryService {
       failedCount,
     };
   }
+ 
+  async getAllSchema() {
+    return this.registryModel.find().exec();
+  }
   
   async getSchemaByTableName(tableName: string) {
     return this.registryModel.findOne({ tableName }).exec();
