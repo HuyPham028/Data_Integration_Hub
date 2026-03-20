@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get } from '@nestjs/common';
+import { Controller, Post, Body, Get, Put, Param } from '@nestjs/common';
 import { SchemaRegistryService } from './schema-registry.service';
 
 @Controller('api/v1/schema-registry')
@@ -11,7 +11,17 @@ export class SchemaRegistryController {
   }
 
   @Get()
-  async getAllSchema() {
-    return await this.schemaRegistryService.getAllSchema();
+  async getAll() {
+    return this.schemaRegistryService.getAllSchemasForAdmin();
+  }
+
+  @Put(':tableName/resolve')
+  async resolveWarning(@Param('tableName') tableName: string) {
+    return this.schemaRegistryService.resolveSchemaWarning(tableName);
+  }
+
+  @Post('run-detector')
+  async runDetectorMock(@Body() incomingData: any[]) {
+    return this.schemaRegistryService.detectSchemaChanges(incomingData);
   }
 }

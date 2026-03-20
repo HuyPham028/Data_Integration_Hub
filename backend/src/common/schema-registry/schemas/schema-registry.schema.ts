@@ -35,6 +35,9 @@ export class SchemaRegistry extends Document {
 
   @Prop()
   hashValue: string;
+
+  @Prop({ default: 'stable', enum: ['stable', 'changed', 'new'] })
+  status: string;
 }
 
 export const SchemaRegistrySchema = SchemaFactory.createForClass(SchemaRegistry);

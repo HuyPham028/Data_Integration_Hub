@@ -68,7 +68,67 @@ export class SchemaRegistryService {
     return this.registryModel.find().exec();
   }
   
-  async getSchemaByTableName(tableName: string) {
-    return this.registryModel.findOne({ tableName }).exec();
+
+  async detectSchemaChanges(fetchedSchemas: any[]) {
+    let changesDetected = 0;
+    let newSchemas = 0;
+
+    for (const incoming of fetchedSchemas) {
+      const existing = await this.registryModel.findOne({ tableName: incoming.tableName });
+
+      if (!existing) {
+        const sanitized = { ...incoming, status: 'new' };
+        delete sanitized._id;
+        delete sanitized.__v;
+        
+        await this.registryModel.create(sanitized);
+        newSchemas++;
+        this.logger.warn(`[NEW SCHEMA DETECTED] Bảng mới: ${incoming.tableName}`);
+      } 
+      else if (existing.hashValue !== incoming.hashValue) {
+        // TRƯỜNG HỢP 2: Bảng đã có, nhưng cấu trúc thay đổi (Hash khác nhau)
+        // Lưu details hiện tại vào oldDetails để làm lịch sử
+        const oldDetailsArray = existing.oldDetails || [];
+        oldDetailsArray.push(existing.details);
+
+        await this.registryModel.findOneAndUpdate(
+          { tableName: incoming.tableName },
+          { 
+            $set: { 
+              details: incoming.details,
+              hashValue: incoming.hashValue,
+              fieldsCount: incoming.fieldsCount,
+              status: 'changed', // Cảnh báo cho Admin
+              oldDetails: oldDetailsArray
+            },
+          }
+        );
+        changesDetected++;
+        this.logger.warn(`[SCHEMA CHANGED] Bảng thay đổi: ${incoming.tableName}`);
+      }
+      else {
+        // TRƯỜNG HỢP 3: Không có gì thay đổi (Hash giống nhau)
+        // Không làm gì cả, hoặc update updatedAt
+        this.logger.log(`[SCHEMA STABLE] Bảng ${incoming.tableName} không đổi.`);
+      }
+    }
+
+    return { message: 'Detection finished', newSchemas, changesDetected };
+  }
+
+  // Get All
+  async getAllSchemasForAdmin() {
+    return this.registryModel.find({}).sort({ updatedAt: -1 }).exec();
+  }
+
+  /**
+   * Hàm Admin xác nhận "Đã cập nhật file Prisma, cho phép sync tiếp"
+   */
+  async resolveSchemaWarning(tableName: string) {
+    return this.registryModel.findOneAndUpdate(
+      { tableName },
+      { $set: { status: 'stable' } },
+      { new: true }
+    );
   }
 }

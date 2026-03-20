@@ -14,6 +14,11 @@ export const IntegrationAPI = {
     const response = await apiClient.get('/schema-registry');
     return response.data;
   },
+
+  resolveSchema: async (tableName: string) => {
+    const response = await apiClient.put(`/schema-registry/${tableName}/resolve`);
+    return response.data;
+  },
   
   getLogs: async () => {
     const response = await apiClient.get('/event-logs');
