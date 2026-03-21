@@ -9,6 +9,27 @@ export const apiClient = axios.create({
   },
 });
 
+apiClient.interceptors.request.use((config) => {
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  }
+  return config;
+});
+
+export const AuthAPI = {
+  login: async (credentials: any) => {
+    const res = await apiClient.post('/auth/login', credentials);
+    return res.data;
+  },
+  register: async (data: any) => {
+    const res = await apiClient.post('/auth/register', data);
+    return res.data;
+  }
+};
+
 export const IntegrationAPI = {
   getSchemas: async () => {
     const response = await apiClient.get('/schema-registry');
