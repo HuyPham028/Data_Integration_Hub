@@ -2,7 +2,7 @@ _format_version: '3.0'
 
 services:
   - name: auth-service
-    url: http://host.docker.internal:4000
+    url: http://host.docker.internal:4000/api/v1
     routes:
       - name: auth-route
         paths:
@@ -10,14 +10,14 @@ services:
         strip_path: false
 
   - name: user-service
-    url: http://host.docker.internal:4000
+    url: http://host.docker.internal:4000/api/v1
     routes:
       - name: user-route
         paths:
           - /users
 
   - name: role-service
-    url: http://host.docker.internal:4000
+    url: http://host.docker.internal:4000/api/v1
     routes:
       - name: role-route
         paths:

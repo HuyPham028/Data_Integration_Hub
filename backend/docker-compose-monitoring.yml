@@ -31,3 +31,4 @@ services:
 networks:
   kong-monitoring:
     external: true
+    name: backend_default
