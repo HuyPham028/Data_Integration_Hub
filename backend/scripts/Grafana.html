@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Kong Monitoring Dashboard</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background-color: #0b0f19;
+        color: white;
+      }
+
+      header {
+        padding: 16px;
+        background: #111827;
+        text-align: center;
+        font-size: 20px;
+        font-weight: bold;
+        border-bottom: 1px solid #333;
+      }
+
+      iframe {
+        border: none;
+        width: 100%;
+        height: calc(100vh - 60px);
+      }
+    </style>
+  </head>
+  <body>
+    <header>🚀 Kong API Gateway Monitoring Dashboard</header>
+
+    <iframe
+      src="http://localhost:5000/d/adgdd8t/kong-api-gateway-monitoring"
+    ></iframe>
+  </body>
+</html>
