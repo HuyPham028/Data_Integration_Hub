@@ -1,0 +1,23 @@
+_format_version: '3.0'
+
+services:
+  - name: auth-service
+    url: http://auth-service:3000
+    routes:
+      - name: auth-route
+        paths:
+          - /auth
+
+  - name: user-service
+    url: http://user-service:3000
+    routes:
+      - name: user-route
+        paths:
+          - /users
+
+  - name: role-service
+    url: http://role-service:3000
+    routes:
+      - name: role-route
+        paths:
+          - /roles
