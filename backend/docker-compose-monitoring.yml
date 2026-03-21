@@ -1,0 +1,31 @@
+version: '3'
+
+services:
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    ports:
+      - '9090:9090'
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - kong-monitoring
+
+  grafana:
+    image: grafana/grafana
+    environment:
+      GF_SMTP_ENABLED: 'true'
+      GF_SMTP_HOST: smtp.gmail.com:587
+      GF_SMTP_USER: tmtuan120704@gmail.com
+      GF_SMTP_PASSWORD: 'rmrs oxjp apze auvc'
+      GF_SMTP_FROM_ADDRESS: tmtuan120704@gmail.com
+      GF_SMTP_SKIP_VERIFY: 'true'
+    container_name: grafana
+    ports:
+      - '3001:3000'
+    networks:
+      - kong-monitoring
+
+networks:
+  kong-monitoring:
+    external: true
