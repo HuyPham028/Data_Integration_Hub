@@ -49,12 +49,12 @@ export class AuthService {
   }
 
   async register(dto: RegisterDto) {
-    const hashed = await bcrypt.hash(dto.password, 10);
+    // const hashed = await bcrypt.hash(dto.password, 10);
 
     return this.usersService.createUser({
       username: dto.username,
       email: dto.email,
-      password: hashed,
+      password: dto.password,
     });
   }
 

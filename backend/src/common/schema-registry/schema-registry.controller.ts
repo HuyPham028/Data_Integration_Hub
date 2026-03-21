@@ -1,7 +1,7 @@
 import { Controller, Post, Body, Get, Put, Param } from '@nestjs/common';
 import { SchemaRegistryService } from './schema-registry.service';
 
-@Controller('api/v1/schema-registry')
+@Controller('schema-registry')
 export class SchemaRegistryController {
   constructor(private readonly schemaRegistryService: SchemaRegistryService) {}
 
