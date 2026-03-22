@@ -22,3 +22,6 @@ services:
       - name: role-route
         paths:
           - /roles
+
+plugins:
+  - name: prometheus

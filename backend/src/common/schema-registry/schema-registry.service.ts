@@ -9,7 +9,8 @@ export class SchemaRegistryService {
   private readonly logger = new Logger(SchemaRegistryService.name);
 
   constructor(
-    @InjectModel(SchemaRegistry.name) private registryModel: Model<SchemaRegistry>,
+    @InjectModel(SchemaRegistry.name)
+    private registryModel: Model<SchemaRegistry>,
     private readonly eventLogService: EventLogService,
   ) {}
 
@@ -29,32 +30,48 @@ export class SchemaRegistryService {
       try {
         const sanitizedData = {
           ...rawData,
-          createdAt: rawData.createdAt?.$date ? new Date(rawData.createdAt.$date) : undefined,
-          updatedAt: rawData.updatedAt?.$date ? new Date(rawData.updatedAt.$date) : undefined,
+          createdAt: rawData.createdAt?.$date
+            ? new Date(rawData.createdAt.$date)
+            : undefined,
+          updatedAt: rawData.updatedAt?.$date
+            ? new Date(rawData.updatedAt.$date)
+            : undefined,
         };
-        delete sanitizedData._id; 
+        delete sanitizedData._id;
         delete sanitizedData.__v;
 
         await this.registryModel.findOneAndUpdate(
           { tableName: sanitizedData.tableName },
           { $set: sanitizedData },
-          { upsert: true, new: true }
+          { upsert: true, new: true },
         );
         successCount++;
       } catch (error) {
-        this.logger.error(`Failed to import table ${rawData.tableName}: ${error.message}`);
+        this.logger.error(
+          `Failed to import table ${rawData.tableName}: ${error.message}`,
+        );
         failedCount++;
         errors.push({ table: rawData.tableName, error: error.message });
       }
     }
 
-    const finalStatus = failedCount === 0 ? 'done' : successCount > 0 ? 'partial_success' : 'failed';
-    
-    await this.eventLogService.finishJobLog(log._id.toString(), finalStatus, {
-      total: rawDataArray.length,
-      success: successCount,
-      failed: failedCount,
-    }, errors);
+    const finalStatus =
+      failedCount === 0
+        ? 'done'
+        : successCount > 0
+          ? 'partial_success'
+          : 'failed';
+
+    await this.eventLogService.finishJobLog(
+      log._id.toString(),
+      finalStatus,
+      {
+        total: rawDataArray.length,
+        success: successCount,
+        failed: failedCount,
+      },
+      errors,
+    );
 
     return {
       message: 'Import process finished',
@@ -63,29 +80,34 @@ export class SchemaRegistryService {
       failedCount,
     };
   }
- 
+
   async getAllSchema() {
     return this.registryModel.find().exec();
   }
-  
 
   async detectSchemaChanges(fetchedSchemas: any[]) {
     let changesDetected = 0;
     let newSchemas = 0;
 
     for (const incoming of fetchedSchemas) {
-      const existing = await this.registryModel.findOne({ tableName: incoming.tableName });
+      const existing = await this.registryModel.findOne({
+        tableName: incoming.tableName,
+      });
 
       if (!existing) {
         const sanitized = { ...incoming, status: 'new' };
         delete sanitized._id;
         delete sanitized.__v;
-        
+
         await this.registryModel.create(sanitized);
         newSchemas++;
-        this.logger.warn(`[NEW SCHEMA DETECTED] Bảng mới: ${incoming.tableName}`);
-      } 
-      else if (existing.hashValue !== incoming.hashValue) {
+        this.logger.warn(
+          `[NEW SCHEMA DETECTED] Bảng mới: ${incoming.tableName}`,
+        );
+      } else if (
+        existing.hashValue !== incoming.hashValue ||
+        existing.details !== incoming.details
+      ) {
         // TRƯỜNG HỢP 2: Bảng đã có, nhưng cấu trúc thay đổi (Hash khác nhau)
         // Lưu details hiện tại vào oldDetails để làm lịch sử
         const oldDetailsArray = existing.oldDetails || [];
@@ -93,23 +115,26 @@ export class SchemaRegistryService {
 
         await this.registryModel.findOneAndUpdate(
           { tableName: incoming.tableName },
-          { 
-            $set: { 
+          {
+            $set: {
               details: incoming.details,
               hashValue: incoming.hashValue,
               fieldsCount: incoming.fieldsCount,
               status: 'changed', // Cảnh báo cho Admin
-              oldDetails: oldDetailsArray
+              oldDetails: oldDetailsArray,
             },
-          }
+          },
         );
         changesDetected++;
-        this.logger.warn(`[SCHEMA CHANGED] Bảng thay đổi: ${incoming.tableName}`);
-      }
-      else {
+        this.logger.warn(
+          `[SCHEMA CHANGED] Bảng thay đổi: ${incoming.tableName}`,
+        );
+      } else {
         // TRƯỜNG HỢP 3: Không có gì thay đổi (Hash giống nhau)
         // Không làm gì cả, hoặc update updatedAt
-        this.logger.log(`[SCHEMA STABLE] Bảng ${incoming.tableName} không đổi.`);
+        this.logger.log(
+          `[SCHEMA STABLE] Bảng ${incoming.tableName} không đổi.`,
+        );
       }
     }
 
@@ -128,7 +153,7 @@ export class SchemaRegistryService {
     return this.registryModel.findOneAndUpdate(
       { tableName },
       { $set: { status: 'stable' } },
-      { new: true }
+      { new: true },
     );
   }
 }
