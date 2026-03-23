@@ -32,4 +32,12 @@ export class EventLogService {
     log.markModified('details'); 
     await log.save();
   }
+
+  async getRecentLogs(limit: number = 50) {
+    return await this.logModel
+      .find({})
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .exec();
+  }
 }

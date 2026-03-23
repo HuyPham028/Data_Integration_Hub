@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { EventLog, EventLogSchema } from './schemas/event-log.schema';
 import { EventLogService } from './event-log.service';
+import { EventLogController } from './event-log.controller';
 
 @Module({
   imports: [
@@ -10,7 +11,7 @@ import { EventLogService } from './event-log.service';
     ]),
   ],
   providers: [EventLogService],
-  controllers: [],
+  controllers: [EventLogController],
   exports: [EventLogService]
 })
 export class EventLogModule {}

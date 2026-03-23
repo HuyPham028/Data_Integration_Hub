@@ -1,8 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { SchemaRegistry } from './schemas/schema-registry.schema';
 import { EventLogService } from '../event-log/event-log.service';
+import { UpdateSchemaRegistryDto } from './dto/update-schema-registry.dto';
 
 @Injectable()
 export class SchemaRegistryService {
@@ -65,7 +66,7 @@ export class SchemaRegistryService {
   }
  
   async getAllSchema() {
-    return this.registryModel.find().exec();
+    return this.registryModel.find({}).exec();
   }
   
 
@@ -119,6 +120,53 @@ export class SchemaRegistryService {
   // Get All
   async getAllSchemasForAdmin() {
     return this.registryModel.find({}).sort({ updatedAt: -1 }).exec();
+  }
+
+  async updateSchema(tableName: string, updatePayload: UpdateSchemaRegistryDto) {
+    const allowedFields: (keyof UpdateSchemaRegistryDto)[] = [
+      'primaryKey',
+      'fieldsCount',
+      'recordsCount',
+      'description',
+      'dataFrom',
+      'dataFromApi',
+      'dataFromMethod',
+      'details',
+      'hashValue',
+      'status',
+    ];
+
+    const updateData = Object.fromEntries(
+      Object.entries(updatePayload).filter(
+        ([key, value]) => allowedFields.includes(key as keyof UpdateSchemaRegistryDto) && value !== undefined,
+      ),
+    );
+
+    if (Object.keys(updateData).length === 0) {
+      throw new BadRequestException('No valid fields provided to update.');
+    }
+
+    if (updateData.details) {
+      const existing = await this.registryModel.findOne({ tableName }).lean();
+      if (!existing) {
+        throw new NotFoundException(`Schema table ${tableName} not found.`);
+      }
+
+      // Preserve previous details as a change history snapshot.
+      updateData.oldDetails = [...(existing.oldDetails || []), ...(existing.details ? [existing.details] : [])];
+    }
+
+    const updated = await this.registryModel.findOneAndUpdate(
+      { tableName },
+      { $set: updateData },
+      { new: true },
+    );
+
+    if (!updated) {
+      throw new NotFoundException(`Schema table ${tableName} not found.`);
+    }
+
+    return updated;
   }
 
   /**

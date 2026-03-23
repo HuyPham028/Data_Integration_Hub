@@ -13,9 +13,13 @@ import { NguoiHocModule } from './modules/nguoi-hoc/nguoi-hoc.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { EventLogModule } from './common/event-log/event-log.module';
 import { SchemaRegistryModule } from './common/schema-registry/schema-registry.module';
+import { SyncEngineModule } from './modules/sync-engine/sync-engine.module';
+import { DataIntegrationModule } from './data-integration/data-integration.module';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 
 @Module({
   imports: [
+    EventEmitterModule.forRoot(),
     ConfigModule.forRoot({
       isGlobal: true, 
     }),
@@ -37,6 +41,8 @@ import { SchemaRegistryModule } from './common/schema-registry/schema-registry.m
     NguoiHocModule,
     EventLogModule,
     SchemaRegistryModule,
+    SyncEngineModule,
+    DataIntegrationModule,
   ],
   controllers: [AppController],
   providers: [AppService],
