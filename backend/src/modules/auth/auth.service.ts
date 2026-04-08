@@ -30,11 +30,18 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const roles = user.userRoles.map((ur) => ur.role.roleName);
+    const roles = user.role ? [user.role.roleName] : [];
 
-    const permissions = user.userRoles.flatMap((ur) =>
-      ur.role.rolePermissions.map((rp) => rp.permission.permissionKey),
-    );
+    // admin → bypass mọi kiểm tra bảng
+    // reader/writer → flatten thành "type:pattern" để PermissionsGuard dùng
+    let permissions: string[] = [];
+    if (user.role?.type === 'admin') {
+      permissions = ['admin'];
+    } else if (user.role) {
+      permissions = user.role.tablePatterns.map(
+        (pattern) => `${user.role!.type}:${pattern}`,
+      );
+    }
 
     const payload = {
       sub: user.id,

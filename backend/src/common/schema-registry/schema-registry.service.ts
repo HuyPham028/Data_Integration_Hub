@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { SchemaRegistry } from './schemas/schema-registry.schema';
@@ -147,7 +152,10 @@ export class SchemaRegistryService {
     return this.registryModel.find({}).sort({ updatedAt: -1 }).exec();
   }
 
-  async updateSchema(tableName: string, updatePayload: UpdateSchemaRegistryDto) {
+  async updateSchema(
+    tableName: string,
+    updatePayload: UpdateSchemaRegistryDto,
+  ) {
     const allowedFields: (keyof UpdateSchemaRegistryDto)[] = [
       'primaryKey',
       'fieldsCount',
@@ -163,7 +171,9 @@ export class SchemaRegistryService {
 
     const updateData = Object.fromEntries(
       Object.entries(updatePayload).filter(
-        ([key, value]) => allowedFields.includes(key as keyof UpdateSchemaRegistryDto) && value !== undefined,
+        ([key, value]) =>
+          allowedFields.includes(key as keyof UpdateSchemaRegistryDto) &&
+          value !== undefined,
       ),
     );
 
@@ -178,7 +188,10 @@ export class SchemaRegistryService {
       }
 
       // Preserve previous details as a change history snapshot.
-      updateData.oldDetails = [...(existing.oldDetails || []), ...(existing.details ? [existing.details] : [])];
+      updateData.oldDetails = [
+        ...(existing.oldDetails || []),
+        ...(existing.details ? [existing.details] : []),
+      ];
     }
 
     const updated = await this.registryModel.findOneAndUpdate(

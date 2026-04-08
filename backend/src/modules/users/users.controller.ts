@@ -6,6 +6,7 @@ import {
   Param,
   Put,
   UseGuards,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -19,7 +20,7 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('system_admin')
+  @Roles('admin')
   @Get()
   findAll() {
     return this.usersService.findAll();
@@ -27,28 +28,31 @@ export class UsersController {
 
   @UseGuards(JwtAuthGuard)
   @Get(':id')
-  findOne(@Param('id') id: number) {
+  findOne(@Param('id', ParseIntPipe) id: number) {
     return this.usersService.findById(id);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('system_admin')
+  @Roles('admin')
   @Post()
   create(@Body() dto: CreateUserDto) {
     return this.usersService.createUser(dto);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('system_admin')
+  @Roles('admin')
   @Put(':id')
-  update(@Param('id') id: number, @Body() dto: UpdateUserDto) {
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateUserDto) {
     return this.usersService.updateUser(id, dto);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('system_admin')
-  @Post(':userId/roles/:roleId')
-  assignRole(@Param('userId') userId: number, @Param('roleId') roleId: number) {
-    return this.usersService.assignRole(userId, roleId);
+  @Roles('admin')
+  @Put(':userId/role')
+  assignRole(
+    @Param('userId', ParseIntPipe) userId: number,
+    @Body() body: { roleId: number },
+  ) {
+    return this.usersService.assignRole(userId, body.roleId);
   }
 }

@@ -11,38 +11,19 @@ export class UsersService {
   async findByUsername(username: string) {
     return this.prisma.user.findUnique({
       where: { username },
-      include: {
-        userRoles: {
-          include: {
-            role: {
-              include: {
-                rolePermissions: {
-                  include: { permission: true },
-                },
-              },
-            },
-          },
-        },
-      },
+      include: { role: true },
     });
   }
 
   async findById(id: number) {
     return this.prisma.user.findUnique({
       where: { id },
-      include: {
-        userRoles: {
-          include: {
-            role: true,
-          },
-        },
-      },
+      include: { role: true },
     });
   }
 
   async createUser(dto: CreateUserDto) {
     const hashed = await bcrypt.hash(dto.password, 10);
-
     return this.prisma.user.create({
       data: {
         username: dto.username,
@@ -61,21 +42,16 @@ export class UsersService {
   }
 
   async assignRole(userId: number, roleId: number) {
-    return this.prisma.userRole.create({
-      data: {
-        userId,
-        roleId,
-      },
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { roleId },
+      include: { role: true },
     });
   }
 
   async findAll() {
     return this.prisma.user.findMany({
-      include: {
-        userRoles: {
-          include: { role: true },
-        },
-      },
+      include: { role: true },
     });
   }
 }

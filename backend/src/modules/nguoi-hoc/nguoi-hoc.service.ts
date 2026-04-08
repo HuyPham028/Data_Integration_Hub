@@ -58,14 +58,15 @@ export class NguoiHocService {
     await this.prisma.$transaction(async (tx) => {
       
       // A. UPSERT NGƯỜI HỌC (CHA)
-      // Dùng cccdSo làm khóa định danh duy nhất
-      if (!studentInfo.cccdSo) {
-        throw new Error('Dữ liệu thiếu cccdSo, không thể định danh.');
+      // Dùng id làm khóa định danh duy nhất
+      if (!studentInfo.id) {
+        throw new Error('Dữ liệu thiếu id, không thể định danh.');
       }
 
+      const { id, ...updateFields } = studentInfo;
       const student = await tx.nguoiHoc.upsert({
-        where: { cccdSo: studentInfo.cccdSo },
-        update: studentInfo,
+        where: { id },
+        update: updateFields,
         create: studentInfo,
       });
 

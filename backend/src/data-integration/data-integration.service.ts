@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
+import { ConfigService } from '@nestjs/config';
 import { SchemaRegistryService } from 'src/common/schema-registry/schema-registry.service';
 import { SyncEngineService } from 'src/modules/sync-engine/sync-engine.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -45,6 +46,7 @@ export class DataIntegrationService {
     private readonly syncEngine: SyncEngineService,
     private readonly httpService: HttpService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly configService: ConfigService,
   ) {}
 
   private broadcastLog(message: string, type: 'INFO' | 'WARN' | 'ERROR' = 'INFO') {
@@ -90,17 +92,26 @@ export class DataIntegrationService {
       let totalSyncedForTable = 0;
 
       try {
-        const baseUrl = 'http://localhost:3001' 
+        const baseUrl = this.configService.get<string>('SOURCE_API_BASE_URL', 'http://localhost:3001');
+        const token = this.configService.get<string>('SOURCE_API_TOKEN', '');
 
         if (!schema.dataFromApi) {
-           throw new Error(`Skipping ${schema.tableName} - No dataFromApi defined.`);
+          throw new Error(`Skipping ${schema.tableName} - No dataFromApi defined.`);
         }
 
-        const primaryKey = schema.primaryKey[0]; 
+        // Bỏ qua endpoint detect-schema, không phải endpoint lấy data
+        if (schema.dataFromApi.includes('check-all-schemas')) {
+          this.broadcastLog(`Skipping ${schema.tableName} - dataFromApi trỏ vào endpoint detect-schema, chưa có endpoint data thật.`, 'WARN');
+          syncResults.push({ table: schema.tableName, status: 'failed', error: 'No real data endpoint configured' });
+          continue;
+        }
+
+        const primaryKey = schema.primaryKey[0];
 
         do {
           const separator = schema.dataFromApi.includes('?') ? '&' : '?';
-          const paginatedUrl = `${baseUrl}${schema.dataFromApi}${separator}page=${currentPage}&limit=${this.BATCH_LIMIT}`;
+          const tokenParam = token ? `&accessToken=${token}` : '';
+          const paginatedUrl = `${baseUrl}${schema.dataFromApi}${separator}page=${currentPage}&limit=${this.BATCH_LIMIT}${tokenParam}`;
           
           this.broadcastLog(`Fetching page ${currentPage}/${totalPages} -> ${paginatedUrl}`);
           
@@ -115,20 +126,30 @@ export class DataIntegrationService {
 
           const responseData = response.data as SourceApiResponse;
 
-          // 4. Kiểm tra API Contract
+          // 4. [Collision Defense] API Contract Validation — fail fast tại ingestion
           if (
-            !responseData || 
-            responseData.success !== true || 
-            !responseData.payload || 
+            !responseData ||
+            responseData.success !== true ||
+            !responseData.payload ||
             !Array.isArray(responseData.payload)
           ) {
-              throw new Error(
-                `[API CONTRACT VIOLATION] Dữ liệu trả về sai định dạng chuẩn. Yêu cầu phải có "success: true" và mảng "payload".`
-              );
+            throw new Error(
+              `[API CONTRACT VIOLATION] Dữ liệu trả về sai định dạng chuẩn. Yêu cầu phải có "success: true" và mảng "payload".`
+            );
           }
 
           const rawDataArray = responseData.payload;
           const meta = responseData.metadata || {};
+
+          // [Collision Defense] Out-of-order / late page guard:
+          // Nếu server trả currentPage khác với page đang fetch → bỏ qua trang này
+          if (meta.currentPage && meta.currentPage !== currentPage) {
+            this.broadcastLog(
+              `[PAGE MISMATCH] Expected page ${currentPage}, got ${meta.currentPage}. Skipping.`,
+              'WARN'
+            );
+            break;
+          }
 
           // Cập nhật tổng số trang từ lần gọi đầu tiên
           if (currentPage === 1 && meta.totalPages) {
