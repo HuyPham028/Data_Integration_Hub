@@ -16,9 +16,12 @@ import { SchemaRegistryModule } from './common/schema-registry/schema-registry.m
 import { SyncEngineModule } from './modules/sync-engine/sync-engine.module';
 import { DataIntegrationModule } from './data-integration/data-integration.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ScheduleModule } from '@nestjs/schedule';
+import { JobSchedulerModule } from './scheduler/job-scheduler.module';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     EventEmitterModule.forRoot(),
     ConfigModule.forRoot({
       isGlobal: true, 
@@ -43,6 +46,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
     SchemaRegistryModule,
     SyncEngineModule,
     DataIntegrationModule,
+    JobSchedulerModule,
   ],
   controllers: [AppController],
   providers: [AppService],

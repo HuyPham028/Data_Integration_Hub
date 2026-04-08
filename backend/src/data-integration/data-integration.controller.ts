@@ -1,4 +1,4 @@
-import { Controller, Post, Sse } from '@nestjs/common';
+import { Body, Controller, Post, Sse } from '@nestjs/common';
 import { DataIntegrationService } from './data-integration.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { fromEvent, map, Observable } from 'rxjs';
@@ -21,6 +21,16 @@ export class DataIntegrationController {
       message: 'Integration pipeline started. Please check EventLogs (MongoDB) or Dashboard for progress.',
       timestamp: new Date()
     };
+  }
+
+  @Post('run-custom-sync')
+  async triggerCustomSyn(@Body('tables') tables: string[]) {
+    this.integrationService.runCustomIntegrationPipeline(tables)
+
+    return {
+      message: 'Integration custom pipeline started. Please check EventLogs (MongoDB) or Dashboard for progress.',
+      timestamp: new Date()
+    }
   }
 
   @Sse('stream-logs')

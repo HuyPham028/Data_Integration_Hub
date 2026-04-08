@@ -49,5 +49,18 @@ export const IntegrationAPI = {
   triggerFullSync: async () => {
     const response = await apiClient.post('/integration/run-full-sync');
     return response.data;
+  },
+
+  triggerCustomSync: async (tables: string[]) => {
+    const response = await apiClient.post('/integration/run-custom-sync', { tables });
+    return response.data
   }
+};
+
+export const JobAPI = {
+  getJobs: async () => (await apiClient.get('/jobs')).data,
+  createJob: async (data: any) => (await apiClient.post('/jobs', data)).data,
+  updateJob: async (id: string, data: any) => (await apiClient.put(`/jobs/${id}`, data)).data,
+  toggleJob: async (id: string, isActive: boolean) => (await apiClient.put(`/jobs/${id}/toggle`, { isActive })).data,
+  triggerJob: async (id: string) => (await apiClient.post(`/jobs/${id}/trigger`)).data,
 };

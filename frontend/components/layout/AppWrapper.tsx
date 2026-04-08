@@ -40,7 +40,7 @@ export function AppWrapper({ children }: AppWrapperProps) {
   return (
     <div className="flex h-screen overflow-hidden">
       {!isAuthPage && isAuth && <Sidebar />}
-      <main className="flex-1 overflow-y-auto p-8 text-slate-900">{children}</main>
+      <main className="flex-1 overflow-y-auto p-8 pb-0 text-slate-900">{children}</main>
     </div>
   );
 }
