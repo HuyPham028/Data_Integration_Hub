@@ -47,6 +47,7 @@ export class DataIntegrationService {
     private readonly httpService: HttpService,
     private readonly eventEmitter: EventEmitter2,
     private readonly configService: ConfigService,
+    private readonly eventLogService: EventLogService,
   ) {}
 
   private broadcastLog(
