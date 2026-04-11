@@ -15,6 +15,7 @@ export function AppWrapper({ children }: AppWrapperProps) {
   const [isAuth, setIsAuth] = useState(false);
 
   const isAuthPage = pathname === "/login" || pathname === "/register";
+  const hideSidebar = pathname === "/data-explorers";
 
   useEffect(() => {
     setMounted(true)
@@ -39,7 +40,7 @@ export function AppWrapper({ children }: AppWrapperProps) {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      {!isAuthPage && isAuth && <Sidebar />}
+      {!isAuthPage && !hideSidebar && isAuth && <Sidebar />}
       <main className="flex-1 overflow-y-auto p-8 pb-0 text-slate-900">{children}</main>
     </div>
   );
