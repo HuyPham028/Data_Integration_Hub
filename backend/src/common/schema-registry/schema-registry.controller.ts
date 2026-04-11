@@ -1,14 +1,19 @@
-import { Controller, Post, Body, Get, Put, Param } from '@nestjs/common';
+import { Controller, Post, Body, Get, Put, Param, UseGuards } from '@nestjs/common';
 import { SchemaRegistryService } from './schema-registry.service';
 import { UpdateSchemaRegistryDto } from './dto/update-schema-registry.dto';
+import { JwtAuthGuard } from '../../modules/auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../modules/auth/guards/roles.guard';
+import { Roles } from '../../modules/auth/decorators/roles.decorator';
 
 @Controller('schema-registry')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('admin')
 export class SchemaRegistryController {
   constructor(private readonly schemaRegistryService: SchemaRegistryService) {}
 
   @Post('import')
   async importMetadata(@Body() rawData: any[]) {
-    return await this.schemaRegistryService.importSchemaData(rawData);
+    return this.schemaRegistryService.importSchemaData(rawData);
   }
 
   @Get()
@@ -30,7 +35,7 @@ export class SchemaRegistryController {
   }
 
   @Post('run-detector')
-  async runDetectorMock(@Body() incomingData: any[]) {
+  async runDetector(@Body() incomingData: any[]) {
     return this.schemaRegistryService.detectSchemaChanges(incomingData);
   }
 }

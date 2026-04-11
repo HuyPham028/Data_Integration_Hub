@@ -26,6 +26,15 @@ export class UsersController {
     return this.usersService.findAll();
   }
 
+  // GET /users/permissions — role + tablePatterns của tất cả user
+  // Phải đặt TRƯỚC @Get(':id') để tránh bị match nhầm
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Get('permissions')
+  getAllPermissions() {
+    return this.usersService.getAllUsersPermissionSummary();
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
@@ -54,5 +63,24 @@ export class UsersController {
     @Body() body: { roleId: number },
   ) {
     return this.usersService.assignRole(userId, body.roleId);
+  }
+
+  // GET /users/:id/permissions — role + danh sách bảng có quyền (dùng cho FE)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Get(':id/permissions')
+  getPermissions(@Param('id', ParseIntPipe) id: number) {
+    return this.usersService.getUserPermissionSummary(id);
+  }
+
+  // POST /users/:id/permissions — overwrite tablePatterns của role thuộc user
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Post(':id/permissions')
+  updatePermissions(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { tablePatterns: string[] },
+  ) {
+    return this.usersService.updateUserTablePatterns(id, body.tablePatterns);
   }
 }

@@ -54,4 +54,89 @@ export class UsersService {
       include: { role: true },
     });
   }
+
+  async getAllUsersPermissionSummary() {
+    const users = await this.prisma.user.findMany({
+      include: { role: true },
+    });
+
+    return users.map((user) => ({
+      userId: user.id,
+      username: user.username,
+      email: user.email,
+      role: user.role
+        ? {
+            id: user.role.id,
+            roleName: user.role.roleName,
+            type: user.role.type,
+            tablePatterns: user.role.tablePatterns,
+            description: user.role.description,
+          }
+        : null,
+    }));
+  }
+
+  /**
+   * Trả về thông tin role + danh sách bảng user có quyền truy cập.
+   * Dùng để hiển thị lên FE.
+   */
+  async getUserPermissionSummary(userId: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { role: true },
+    });
+
+    if (!user) return null;
+
+    return {
+      userId: user.id,
+      username: user.username,
+      email: user.email,
+      role: user.role
+        ? {
+            id: user.role.id,
+            roleName: user.role.roleName,
+            type: user.role.type,
+            tablePatterns: user.role.tablePatterns,
+            description: user.role.description,
+          }
+        : null,
+    };
+  }
+
+  /**
+   * Overwrite danh sách tablePatterns của role thuộc user.
+   * Chỉ cập nhật role của đúng user đó, không ảnh hưởng user khác cùng role.
+   * Nếu user chưa có role → báo lỗi.
+   */
+  async updateUserTablePatterns(userId: number, tablePatterns: string[]) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { role: true },
+    });
+
+    if (!user?.role) {
+      throw new Error(`User ${userId} chưa được gán role.`);
+    }
+
+    if (user.role.type === 'admin') {
+      throw new Error(`Không thể chỉnh sửa tablePatterns của role admin.`);
+    }
+
+    const updatedRole = await this.prisma.role.update({
+      where: { id: user.role.id },
+      data: { tablePatterns },
+    });
+
+    return {
+      userId: user.id,
+      username: user.username,
+      role: {
+        id: updatedRole.id,
+        roleName: updatedRole.roleName,
+        type: updatedRole.type,
+        tablePatterns: updatedRole.tablePatterns,
+      },
+    };
+  }
 }
