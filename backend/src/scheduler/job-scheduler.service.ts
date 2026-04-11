@@ -83,20 +83,23 @@ export class JobSchedulerService implements OnModuleInit {
   }
 
   private async ensureDefaultJob() {
-    const count = await this.jobModel.estimatedDocumentCount();
-    if (count > 0) {
-      return;
+    const result = await this.jobModel.updateOne(
+      { jobName: 'nightly-full-sync' },
+      {
+        $setOnInsert: {
+          jobName: 'nightly-full-sync',
+          jobType: 'FULL_SYNC',
+          cronExpression: '0 2 * * *',
+          isActive: true,
+          description: 'Default nightly full synchronization job',
+        },
+      },
+      { upsert: true },
+    );
+
+    if (result.upsertedCount > 0) {
+      this.logger.log('No sync jobs found. Seeded default job: nightly-full-sync');
     }
-
-    await this.jobModel.create({
-      jobName: 'nightly-full-sync',
-      jobType: 'FULL_SYNC',
-      cronExpression: '0 2 * * *',
-      isActive: true,
-      description: 'Default nightly full synchronization job',
-    });
-
-    this.logger.log('No sync jobs found. Seeded default job: nightly-full-sync');
   }
 
   private async executeJobLogic(job: any) {
@@ -118,9 +121,27 @@ export class JobSchedulerService implements OnModuleInit {
   }
 
   async createJob(data: Partial<SyncJob>) {
-    const newJob = await this.jobModel.create(data);
-    this.registerCronJob(newJob);
-    return newJob;
+    try {
+      const newJob = await this.jobModel.create(data);
+      this.registerCronJob(newJob);
+      return newJob;
+    } catch (error) {
+      const mongoError = error as { code?: number };
+
+      if (mongoError.code === 11000 && data?.jobName) {
+        const existingJob = await this.jobModel.findOne({ jobName: data.jobName });
+
+        if (existingJob) {
+          this.logger.warn(
+            `Job with name [${data.jobName}] already exists. Returning existing job instead of creating duplicate.`,
+          );
+          this.registerCronJob(existingJob);
+          return existingJob;
+        }
+      }
+
+      throw error;
+    }
   }
 
   async updateJob(id: string, updateData: Partial<SyncJob>) {
