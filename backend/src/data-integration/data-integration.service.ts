@@ -117,7 +117,6 @@ export class DataIntegrationService {
         try {
           const baseUrl = this.configService.get<string>(
             'SOURCE_API_BASE_URL',
-            'http://localhost:3001',
           );
           const token = this.configService.get<string>('SOURCE_API_TOKEN', '');
 

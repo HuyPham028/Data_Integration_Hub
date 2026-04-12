@@ -64,3 +64,38 @@ export const JobAPI = {
   toggleJob: async (id: string, isActive: boolean) => (await apiClient.put(`/jobs/${id}/toggle`, { isActive })).data,
   triggerJob: async (id: string) => (await apiClient.post(`/jobs/${id}/trigger`)).data,
 };
+
+export type RoleType = 'admin' | 'reader' | 'writer' | 'user';
+
+export type RoleSummary = {
+  id: number;
+  roleName: string;
+  type: RoleType;
+  tablePatterns: string[];
+  description?: string;
+};
+
+export type UserPermissionSummary = {
+  userId: number;
+  username: string;
+  email: string;
+  role: RoleSummary | null;
+};
+
+export const AccessControlAPI = {
+  getUsersPermissionSummary: async (): Promise<UserPermissionSummary[]> => {
+    return (await apiClient.get('/users/permissions')).data;
+  },
+
+  getRoles: async (): Promise<RoleSummary[]> => {
+    return (await apiClient.get('/roles')).data;
+  },
+
+  assignRole: async (userId: number, roleId: number) => {
+    return (await apiClient.put(`/users/${userId}/role`, { roleId })).data;
+  },
+
+  updateTablePatterns: async (userId: number, tablePatterns: string[]) => {
+    return (await apiClient.post(`/users/${userId}/permissions`, { tablePatterns })).data;
+  },
+};

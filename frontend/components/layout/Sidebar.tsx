@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Database, Activity, Network, LogOut, Clock } from 'lucide-react';
+import { LayoutDashboard, Database, Activity, Network, LogOut, Clock, Shield } from 'lucide-react';
 
 const navItems = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Job Scheduler', href: '/scheduler', icon: Clock},
+  { name: 'Access Control', href: '/access-control', icon: Shield },
   { name: 'Schema Registry', href: '/schemas', icon: Database },
   { name: 'Sync History', href: '/sync-logs', icon: Activity },
   { name: 'API Gateway (Kong)', href: '/gateway', icon: Network },

@@ -645,6 +645,7 @@ enum UserRole {
   admin
   reader
   writer
+  user
 }
 
 model User {
