@@ -92,6 +92,22 @@ export class UsersService {
    *   "readScopes":  ["^nguoi_hoc$", "^dm_.*"]
    * }
    */
+  private validateRegexPatterns(patterns: string[], field: string): void {
+    const invalid: string[] = [];
+    for (const pattern of patterns) {
+      try {
+        new RegExp(pattern);
+      } catch {
+        invalid.push(pattern);
+      }
+    }
+    if (invalid.length > 0) {
+      throw new BadRequestException(
+        `${field} chứa regex không hợp lệ: ${invalid.map(p => `"${p}"`).join(', ')}`,
+      );
+    }
+  }
+
   async updateRoleSettings(userId: number, roleSettings: RoleSettings) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException(`User ${userId} không tồn tại`);
@@ -99,6 +115,10 @@ export class UsersService {
     if (user.role === UserRole.admin) {
       throw new BadRequestException('Admin không cần cấu hình roleSettings.');
     }
+
+    // Validate cú pháp regex trước khi lưu
+    this.validateRegexPatterns(roleSettings.writeScopes ?? [], 'writeScopes');
+    this.validateRegexPatterns(roleSettings.readScopes ?? [], 'readScopes');
 
     return this.prisma.user.update({
       where: { id: userId },
