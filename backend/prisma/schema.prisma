@@ -645,6 +645,7 @@ enum RoleType {
   admin
   reader
   writer
+  user
 }
 
 /// Role gộp cả quyền: admin bypass mọi kiểm tra, reader/writer dùng tablePatterns (regex)
