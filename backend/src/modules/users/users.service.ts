@@ -1,25 +1,25 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { Prisma, UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+
+export interface RoleSettings {
+  writeScopes: string[];
+  readScopes: string[];
+}
 
 @Injectable()
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
   async findByUsername(username: string) {
-    return this.prisma.user.findUnique({
-      where: { username },
-      include: { role: true },
-    });
+    return this.prisma.user.findUnique({ where: { username } });
   }
 
   async findById(id: number) {
-    return this.prisma.user.findUnique({
-      where: { id },
-      include: { role: true },
-    });
+    return this.prisma.user.findUnique({ where: { id } });
   }
 
   async createUser(dto: CreateUserDto) {
@@ -35,108 +35,75 @@ export class UsersService {
   }
 
   async updateUser(id: number, dto: UpdateUserDto) {
-    return this.prisma.user.update({
-      where: { id },
-      data: dto,
-    });
-  }
-
-  async assignRole(userId: number, roleId: number) {
-    return this.prisma.user.update({
-      where: { id: userId },
-      data: { roleId },
-      include: { role: true },
-    });
+    return this.prisma.user.update({ where: { id }, data: dto });
   }
 
   async findAll() {
-    return this.prisma.user.findMany({
-      include: { role: true },
-    });
+    return this.prisma.user.findMany();
   }
 
-  async getAllUsersPermissionSummary() {
-    const users = await this.prisma.user.findMany({
-      include: { role: true },
-    });
+  /** Trả về thông tin role + roleSettings của một user (cho FE) */
+  async getUserPermissionSummary(userId: number) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException(`User ${userId} không tồn tại`);
 
-    return users.map((user) => ({
+    return {
       userId: user.id,
       username: user.username,
       email: user.email,
-      role: user.role
-        ? {
-            id: user.role.id,
-            roleName: user.role.roleName,
-            type: user.role.type,
-            tablePatterns: user.role.tablePatterns,
-            description: user.role.description,
-          }
-        : null,
+      role: user.role,
+      roleSettings: user.roleSettings ?? null,
+    };
+  }
+
+  /** Trả về role + roleSettings của tất cả user (cho FE admin) */
+  async getAllUsersPermissionSummary() {
+    const users = await this.prisma.user.findMany();
+    return users.map((u) => ({
+      userId: u.id,
+      username: u.username,
+      email: u.email,
+      role: u.role,
+      roleSettings: u.roleSettings ?? null,
     }));
   }
 
-  /**
-   * Trả về thông tin role + danh sách bảng user có quyền truy cập.
-   * Dùng để hiển thị lên FE.
-   */
-  async getUserPermissionSummary(userId: number) {
-    const user = await this.prisma.user.findUnique({
+  /** Gán role type cho user (admin/reader/writer) */
+  async assignRole(userId: number, role: UserRole) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException(`User ${userId} không tồn tại`);
+
+    return this.prisma.user.update({
       where: { id: userId },
-      include: { role: true },
+      data: {
+        role,
+        // Admin không cần roleSettings
+        roleSettings: role === UserRole.admin ? Prisma.JsonNull : (user.roleSettings as Prisma.InputJsonValue),
+      },
+      select: { id: true, username: true, email: true, role: true, roleSettings: true },
     });
-
-    if (!user) return null;
-
-    return {
-      userId: user.id,
-      username: user.username,
-      email: user.email,
-      role: user.role
-        ? {
-            id: user.role.id,
-            roleName: user.role.roleName,
-            type: user.role.type,
-            tablePatterns: user.role.tablePatterns,
-            description: user.role.description,
-          }
-        : null,
-    };
   }
 
   /**
-   * Overwrite danh sách tablePatterns của role thuộc user.
-   * Chỉ cập nhật role của đúng user đó, không ảnh hưởng user khác cùng role.
-   * Nếu user chưa có role → báo lỗi.
+   * Overwrite roleSettings của user.
+   * Format YAML-like lưu dưới JSON:
+   * {
+   *   "writeScopes": ["^tcns_.*", "^dm_gioi_tinh$"],
+   *   "readScopes":  ["^nguoi_hoc$", "^dm_.*"]
+   * }
    */
-  async updateUserTablePatterns(userId: number, tablePatterns: string[]) {
-    const user = await this.prisma.user.findUnique({
+  async updateRoleSettings(userId: number, roleSettings: RoleSettings) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException(`User ${userId} không tồn tại`);
+
+    if (user.role === UserRole.admin) {
+      throw new BadRequestException('Admin không cần cấu hình roleSettings.');
+    }
+
+    return this.prisma.user.update({
       where: { id: userId },
-      include: { role: true },
+      data: { roleSettings: roleSettings as unknown as Prisma.InputJsonValue },
+      select: { id: true, username: true, email: true, role: true, roleSettings: true },
     });
-
-    if (!user?.role) {
-      throw new Error(`User ${userId} chưa được gán role.`);
-    }
-
-    if (user.role.type === 'admin') {
-      throw new Error(`Không thể chỉnh sửa tablePatterns của role admin.`);
-    }
-
-    const updatedRole = await this.prisma.role.update({
-      where: { id: user.role.id },
-      data: { tablePatterns },
-    });
-
-    return {
-      userId: user.id,
-      username: user.username,
-      role: {
-        id: updatedRole.id,
-        roleName: updatedRole.roleName,
-        type: updatedRole.type,
-        tablePatterns: updatedRole.tablePatterns,
-      },
-    };
   }
 }

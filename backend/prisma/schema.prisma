@@ -641,24 +641,10 @@ model NhViPhamKyLuat {
   @@map("nh_vi_pham_ky_luat")
 }
 
-enum RoleType {
+enum UserRole {
   admin
   reader
   writer
-}
-
-/// Role gộp cả quyền: admin bypass mọi kiểm tra, reader/writer dùng tablePatterns (regex)
-model Role {
-  id            Int      @id @default(autoincrement())
-  roleName      String   @unique @map("role_name") @db.VarChar(100)
-  type          RoleType
-  /// Mảng regex khớp với tên bảng, ví dụ: ["^dm_.*", "^tcns_.*"]
-  /// admin: để trống (bỏ qua kiểm tra)
-  tablePatterns String[]
-  description   String?
-  users         User[]
-
-  @@map("roles")
 }
 
 model User {
@@ -669,8 +655,11 @@ model User {
   fullName     String?   @map("full_name") @db.VarChar(150)
   isActive     Boolean?  @default(true) @map("is_active")
   createdAt    DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
-  roleId       Int?      @map("role_id")
-  role         Role?     @relation(fields: [roleId], references: [id])
+  role         UserRole  @default(reader) @map("role")
+  /// Cấu hình quyền truy cập bảng dạng YAML-like:
+  /// { "writeScopes": ["^tcns_.*"], "readScopes": ["^dm_.*"] }
+  /// admin: null (bypass toàn bộ)
+  roleSettings Json?     @map("role_settings")
 
   @@map("users")
 }

@@ -1,38 +1,32 @@
 import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Param,
-  Put,
-  UseGuards,
-  ParseIntPipe,
+  Controller, Get, Post, Body, Param,
+  Put, UseGuards, ParseIntPipe,
 } from '@nestjs/common';
-import { UsersService } from './users.service';
+import { UsersService, RoleSettings } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '@prisma/client';
 
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
+
+  // GET /users/permissions — role + roleSettings của tất cả user (đặt trước :id)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Get('permissions')
+  getAllPermissions() {
+    return this.usersService.getAllUsersPermissionSummary();
+  }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   @Get()
   findAll() {
     return this.usersService.findAll();
-  }
-
-  // GET /users/permissions — role + tablePatterns của tất cả user
-  // Phải đặt TRƯỚC @Get(':id') để tránh bị match nhầm
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
-  @Get('permissions')
-  getAllPermissions() {
-    return this.usersService.getAllUsersPermissionSummary();
   }
 
   @UseGuards(JwtAuthGuard)
@@ -55,17 +49,18 @@ export class UsersController {
     return this.usersService.updateUser(id, dto);
   }
 
+  // PUT /users/:id/role — gán role type (admin/reader/writer)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
-  @Put(':userId/role')
+  @Put(':id/role')
   assignRole(
-    @Param('userId', ParseIntPipe) userId: number,
-    @Body() body: { roleId: number },
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { role: UserRole },
   ) {
-    return this.usersService.assignRole(userId, body.roleId);
+    return this.usersService.assignRole(id, body.role);
   }
 
-  // GET /users/:id/permissions — role + danh sách bảng có quyền (dùng cho FE)
+  // GET /users/:id/permissions — xem role + roleSettings của user
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   @Get(':id/permissions')
@@ -73,14 +68,15 @@ export class UsersController {
     return this.usersService.getUserPermissionSummary(id);
   }
 
-  // POST /users/:id/permissions — overwrite tablePatterns của role thuộc user
+  // POST /users/:id/permissions — overwrite roleSettings
+  // Body: { "writeScopes": ["^tcns_.*"], "readScopes": ["^dm_.*"] }
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   @Post(':id/permissions')
   updatePermissions(
     @Param('id', ParseIntPipe) id: number,
-    @Body() body: { tablePatterns: string[] },
+    @Body() body: RoleSettings,
   ) {
-    return this.usersService.updateUserTablePatterns(id, body.tablePatterns);
+    return this.usersService.updateRoleSettings(id, body);
   }
 }
