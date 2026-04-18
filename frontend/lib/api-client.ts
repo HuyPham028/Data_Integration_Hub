@@ -75,11 +75,17 @@ export type RoleSummary = {
   description?: string;
 };
 
+export type RoleSettings = {
+  writeScopes: string[];
+  readScopes: string[];
+};
+
 export type UserPermissionSummary = {
   userId: number;
   username: string;
   email: string;
-  role: RoleSummary | null;
+  role: RoleType;
+  roleSettings: RoleSettings | null;
 };
 
 export const AccessControlAPI = {
@@ -91,11 +97,11 @@ export const AccessControlAPI = {
     return (await apiClient.get('/roles')).data;
   },
 
-  assignRole: async (userId: number, roleId: number) => {
-    return (await apiClient.put(`/users/${userId}/role`, { roleId })).data;
+  assignRole: async (userId: number, role: RoleType) => {
+    return (await apiClient.put(`/users/${userId}/role`, { role })).data;
   },
 
-  updateTablePatterns: async (userId: number, tablePatterns: string[]) => {
-    return (await apiClient.post(`/users/${userId}/permissions`, { tablePatterns })).data;
+  updateRoleSettings: async (userId: number, roleSettings: RoleSettings) => {
+    return (await apiClient.post(`/users/${userId}/permissions`, roleSettings)).data;
   },
 };

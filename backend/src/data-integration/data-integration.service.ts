@@ -407,7 +407,10 @@ export class DataIntegrationService {
         let totalSyncedForTable = 0;
 
         try {
-          const baseUrl = 'http://localhost:3001';
+          const baseUrl = this.configService.get<string>(
+            'SOURCE_API_BASE_URL',
+          );
+          const token = this.configService.get<string>('SOURCE_API_TOKEN', '');
 
           if (!schema.dataFromApi) {
             throw new Error(
@@ -419,7 +422,8 @@ export class DataIntegrationService {
 
           do {
             const separator = schema.dataFromApi.includes('?') ? '&' : '?';
-            const paginatedUrl = `${baseUrl}${schema.dataFromApi}${separator}page=${currentPage}&limit=${this.BATCH_LIMIT}`;
+            const tokenParam = token ? `&accessToken=${token}` : '';
+            const paginatedUrl = `${baseUrl}${schema.dataFromApi}${separator}page=${currentPage}&limit=${this.BATCH_LIMIT}${tokenParam}`;
 
             this.broadcastLog(
               `Fetching page ${currentPage}/${totalPages} -> ${paginatedUrl}`,
