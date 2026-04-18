@@ -1,7 +1,9 @@
+import { PermissionType } from '../dto/create-permission.dto';
+
 export class Permission {
-  id: string;
-  permission_key: string;
-  description: string;
-  created_at: Date;
-  updated_at: Date;
+  id: number;
+  name: string;
+  type: PermissionType;
+  tablePatterns: string[];
+  description?: string;
 }

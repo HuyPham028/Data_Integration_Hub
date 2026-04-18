@@ -30,17 +30,11 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const roles = user.userRoles.map((ur) => ur.role.roleName);
-
-    const permissions = user.userRoles.flatMap((ur) =>
-      ur.role.rolePermissions.map((rp) => rp.permission.permissionKey),
-    );
-
     const payload = {
       sub: user.id,
       username: user.username,
-      roles,
-      permissions,
+      role: user.role,                // 'admin' | 'reader' | 'writer'
+      roleSettings: user.roleSettings ?? null,  // { writeScopes, readScopes }
     };
 
     return {
