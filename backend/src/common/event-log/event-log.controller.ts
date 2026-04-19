@@ -11,7 +11,10 @@ export class EventLogController {
   constructor(private readonly logService: EventLogService) {}
 
   @Get()
-  async getLogs(@Query('limit') limit: number = 50) {
-    return this.logService.getRecentLogs(limit);
+  async getLogs(
+    @Query('limit') limit: number = 50,
+    @Query('type') type?: string
+  ) {
+    return this.logService.getRecentLogs(limit, type);
   }
 }

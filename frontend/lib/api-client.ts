@@ -42,7 +42,7 @@ export const IntegrationAPI = {
   },
   
   getLogs: async () => {
-    const response = await apiClient.get('/event-logs');
+    const response = await apiClient.get('/event-logs?type=sync');
     return response.data;
   },
 

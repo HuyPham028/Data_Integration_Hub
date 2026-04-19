@@ -33,9 +33,11 @@ export class EventLogService {
     await log.save();
   }
 
-  async getRecentLogs(limit: number = 50) {
+  async getRecentLogs(limit: number = 50, type?: string) {
+    const filter = type ? { type } : {};
+
     return await this.logModel
-      .find({})
+      .find(filter)
       .sort({ createdAt: -1 })
       .limit(limit)
       .exec();

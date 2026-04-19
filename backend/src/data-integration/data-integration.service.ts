@@ -65,6 +65,10 @@ export class DataIntegrationService {
     });
   }
 
+  async updateLastSyncTime(tableName: string, timestamp: Date) {
+    return this.schemaRegistry.updateLastSyncTime(tableName, timestamp);
+  }
+
   /**
    * Run full sync of all tables with Pagination & Strict API Contract
    */
@@ -113,6 +117,8 @@ export class DataIntegrationService {
         let currentPage = 1;
         let totalPages = 1;
         let totalSyncedForTable = 0;
+        let shouldSkipSync = false;
+        let sourceTimestamp: Date | null = null;
 
         try {
           const baseUrl = this.configService.get<string>(
@@ -140,7 +146,12 @@ export class DataIntegrationService {
             continue;
           }
 
-          const primaryKey = schema.primaryKey[0];
+          const primaryKey = schema.primaryKey?.[0];
+          if (!primaryKey) {
+            throw new Error(
+              `Skipping ${schema.tableName} - No primary key configured.`,
+            );
+          }
 
           do {
             const separator = schema.dataFromApi.includes('?') ? '&' : '?';
@@ -170,7 +181,7 @@ export class DataIntegrationService {
               !Array.isArray(responseData.payload)
             ) {
               throw new Error(
-                `[API CONTRACT VIOLATION] Dữ liệu trả về sai định dạng chuẩn. Yêu cầu phải có "success: true" và mảng "payload".`,
+                '[API CONTRACT VIOLATION] Dữ liệu trả về sai định dạng chuẩn. Yêu cầu phải có "success: true" và mảng "payload".',
               );
             }
 
@@ -187,12 +198,41 @@ export class DataIntegrationService {
               break;
             }
 
-            // Cập nhật tổng số trang từ lần gọi đầu tiên
-            if (currentPage === 1 && meta.totalPages) {
-              totalPages = meta.totalPages;
-              this.broadcastLog(
-                `Table ${schema.tableName} has ${meta.totalRecords} records across ${totalPages} pages.`,
-              );
+            // Cập nhật tổng số trang và kiểm tra incremental từ lần gọi đầu tiên
+            if (currentPage === 1) {
+              if (meta.totalPages) {
+                totalPages = meta.totalPages;
+                this.broadcastLog(
+                  `Table ${schema.tableName} has ${meta.totalRecords} records across ${totalPages} pages.`,
+                );
+              }
+
+              sourceTimestamp = responseData.timestamp
+                ? new Date(responseData.timestamp)
+                : null;
+              const lastSyncTime = schema.lastSyncTime
+                ? new Date(schema.lastSyncTime)
+                : null;
+
+              if (
+                sourceTimestamp &&
+                !Number.isNaN(sourceTimestamp.getTime()) &&
+                lastSyncTime &&
+                !Number.isNaN(lastSyncTime.getTime())
+              ) {
+                if (sourceTimestamp.getTime() <= lastSyncTime.getTime()) {
+                  this.broadcastLog(
+                    `[INCREMENTAL CHECK] Bảng ${schema.tableName} không có dữ liệu mới kể từ ${lastSyncTime.toISOString()}. Bỏ qua Database Upsert.`,
+                    'INFO',
+                  );
+                  shouldSkipSync = true;
+                  break;
+                }
+
+                this.broadcastLog(
+                  `[INCREMENTAL CHECK] Phát hiện dữ liệu mới cho ${schema.tableName}. Đang tiến hành đồng bộ...`,
+                );
+              }
             }
 
             // Thoát vòng lặp nếu API trả về mảng rỗng (Tránh lặp vô hạn nếu API nguồn lỗi logic)
@@ -220,6 +260,11 @@ export class DataIntegrationService {
             currentPage++;
           } while (currentPage <= totalPages);
 
+          if (!shouldSkipSync) {
+            const newLastSyncTime = sourceTimestamp ?? new Date();
+            await this.updateLastSyncTime(schema.tableName, newLastSyncTime);
+          }
+
           // Kết thúc vòng lặp thành công cho bảng này
           syncResults.push({
             table: schema.tableName,
@@ -227,9 +272,11 @@ export class DataIntegrationService {
             totalRecordsSynced: totalSyncedForTable,
           });
           this.broadcastLog(
-            `[DONE] Successfully synced ${totalSyncedForTable} records for ${schema.tableName}.`,
+            shouldSkipSync
+              ? `[DONE] Skipped ${schema.tableName} because no new data was detected.`
+              : `[DONE] Successfully synced ${totalSyncedForTable} records for ${schema.tableName}.`,
           );
-        } catch (error) {
+        } catch (error: any) {
           this.broadcastLog(
             `[ERROR] Failed to integrate table ${schema.tableName}: ${error.message}`,
             'WARN',
@@ -267,6 +314,7 @@ export class DataIntegrationService {
         runLog.id,
         status,
         {
+          tableResults: syncResults,
           tables: {
             success: successCount,
             failed: failedCount,
@@ -285,7 +333,7 @@ export class DataIntegrationService {
 
       this.broadcastLog('--- FULL INTEGRATION PIPELINE FINISHED ---');
       return syncResults;
-    } catch (error) {
+    } catch (error: any) {
       await this.eventLogService.finishJobLog(
         runLog.id,
         'failed',
@@ -526,6 +574,7 @@ export class DataIntegrationService {
         runLog.id,
         status,
         {
+          tableResults: syncResults,
           tables: {
             requested: normalizedTableNames.length,
             matched: schemasToSync.length,

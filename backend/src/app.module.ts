@@ -5,7 +5,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
-import { SyncModule } from './sync/sync.module';
 import { MasterDataModule } from './master-data/master-data.module';
 import { NguoiHocModule } from './modules/nguoi-hoc/nguoi-hoc.module';
 import { MongooseModule } from '@nestjs/mongoose';
@@ -35,7 +34,6 @@ import { JobSchedulerModule } from './scheduler/job-scheduler.module';
     PrismaModule,
     UsersModule,
     AuthModule,
-    SyncModule,
     MasterDataModule,
     NguoiHocModule,
     EventLogModule,
