@@ -63,22 +63,33 @@ export class SyncEngineService {
   /**
    * Dedup records theo primary key trước khi upsert.
    * Nếu source có 2 record cùng PK, chỉ giữ record cuối cùng.
+   * Records có PK null/undefined KHÔNG bị drop ở đây — được giữ lại để
+   * upsert loop bắt lỗi và ghi vào Dead Letter Log (không drop silently).
    *
    * Giải quyết: Duplicate Source Records (Primary Key / Uniqueness Violations)
    */
   private deduplicate(dataArray: any[], primaryKeyColumn: string): any[] {
     const seen = new Map<any, any>();
+    const nullPkRecords: any[] = [];
+
     for (const record of dataArray) {
       const pk = record[primaryKeyColumn];
       if (pk !== undefined && pk !== null) {
         seen.set(pk, record); // giữ record cuối nếu trùng
+      } else {
+        nullPkRecords.push(record); // giữ lại để dead-letter trong upsert loop
       }
     }
-    const deduped = seen.size;
-    if (deduped < dataArray.length) {
-      this.logger.warn(`[DEDUP] ${dataArray.length - deduped} duplicate records removed (pk: ${primaryKeyColumn})`);
+
+    const dupCount = dataArray.length - seen.size - nullPkRecords.length;
+    if (dupCount > 0) {
+      this.logger.warn(`[DEDUP] ${dupCount} duplicate records removed (pk: ${primaryKeyColumn})`);
     }
-    return Array.from(seen.values());
+    if (nullPkRecords.length > 0) {
+      this.logger.warn(`[DEDUP] ${nullPkRecords.length} records with null/undefined PK detected — will be dead-lettered`);
+    }
+
+    return [...Array.from(seen.values()), ...nullPkRecords];
   }
 
   /**
@@ -113,9 +124,10 @@ export class SyncEngineService {
 
     for (const record of dedupedArray) {
       try {
-        const pkValue = record[primaryKeyColumn];
+        // Kiểm tra PK tồn tại trên raw record trước (cho Dead Letter log dùng giá trị gốc)
+        const rawPkValue = record[primaryKeyColumn];
 
-        if (pkValue === undefined || pkValue === null) {
+        if (rawPkValue === undefined || rawPkValue === null) {
           throw new Error(`Missing primary key (${primaryKeyColumn}) in record`);
         }
 
@@ -126,6 +138,9 @@ export class SyncEngineService {
 
         // [Collision Defense 3] Type normalization — chuẩn hóa kiểu dữ liệu về đúng type trong schema
         const normalizedRecord = this.normalizeRecord(filteredRecord, modelName);
+
+        // Đọc pkValue SAU normalize để where clause dùng đúng kiểu (Int/String/...)
+        const pkValue = normalizedRecord[primaryKeyColumn];
 
         // Không update primary key (tránh PK conflict khi update)
         const { [primaryKeyColumn]: _pk, ...updateData } = normalizedRecord;

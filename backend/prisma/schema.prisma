@@ -176,6 +176,32 @@ model DmThanhPhanXuatThan {
   @@map("dm_thanh_phan_xuat_than")
 }
 
+/// Bảng dữ liệu tham chiếu - Khen thưởng
+model DmKhenThuong {
+  id        Int      @id @default(autoincrement())
+  ma        String   @unique @db.VarChar(10)
+  ten       String   @db.VarChar(200)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
+
+  @@index([ma])
+  @@map("dm_khen_thuong")
+}
+
+/// Bảng dữ liệu tham chiếu - Phương thức khen thưởng
+model DmPhuongThucKhenThuong {
+  id        Int      @id @default(autoincrement())
+  ma        String   @unique @db.VarChar(10)
+  ten       String   @db.VarChar(200)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
+
+  @@index([ma])
+  @@map("dm_phuong_thuc_khen_thuong")
+}
+
 /// Bảng dữ liệu tham chiếu - Tôn giáo
 model DmTonGiao {
   id        Int      @id @default(autoincrement())

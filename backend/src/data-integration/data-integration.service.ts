@@ -50,6 +50,40 @@ export class DataIntegrationService {
     private readonly eventLogService: EventLogService,
   ) {}
 
+  private readonly MAX_RETRIES = 3;
+  private readonly RETRY_DELAY_MS = 10000;
+
+  /**
+   * Thực thi một async operation với cơ chế retry tự động.
+   * Chỉ retry khi gặp lỗi mạng / timeout — KHÔNG retry lỗi nghiệp vụ
+   * (contract violation, page mismatch) vì chúng sẽ fail lại như cũ.
+   */
+  private async withRetry<T>(
+    operation: () => Promise<T>,
+    context: string,
+  ): Promise<T> {
+    let lastError: Error;
+    for (let attempt = 1; attempt <= this.MAX_RETRIES; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        lastError = error;
+        if (attempt < this.MAX_RETRIES) {
+          this.broadcastLog(
+            `[RETRY ${attempt}/${this.MAX_RETRIES}] ${context} — thử lại sau ${this.RETRY_DELAY_MS / 1000}s... (lỗi: ${error.message})`,
+            'WARN',
+          );
+          await new Promise((resolve) =>
+            setTimeout(resolve, this.RETRY_DELAY_MS),
+          );
+        }
+      }
+    }
+    throw new Error(
+      `[MAX RETRIES EXCEEDED] ${context} — thất bại sau ${this.MAX_RETRIES} lần thử. Lỗi cuối: ${lastError.message}`,
+    );
+  }
+
   private broadcastLog(
     message: string,
     type: 'INFO' | 'WARN' | 'ERROR' = 'INFO',
@@ -115,9 +149,7 @@ export class DataIntegrationService {
         let totalSyncedForTable = 0;
 
         try {
-          const baseUrl = this.configService.get<string>(
-            'SOURCE_API_BASE_URL',
-          );
+          const baseUrl = this.configService.get<string>('SOURCE_API_BASE_URL');
           const token = this.configService.get<string>('SOURCE_API_TOKEN', '');
 
           if (!schema.dataFromApi) {
@@ -151,13 +183,17 @@ export class DataIntegrationService {
               `Fetching page ${currentPage}/${totalPages} -> ${paginatedUrl}`,
             );
 
-            // 3. Gọi API ra hệ thống nguồn
-            const response = await firstValueFrom(
-              this.httpService.request({
-                method: schema.dataFromMethod || 'GET',
-                url: paginatedUrl,
-                timeout: 10000,
-              }),
+            // 3. Gọi API ra hệ thống nguồn (có retry tối đa 3 lần, cách 10s)
+            const response = await this.withRetry(
+              () =>
+                firstValueFrom(
+                  this.httpService.request({
+                    method: schema.dataFromMethod || 'GET',
+                    url: paginatedUrl,
+                    timeout: 10000,
+                  }),
+                ),
+              `${schema.tableName} page ${currentPage}`,
             );
 
             const responseData = response.data as SourceApiResponse;
@@ -407,9 +443,7 @@ export class DataIntegrationService {
         let totalSyncedForTable = 0;
 
         try {
-          const baseUrl = this.configService.get<string>(
-            'SOURCE_API_BASE_URL',
-          );
+          const baseUrl = this.configService.get<string>('SOURCE_API_BASE_URL');
           const token = this.configService.get<string>('SOURCE_API_TOKEN', '');
 
           if (!schema.dataFromApi) {
@@ -429,12 +463,17 @@ export class DataIntegrationService {
               `Fetching page ${currentPage}/${totalPages} -> ${paginatedUrl}`,
             );
 
-            const response = await firstValueFrom(
-              this.httpService.request({
-                method: schema.dataFromMethod || 'GET',
-                url: paginatedUrl,
-                timeout: 10000,
-              }),
+            // Gọi API ra hệ thống nguồn (có retry tối đa 3 lần, cách 10s)
+            const response = await this.withRetry(
+              () =>
+                firstValueFrom(
+                  this.httpService.request({
+                    method: schema.dataFromMethod || 'GET',
+                    url: paginatedUrl,
+                    timeout: 10000,
+                  }),
+                ),
+              `${schema.tableName} page ${currentPage}`,
             );
 
             const responseData = response.data as SourceApiResponse;
