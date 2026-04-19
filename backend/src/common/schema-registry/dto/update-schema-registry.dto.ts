@@ -7,6 +7,9 @@ export class UpdateSchemaRegistryDto {
   primaryKey?: string[];
 
   @IsOptional()
+  lastSyncTime?: Date;
+
+  @IsOptional()
   @IsInt()
   @Min(0)
   fieldsCount?: number;
