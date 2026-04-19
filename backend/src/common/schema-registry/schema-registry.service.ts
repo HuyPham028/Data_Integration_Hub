@@ -52,7 +52,7 @@ export class SchemaRegistryService {
           { upsert: true, new: true },
         );
         successCount++;
-      } catch (error) {
+      } catch (error: any) {
         this.logger.error(
           `Failed to import table ${rawData.tableName}: ${error.message}`,
         );
@@ -158,6 +158,7 @@ export class SchemaRegistryService {
   ) {
     const allowedFields: (keyof UpdateSchemaRegistryDto)[] = [
       'primaryKey',
+      'lastSyncTime',
       'fieldsCount',
       'recordsCount',
       'description',
@@ -214,6 +215,14 @@ export class SchemaRegistryService {
     return this.registryModel.findOneAndUpdate(
       { tableName },
       { $set: { status: 'stable' } },
+      { new: true },
+    );
+  }
+
+  async updateLastSyncTime(tableName: string, timestamp: Date) {
+    return this.registryModel.findOneAndUpdate(
+      { tableName },
+      { $set: { lastSyncTime: timestamp } },
       { new: true },
     );
   }

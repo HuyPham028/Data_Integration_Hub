@@ -4,40 +4,43 @@ import { Document } from 'mongoose';
 @Schema({ timestamps: true })
 export class SchemaRegistry extends Document {
   @Prop({ required: true, unique: true })
-  tableName: string;
+  tableName!: string;
 
   @Prop({ type: [String] })
-  primaryKey: string[];
+  primaryKey!: string[];
+
+  @Prop({ type: Date })
+  lastSyncTime?: Date;
 
   @Prop()
-  fieldsCount: number;
+  fieldsCount!: number;
 
   @Prop()
-  recordsCount: number;
+  recordsCount!: number;
 
   @Prop()
-  description: string;
+  description!: string;
 
   @Prop()
-  dataFrom: string;
+  dataFrom!: string;
 
   @Prop()
-  dataFromApi: string;
+  dataFromApi!: string;
 
   @Prop()
-  dataFromMethod: string;
+  dataFromMethod!: string;
 
   @Prop({ type: [{ type: Object }] })
-  details: Record<string, any>[];
+  details!: Record<string, any>[];
 
   @Prop({ type: [{ type: Object }] })
-  oldDetails: Record<string, any>[];
+  oldDetails!: Record<string, any>[];
 
   @Prop()
-  hashValue: string;
+  hashValue!: string;
 
   @Prop({ default: 'stable', enum: ['stable', 'changed', 'new'] })
-  status: string;
+  status!: string;
 }
 
 export const SchemaRegistrySchema = SchemaFactory.createForClass(SchemaRegistry);
