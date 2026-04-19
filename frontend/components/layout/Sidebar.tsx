@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, Database, Activity, Network, LogOut, Clock, Shield } from 'lucide-react';
+import { clearAuthSession } from '@/lib/auth-session';
 
 const navItems = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -16,10 +17,9 @@ const navItems = [
 export function Sidebar() {
   const pathname = usePathname();
   const handleLogOut = () => {
-    localStorage.removeItem('access_token')
-    localStorage.removeItem('user_info')
-    window.location.href = '/login'
-  }
+    clearAuthSession();
+    window.location.href = '/login';
+  };
 
   return (
     <div className="flex h-screen w-64 flex-col border-r bg-slate-900 text-slate-300">

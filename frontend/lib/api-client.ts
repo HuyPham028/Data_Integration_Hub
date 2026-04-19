@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { clearAuthSession } from '@/lib/auth-session';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -18,6 +19,28 @@ apiClient.interceptors.request.use((config) => {
   }
   return config;
 });
+
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (typeof window !== 'undefined' && axios.isAxiosError(error)) {
+      const status = error.response?.status;
+      const requestUrl = error.config?.url || '';
+      const isAuthRequest =
+        requestUrl.includes('/auth/login') || requestUrl.includes('/auth/register');
+
+      if (status === 401 && !isAuthRequest) {
+        clearAuthSession();
+
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login?reason=expired';
+        }
+      }
+    }
+
+    return Promise.reject(error);
+  },
+);
 
 export const AuthAPI = {
   login: async (credentials: any) => {

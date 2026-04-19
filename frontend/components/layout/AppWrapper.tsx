@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { clearAuthSession, hasValidSession, isAuthPage as checkIsAuthPage } from "@/lib/auth-session";
 
 type AppWrapperProps = {
   children: React.ReactNode;
@@ -14,24 +15,29 @@ export function AppWrapper({ children }: AppWrapperProps) {
   const [mounted, setMounted] = useState(false)
   const [isAuth, setIsAuth] = useState(false);
 
-  const isAuthPage = pathname === "/login" || pathname === "/register";
+  const isAuthPage = checkIsAuthPage(pathname);
   const hideSidebar = pathname === "/data-explorers";
 
   useEffect(() => {
-    setMounted(true)
-    const token = localStorage.getItem("access_token");
+    setMounted(true);
+    const isValidSession = hasValidSession();
 
-    if (!token && !isAuthPage) {
-      router.push("/login");
+    if (!isValidSession && !isAuthPage) {
+      clearAuthSession();
+      setIsAuth(false);
+      router.replace("/login?reason=expired");
       return;
     }
 
-    if (token) {
+    if (isValidSession) {
       setIsAuth(true);
       if (isAuthPage) {
-        router.push("/");
+        router.replace("/");
       }
+      return;
     }
+
+    setIsAuth(false);
   }, [pathname, router, isAuthPage]);
 
   if (!mounted) {

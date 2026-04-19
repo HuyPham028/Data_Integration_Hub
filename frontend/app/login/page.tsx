@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { AuthAPI } from '@/lib/api-client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,10 +11,12 @@ import Link from 'next/link';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const sessionExpired = searchParams.get('reason') === 'expired';
 
   const handleLogin = async (e: React.SubmitEvent) => {
     e.preventDefault();
@@ -47,6 +49,12 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
+            {sessionExpired && (
+              <div className="p-3 text-sm text-amber-700 bg-amber-50 rounded-md border border-amber-200">
+                Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.
+              </div>
+            )}
+
             {error && <div className="p-3 text-sm text-red-500 bg-red-50 rounded-md border border-red-200">{error}</div>}
             
             <div className="space-y-2">
