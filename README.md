@@ -22,8 +22,8 @@ Các hệ thống vệ tinh (Nguồn cấp dữ liệu) bắt buộc phải tuâ
 Trục tích hợp sẽ gọi HTTP `GET` đến các hệ thống nguồn, bắt buộc đính kèm tham số phân trang:
 *   `page`: Trang hiện tại cần lấy.
 *   `limit`: Số lượng bản ghi tối đa trên mỗi trang (Mặc định Hệ thống thiết lập là `5000` để tối ưu RAM).
-
-**Ví dụ:** `GET https://api.mybk.edu.vn/v1/nh_dao_tao?page=1&limit=5000`
+*   `updatedAfter`: 
+**Ví dụ:** `GET https://api.mybk.edu.vn/v1/nh_dao_tao?page=1&limit=5000&updatedAfter="2026-03-01T08:48:06.873Z"`
 
 ### 2.2. Cấu trúc Response (JSON)
 Hệ thống nguồn bắt buộc trả về HTTP Status `200 OK` với định dạng JSON chuẩn như sau:
@@ -31,30 +31,39 @@ Hệ thống nguồn bắt buộc trả về HTTP Status `200 OK` với định 
 ```json
 {
   "success": true,
-  "timestamp": "2025-10-17T10:00:00Z",
+  "timestamp": "2026-04-22T07:30:13.740Z",
   "metadata": {
-    "tableName": "nh_dao_tao",
-    "totalRecords": 68743,
-    "totalPages": 14,
+    "tableName": "tcns_can_bo",
+    "totalRecords": 1196,
+    "totalPages": 12,
     "currentPage": 1,
-    "limit": 5000
+    "limit": 100
   },
   "payload": [
     {
-      "id": 1,
-      "maNguoiHoc": "SV001",
-      "cccdSo": "079200001234",
-      "trinhDoDaoTao": "Đại học",
-      "emailTruong": "sv001@hcmut.edu.vn"
+      "shcc": "000078",
+      "maNhanVien": "000078",
+      "ho": "Hane",
+      "ten": "Dock",
+      "ngaySinh": "1956-12-12T05:27:44.378Z",
+      "email": "Bernie_Hettinger@hcmut.edu.vn",
+      "sdt": "(214) 374-7560",
+      "gioiTinh": "01",
+      "createdAt": "2026-03-25T08:48:06.873Z",
+      "updatedAt": "2026-03-25T08:48:06.873Z"
     },
     {
-      "id": 2,
-      "maNguoiHoc": "SV002",
-      "cccdSo": "079200001235",
-      "trinhDoDaoTao": "Đại học",
-      "emailTruong": "sv002@hcmut.edu.vn"
-    }
-  ]
+      "shcc": "000319",
+      "maNhanVien": "000319",
+      "ho": "Ullrich",
+      "ten": "Jazlyn",
+      "ngaySinh": "1948-07-13T20:24:45.916Z",
+      "email": "James9@hcmut.edu.vn",
+      "sdt": "(788) 701-9058",
+      "gioiTinh": "01",
+      "createdAt": "2026-03-25T08:48:06.970Z",
+      "updatedAt": "2026-03-25T08:48:06.970Z"
+    }]
 }
 ```
 
