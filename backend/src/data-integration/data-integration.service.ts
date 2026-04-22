@@ -65,6 +65,72 @@ export class DataIntegrationService {
     });
   }
 
+  private async processSingleTable(schema: any, baseUrl: string, token: string): Promise<TableSyncResult & { skipped?: boolean }> {
+  this.broadcastLog(`[START] Processing table: ${schema.tableName}...`);
+  let currentPage = 1, totalPages = 1, totalSyncedForTable = 0;
+  let shouldSkipSync = false;
+  let sourceTimestamp: Date | null = null;
+
+  try {
+    if (!schema.dataFromApi) throw new Error(`Skipping ${schema.tableName} - No dataFromApi defined.`);
+    if (schema.dataFromApi.includes('check-all-schemas')) throw new Error('No real data endpoint configured');
+    
+    const primaryKey = schema.primaryKey?.[0];
+    if (!primaryKey) throw new Error(`Skipping ${schema.tableName} - No primary key configured.`);
+
+    do {
+      const separator = schema.dataFromApi.includes('?') ? '&' : '?';
+      const tokenParam = token ? `&accessToken=${token}` : '';
+      const paginatedUrl = `${baseUrl}${schema.dataFromApi}${separator}page=${currentPage}&limit=${this.BATCH_LIMIT}${tokenParam}`;
+
+      this.broadcastLog(`Fetching page ${currentPage}/${totalPages} -> ${paginatedUrl}`);
+      
+      const response = await firstValueFrom(this.httpService.request({
+        method: schema.dataFromMethod || 'GET', url: paginatedUrl, timeout: 10000,
+      }));
+      const responseData = response.data as SourceApiResponse;
+
+      if (!responseData?.success || !Array.isArray(responseData?.payload)) {
+        throw new Error('[API CONTRACT VIOLATION] Invalid data format.');
+      }
+
+      const rawDataArray = responseData.payload;
+      const meta = responseData.metadata || {};
+
+      if (meta.currentPage && meta.currentPage !== currentPage) break;
+
+      if (currentPage === 1) {
+        if (meta.totalPages) totalPages = meta.totalPages;
+        sourceTimestamp = responseData.timestamp ? new Date(responseData.timestamp) : null;
+        const lastSyncTime = schema.lastSyncTime ? new Date(schema.lastSyncTime) : null;
+
+        if (sourceTimestamp && lastSyncTime && sourceTimestamp.getTime() <= lastSyncTime.getTime()) {
+          this.broadcastLog(`[INCREMENTAL CHECK] No new data for ${schema.tableName}. Skipping.`, 'INFO');
+          shouldSkipSync = true;
+          break;
+        }
+      }
+
+      if (rawDataArray.length === 0) break;
+
+      this.broadcastLog(`Syncing ${rawDataArray.length} records...`);
+      await this.syncEngine.syncTableData(schema.tableName, rawDataArray, primaryKey);
+      
+      totalSyncedForTable += rawDataArray.length;
+      currentPage++;
+    } while (currentPage <= totalPages);
+
+    if (!shouldSkipSync) await this.updateLastSyncTime(schema.tableName, sourceTimestamp ?? new Date());
+
+    this.broadcastLog(shouldSkipSync ? `[DONE] Skipped ${schema.tableName}` : `[DONE] Successfully synced ${totalSyncedForTable} records for ${schema.tableName}.`);
+    
+    return { table: schema.tableName, status: 'success', totalRecordsSynced: totalSyncedForTable, skipped: shouldSkipSync };
+  } catch (error: any) {
+    this.broadcastLog(`[ERROR] Failed to integrate ${schema.tableName}: ${error.message}`, 'WARN');
+    return { table: schema.tableName, status: 'failed', error: error.message };
+  }
+}
+
   async updateLastSyncTime(tableName: string, timestamp: Date) {
     return this.schemaRegistry.updateLastSyncTime(tableName, timestamp);
   }
@@ -110,184 +176,12 @@ export class DataIntegrationService {
 
       const syncResults: TableSyncResult[] = [];
 
+      const baseUrl = this.configService.get<string>('SOURCE_API_BASE_URL', '');
+      const token = this.configService.get<string>('SOURCE_API_TOKEN', '');
       // 2. Lặp qua từng bảng để xử lý
       for (const schema of schemasToSync) {
-        this.broadcastLog(`[START] Processing table: ${schema.tableName}...`);
-
-        let currentPage = 1;
-        let totalPages = 1;
-        let totalSyncedForTable = 0;
-        let shouldSkipSync = false;
-        let sourceTimestamp: Date | null = null;
-
-        try {
-          const baseUrl = this.configService.get<string>(
-            'SOURCE_API_BASE_URL',
-          );
-          const token = this.configService.get<string>('SOURCE_API_TOKEN', '');
-
-          if (!schema.dataFromApi) {
-            throw new Error(
-              `Skipping ${schema.tableName} - No dataFromApi defined.`,
-            );
-          }
-
-          // Bỏ qua endpoint detect-schema, không phải endpoint lấy data
-          if (schema.dataFromApi.includes('check-all-schemas')) {
-            this.broadcastLog(
-              `Skipping ${schema.tableName} - dataFromApi trỏ vào endpoint detect-schema, chưa có endpoint data thật.`,
-              'WARN',
-            );
-            syncResults.push({
-              table: schema.tableName,
-              status: 'failed',
-              error: 'No real data endpoint configured',
-            });
-            continue;
-          }
-
-          const primaryKey = schema.primaryKey?.[0];
-          if (!primaryKey) {
-            throw new Error(
-              `Skipping ${schema.tableName} - No primary key configured.`,
-            );
-          }
-
-          do {
-            const separator = schema.dataFromApi.includes('?') ? '&' : '?';
-            const tokenParam = token ? `&accessToken=${token}` : '';
-            const paginatedUrl = `${baseUrl}${schema.dataFromApi}${separator}page=${currentPage}&limit=${this.BATCH_LIMIT}${tokenParam}`;
-
-            this.broadcastLog(
-              `Fetching page ${currentPage}/${totalPages} -> ${paginatedUrl}`,
-            );
-
-            // 3. Gọi API ra hệ thống nguồn
-            const response = await firstValueFrom(
-              this.httpService.request({
-                method: schema.dataFromMethod || 'GET',
-                url: paginatedUrl,
-                timeout: 10000,
-              }),
-            );
-
-            const responseData = response.data as SourceApiResponse;
-
-            // 4. [Collision Defense] API Contract Validation — fail fast tại ingestion
-            if (
-              !responseData ||
-              responseData.success !== true ||
-              !responseData.payload ||
-              !Array.isArray(responseData.payload)
-            ) {
-              throw new Error(
-                '[API CONTRACT VIOLATION] Dữ liệu trả về sai định dạng chuẩn. Yêu cầu phải có "success: true" và mảng "payload".',
-              );
-            }
-
-            const rawDataArray = responseData.payload;
-            const meta = responseData.metadata || {};
-
-            // [Collision Defense] Out-of-order / late page guard:
-            // Nếu server trả currentPage khác với page đang fetch → bỏ qua trang này
-            if (meta.currentPage && meta.currentPage !== currentPage) {
-              this.broadcastLog(
-                `[PAGE MISMATCH] Expected page ${currentPage}, got ${meta.currentPage}. Skipping.`,
-                'WARN',
-              );
-              break;
-            }
-
-            // Cập nhật tổng số trang và kiểm tra incremental từ lần gọi đầu tiên
-            if (currentPage === 1) {
-              if (meta.totalPages) {
-                totalPages = meta.totalPages;
-                this.broadcastLog(
-                  `Table ${schema.tableName} has ${meta.totalRecords} records across ${totalPages} pages.`,
-                );
-              }
-
-              sourceTimestamp = responseData.timestamp
-                ? new Date(responseData.timestamp)
-                : null;
-              const lastSyncTime = schema.lastSyncTime
-                ? new Date(schema.lastSyncTime)
-                : null;
-
-              if (
-                sourceTimestamp &&
-                !Number.isNaN(sourceTimestamp.getTime()) &&
-                lastSyncTime &&
-                !Number.isNaN(lastSyncTime.getTime())
-              ) {
-                if (sourceTimestamp.getTime() <= lastSyncTime.getTime()) {
-                  this.broadcastLog(
-                    `[INCREMENTAL CHECK] Bảng ${schema.tableName} không có dữ liệu mới kể từ ${lastSyncTime.toISOString()}. Bỏ qua Database Upsert.`,
-                    'INFO',
-                  );
-                  shouldSkipSync = true;
-                  break;
-                }
-
-                this.broadcastLog(
-                  `[INCREMENTAL CHECK] Phát hiện dữ liệu mới cho ${schema.tableName}. Đang tiến hành đồng bộ...`,
-                );
-              }
-            }
-
-            // Thoát vòng lặp nếu API trả về mảng rỗng (Tránh lặp vô hạn nếu API nguồn lỗi logic)
-            if (rawDataArray.length === 0) {
-              this.broadcastLog(
-                `Page ${currentPage} is empty. Stopping pagination for ${schema.tableName}.`,
-                'WARN',
-              );
-              break;
-            }
-
-            // 5. Đẩy data (tối đa 5000 records) vào Sync Engine để lưu xuống PostgreSQL
-            this.broadcastLog(
-              `Syncing ${rawDataArray.length} records to database...`,
-            );
-            await this.syncEngine.syncTableData(
-              schema.tableName,
-              rawDataArray,
-              primaryKey,
-            );
-
-            totalSyncedForTable += rawDataArray.length;
-
-            // Chuyển sang trang tiếp theo
-            currentPage++;
-          } while (currentPage <= totalPages);
-
-          if (!shouldSkipSync) {
-            const newLastSyncTime = sourceTimestamp ?? new Date();
-            await this.updateLastSyncTime(schema.tableName, newLastSyncTime);
-          }
-
-          // Kết thúc vòng lặp thành công cho bảng này
-          syncResults.push({
-            table: schema.tableName,
-            status: 'success',
-            totalRecordsSynced: totalSyncedForTable,
-          });
-          this.broadcastLog(
-            shouldSkipSync
-              ? `[DONE] Skipped ${schema.tableName} because no new data was detected.`
-              : `[DONE] Successfully synced ${totalSyncedForTable} records for ${schema.tableName}.`,
-          );
-        } catch (error: any) {
-          this.broadcastLog(
-            `[ERROR] Failed to integrate table ${schema.tableName}: ${error.message}`,
-            'WARN',
-          );
-          syncResults.push({
-            table: schema.tableName,
-            status: 'failed',
-            error: error.message,
-          });
-          // Lỗi 1 bảng thì bỏ qua, đi tiếp bảng tiếp theo trong mảng schemasToSync
-        }
+        const result = await this.processSingleTable(schema, baseUrl, token);
+        syncResults.push(result);
       }
 
       const successRecords = syncResults
@@ -447,107 +341,11 @@ export class DataIntegrationService {
 
       const syncResults: TableSyncResult[] = [];
 
+      const baseUrl = this.configService.get<string>('SOURCE_API_BASE_URL', '');
+      const token = this.configService.get<string>('SOURCE_API_TOKEN', '');
       for (const schema of schemasToSync) {
-        this.broadcastLog(`[START] Processing table: ${schema.tableName}...`);
-
-        let currentPage = 1;
-        let totalPages = 1;
-        let totalSyncedForTable = 0;
-
-        try {
-          const baseUrl = this.configService.get<string>(
-            'SOURCE_API_BASE_URL',
-          );
-          const token = this.configService.get<string>('SOURCE_API_TOKEN', '');
-
-          if (!schema.dataFromApi) {
-            throw new Error(
-              `Skipping ${schema.tableName} - No dataFromApi defined.`,
-            );
-          }
-
-          const primaryKey = schema.primaryKey[0];
-
-          do {
-            const separator = schema.dataFromApi.includes('?') ? '&' : '?';
-            const tokenParam = token ? `&accessToken=${token}` : '';
-            const paginatedUrl = `${baseUrl}${schema.dataFromApi}${separator}page=${currentPage}&limit=${this.BATCH_LIMIT}${tokenParam}`;
-
-            this.broadcastLog(
-              `Fetching page ${currentPage}/${totalPages} -> ${paginatedUrl}`,
-            );
-
-            const response = await firstValueFrom(
-              this.httpService.request({
-                method: schema.dataFromMethod || 'GET',
-                url: paginatedUrl,
-                timeout: 10000,
-              }),
-            );
-
-            const responseData = response.data as SourceApiResponse;
-
-            if (
-              !responseData ||
-              responseData.success !== true ||
-              !responseData.payload ||
-              !Array.isArray(responseData.payload)
-            ) {
-              throw new Error(
-                '[API CONTRACT VIOLATION] Dữ liệu trả về sai định dạng chuẩn. Yêu cầu phải có "success: true" và mảng "payload".',
-              );
-            }
-
-            const rawDataArray = responseData.payload;
-            const meta = responseData.metadata || {};
-
-            if (currentPage === 1 && meta.totalPages) {
-              totalPages = meta.totalPages;
-              this.broadcastLog(
-                `Table ${schema.tableName} has ${meta.totalRecords} records across ${totalPages} pages.`,
-              );
-            }
-
-            if (rawDataArray.length === 0) {
-              this.broadcastLog(
-                `Page ${currentPage} is empty. Stopping pagination for ${schema.tableName}.`,
-                'WARN',
-              );
-              break;
-            }
-
-            this.broadcastLog(
-              `Syncing ${rawDataArray.length} records to database...`,
-            );
-            await this.syncEngine.syncTableData(
-              schema.tableName,
-              rawDataArray,
-              primaryKey,
-            );
-
-            totalSyncedForTable += rawDataArray.length;
-            currentPage++;
-          } while (currentPage <= totalPages);
-
-          syncResults.push({
-            table: schema.tableName,
-            status: 'success',
-            totalRecordsSynced: totalSyncedForTable,
-          });
-          this.broadcastLog(
-            `[DONE] Successfully synced ${totalSyncedForTable} records for ${schema.tableName}.`,
-          );
-        } catch (error: any) {
-          this.broadcastLog(
-            `[ERROR] Failed to integrate table ${schema.tableName}: ${error.message}`,
-            'WARN',
-          );
-          syncResults.push({
-            table: schema.tableName,
-            status: 'failed',
-            error: error.message,
-          });
-        }
+        const result = await this.processSingleTable(schema, baseUrl, token);
+        syncResults.push(result);
       }
 
       const successRecords = syncResults
