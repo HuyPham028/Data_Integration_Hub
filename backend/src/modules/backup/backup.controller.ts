@@ -45,11 +45,11 @@ export class BackupController {
 
   /**
    * Lấy presigned URL để download 1 file backup.
-   * Query param: ?key=scheduled/nguoi_hoc/2026-04-20T02-00-00-000Z.json
+   * Body: { "key": "pre-sync/nguoi_hoc/2026-04-23T05-00-45-710Z.json" }
    */
-  @Get('download')
-  async getDownloadUrl(@Query('key') key: string) {
-    const url = await this.backupService.getDownloadUrl(key);
+  @Post('download')
+  async getDownloadUrl(@Body() body: RestoreBackupDto) {
+    const url = await this.backupService.getDownloadUrl(body.key);
     return { url, expiresIn: '1 hour' };
   }
 
