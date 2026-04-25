@@ -1,4 +1,18 @@
 services:
+  minio:
+    image: minio/minio:latest
+    container_name: data-hub-minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: password123
+    volumes:
+      - minio_data:/data
+    restart: unless-stopped
+
   kong-database:
     image: postgres:13
     container_name: kong-database
@@ -44,3 +58,6 @@ services:
       sleep 15 &&
       deck gateway sync /kong/kong.yml --kong-addr http://kong:8001
       "
+
+volumes:
+  minio_data:

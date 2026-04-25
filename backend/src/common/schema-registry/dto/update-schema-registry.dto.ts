@@ -46,4 +46,8 @@ export class UpdateSchemaRegistryDto {
   @IsOptional()
   @IsIn(['stable', 'changed', 'new'])
   status?: 'stable' | 'changed' | 'new';
+
+  @IsOptional()
+  @IsIn(['upsert', 'overwrite', 'incremental'])
+  syncStrategy?: 'upsert' | 'overwrite' | 'incremental';
 }

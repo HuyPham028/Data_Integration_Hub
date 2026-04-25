@@ -15,6 +15,7 @@ import { DataIntegrationModule } from './data-integration/data-integration.modul
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
 import { JobSchedulerModule } from './scheduler/job-scheduler.module';
+import { BackupModule } from './modules/backup/backup.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { JobSchedulerModule } from './scheduler/job-scheduler.module';
     SyncEngineModule,
     DataIntegrationModule,
     JobSchedulerModule,
+    BackupModule,
   ],
   controllers: [AppController],
   providers: [AppService],

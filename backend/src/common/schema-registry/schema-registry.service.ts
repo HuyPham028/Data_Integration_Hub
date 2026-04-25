@@ -9,6 +9,7 @@ import { Model } from 'mongoose';
 import { SchemaRegistry } from './schemas/schema-registry.schema';
 import { EventLogService } from '../event-log/event-log.service';
 import { UpdateSchemaRegistryDto } from './dto/update-schema-registry.dto';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 @Injectable()
 export class SchemaRegistryService {
@@ -18,6 +19,7 @@ export class SchemaRegistryService {
     @InjectModel(SchemaRegistry.name)
     private registryModel: Model<SchemaRegistry>,
     private readonly eventLogService: EventLogService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async importSchemaData(rawDataArray: any[]) {
@@ -135,6 +137,7 @@ export class SchemaRegistryService {
         this.logger.warn(
           `[SCHEMA CHANGED] Bảng thay đổi: ${incoming.tableName}`,
         );
+        this.eventEmitter.emit('schema.changed', { tableName: incoming.tableName });
       } else {
         // TRƯỜNG HỢP 3: Không có gì thay đổi (Hash giống nhau)
         // Không làm gì cả, hoặc update updatedAt
@@ -168,6 +171,7 @@ export class SchemaRegistryService {
       'details',
       'hashValue',
       'status',
+      'syncStrategy',
     ];
 
     const updateData = Object.fromEntries(

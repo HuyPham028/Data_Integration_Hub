@@ -41,6 +41,9 @@ export class SchemaRegistry extends Document {
 
   @Prop({ default: 'stable', enum: ['stable', 'changed', 'new'] })
   status!: string;
+
+  @Prop({ default: 'upsert', enum: ['upsert', 'overwrite', 'incremental'] })
+  syncStrategy!: string;
 }
 
 export const SchemaRegistrySchema = SchemaFactory.createForClass(SchemaRegistry);
