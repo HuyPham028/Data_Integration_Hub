@@ -145,6 +145,19 @@ app.get("/", (req, res) => {
           "Pagination loop — 5 trang × 5 records, verify tất cả 25 records được sync",
         prismaModel: "dm_gioi_tinh",
       },
+      "PERF-01 (RAM Capacity Planning)": {
+        GET: "/perf/ram-test?records=100000&recordSize=500&page=1&limit=5000",
+        purpose: "Đo peak RAM khi sync N records với kích thước S bytes/record",
+        params: "records=N, recordSize=bytes, page, limit",
+        prismaModel: "nguoi_hoc",
+      },
+      "PERF-02 (Incremental Server-side Filter)": {
+        GET: "/perf/incremental-test?page=1&limit=5000&updatedAfter=2026-04-20T00:00:00Z",
+        purpose:
+          "Verify updatedAfter filter — 1000 records, chỉ trả records thay đổi sau mốc",
+        params: "updatedAfter=ISO8601 (optional)",
+        prismaModel: "nguoi_hoc",
+      },
     },
   });
 });
@@ -583,6 +596,113 @@ app.get("/test/tc-multipage", (req, res) => {
     `[BONUS MULTIPAGE] Page ${page}/${response.metadata.totalPages} → ${response.payload.length} records`,
   );
   setTimeout(() => res.json(response), 100);
+});
+
+// -----------------------------------------------------------------------
+// PERF-01 — RAM CAPACITY PLANNING TEST
+// Mục tiêu: Đo peak RAM của sync job khi fetch N records với record size S bytes
+//
+// Cách dùng:
+//   GET /perf/ram-test?records=100000&recordSize=500&page=1&limit=5000
+//
+// Config SchemaRegistry để test:
+//   tableName: "nguoi_hoc"
+//   dataFromApi: "/perf/ram-test?records=100000&recordSize=500"
+//   syncStrategy: "upsert"
+//   primaryKey: ["id"]
+//
+// Kết quả mong đợi: NestJS log [nguoi_hoc] Memory report { peakMB, deltaRSS, ... }
+// -----------------------------------------------------------------------
+app.get("/perf/ram-test", (req, res) => {
+  const totalRecords = parseInt(req.query.records) || 10000;
+  const recordSizeBytes = parseInt(req.query.recordSize) || 200;
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 5000;
+
+  // Padding qua hinhThePath (VarChar(500)) — field lớn nhất trong nguoi_hoc
+  // Base record ≈ 120 bytes → paddingLen = min(recordSizeBytes - 120, 480)
+  const paddingLen = Math.min(Math.max(0, recordSizeBytes - 120), 480);
+  const pathPad = "p".repeat(paddingLen);
+
+  // Chỉ dùng fields có trong schema.details của nguoi_hoc
+  const allData = Array.from({ length: totalRecords }, (_, i) => ({
+    id: 10000 + i,
+    ho: "Nguyen",
+    ten: `SinhVien${i}`,
+    gioiTinh: i % 2 === 0 ? "M" : "F",
+    emailCaNhan: `sv${i}@hcmut.edu.vn`,
+    hinhThePath: `/photos/sv${i}.jpg${pathPad}`,
+    updatedAt: new Date(
+      Date.now() - Math.random() * 86400000 * 30,
+    ).toISOString(),
+  }));
+
+  const response = buildResponse("nguoi_hoc", allData, page, limit);
+
+  console.log(
+    `[PERF-01 RAM TEST] records=${totalRecords}, size≈${recordSizeBytes}B/record` +
+      ` | page=${page}/${response.metadata.totalPages}, payload=${response.payload.length} records` +
+      ` | estimated raw=${((totalRecords * recordSizeBytes) / 1024 / 1024).toFixed(1)}MB total`,
+  );
+
+  res.json(response);
+});
+
+// -----------------------------------------------------------------------
+// PERF-02 — INCREMENTAL SYNC TEST (updatedAfter filter)
+// Mục tiêu: Verify server-side filter hoạt động đúng — chỉ trả records có
+//           updatedAt > updatedAfter param. Đo lượng records giảm được.
+//
+// Cách dùng:
+//   GET /perf/incremental-test?page=1&limit=5000&updatedAfter=2026-04-20T00:00:00Z
+//
+// Config SchemaRegistry:
+//   tableName: "nguoi_hoc"
+//   dataFromApi: "/perf/incremental-test"
+//   syncStrategy: "incremental"
+//   primaryKey: ["id"]
+//
+// Dataset: 1000 records, updatedAt trải đều trong 30 ngày qua.
+// Nếu updatedAfter = hôm qua → chỉ ~33 records được trả về (thay vì 1000).
+// -----------------------------------------------------------------------
+app.get("/perf/incremental-test", (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 5000;
+  const updatedAfterRaw = req.query.updatedAfter;
+  const updatedAfter = updatedAfterRaw ? new Date(updatedAfterRaw) : null;
+
+  const TOTAL = 1000;
+  const now = Date.now();
+  const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+
+  // Tạo 1000 records với updatedAt trải đều trong 30 ngày qua
+  // Chỉ dùng fields có trong schema.details của nguoi_hoc
+  const allData = Array.from({ length: TOTAL }, (_, i) => ({
+    id: 20000 + i,
+    ho: "Trần",
+    ten: `SinhVien${i}`,
+    gioiTinh: i % 2 === 0 ? "M" : "F",
+    emailCaNhan: `sv${i}@hcmut.edu.vn`,
+    updatedAt: new Date(
+      now - (THIRTY_DAYS_MS * (TOTAL - i)) / TOTAL,
+    ).toISOString(),
+  }));
+
+  // Server-side filter: chỉ trả records có updatedAt > updatedAfter
+  const filtered = updatedAfter
+    ? allData.filter((r) => new Date(r.updatedAt) > updatedAfter)
+    : allData;
+
+  const response = buildResponse("nguoi_hoc", filtered, page, limit);
+
+  console.log(
+    `[PERF-02 INCREMENTAL] updatedAfter=${updatedAfterRaw || "none"}` +
+      ` | total=${TOTAL}, filtered=${filtered.length}` +
+      ` (${((filtered.length / TOTAL) * 100).toFixed(1)}% trả về)` +
+      ` | page=${page}/${response.metadata.totalPages}`,
+  );
+
+  res.json(response);
 });
 
 // -----------------------------------------------------------------------
