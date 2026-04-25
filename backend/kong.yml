@@ -2,7 +2,7 @@ _format_version: '3.0'
 
 services:
   - name: auth-service
-    url: http://host.docker.internal:4000/api/v1
+    url: http://backend:4000/api/v1
     routes:
       - name: auth-route
         paths:
@@ -10,18 +10,53 @@ services:
         strip_path: false
 
   - name: user-service
-    url: http://host.docker.internal:4000/api/v1
+    url: http://backend:4000/api/v1
     routes:
       - name: user-route
         paths:
           - /users
+        strip_path: false
 
   - name: role-service
-    url: http://host.docker.internal:4000/api/v1
+    url: http://backend:4000/api/v1
     routes:
       - name: role-route
         paths:
           - /roles
+        strip_path: false
+
+  - name: data-hub-service
+    url: http://backend:4000/api/v1
+    routes:
+      - name: hub-routes
+        paths:
+          - /integration
+          - /jobs
+          - /schema-registry
+          - /event-logs
+        strip_path: false
 
 plugins:
   - name: prometheus
+  - name: cors
+    config:
+      origins:
+        - http://localhost:3001
+        - http://localhost:3000
+      methods:
+        - GET
+        - POST
+        - PUT
+        - PATCH
+        - DELETE
+        - OPTIONS
+      headers:
+        - Accept
+        - Authorization
+        - Content-Type
+        - Origin
+        - X-Requested-With
+      exposed_headers:
+        - Authorization
+      credentials: true
+      max_age: 3600

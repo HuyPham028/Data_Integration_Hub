@@ -59,7 +59,7 @@ export default function DashboardPage() {
     description: 'Hourly full sync',
   });
   
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
+  const API_URL = process.env.NEXT_PUBLIC_KONG_URL;
   const terminalEndRef = useRef<HTMLDivElement>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [availableSchemas, setAvailableSchemas] = useState<any[]>([]);

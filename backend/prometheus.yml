@@ -7,7 +7,5 @@ scrape_configs:
       - targets: ['localhost:9090']
 
   - job_name: 'kong'
-    # Quan trọng: Dùng tên service 'kong' thay vì host.docker.internal
-    # Cổng 8001 là cổng Admin API nơi Kong xuất dữ liệu metrics
     static_configs:
-      - targets: ['host.docker.internal:8001']
+      - targets: ['kong:8001']
