@@ -18,13 +18,29 @@ export class SyncEngineService {
 
   /**
    * Lấy danh sách scalar fields hợp lệ từ Prisma DMMF (loại bỏ relation fields).
-   * Dùng để lọc fields lạ từ source API trước khi upsert — tránh "Unknown field" error.
    */
   private getValidScalarFields(modelName: string): Set<string> | null {
     const pascalName = modelName.charAt(0).toUpperCase() + modelName.slice(1);
     const modelDmmf = Prisma.dmmf.datamodel.models.find(m => m.name === pascalName);
     if (!modelDmmf) return null;
     return new Set(modelDmmf.fields.filter(f => f.kind === 'scalar').map(f => f.name));
+  }
+
+  /**
+   * Kiểm tra payload có field nào không tồn tại trong Prisma schema không.
+   * Trả về danh sách field lạ (union across tất cả records trong batch).
+   * Nếu trống → payload hợp lệ.
+   */
+  private detectUnknownFields(dataArray: any[], validFields: Set<string>): string[] {
+    const unknownFields = new Set<string>();
+    for (const record of dataArray) {
+      for (const key of Object.keys(record)) {
+        if (!validFields.has(key)) {
+          unknownFields.add(key);
+        }
+      }
+    }
+    return Array.from(unknownFields);
   }
 
   /**
@@ -93,6 +109,49 @@ export class SyncEngineService {
   }
 
   /**
+   * So sánh destination IDs vs source IDs → trả về danh sách IDs chỉ có ở destination.
+   * Những records này tồn tại trong DB nhưng đã bị xóa ở source (orphan records).
+   */
+  async detectOrphans(
+    tableName: string,
+    primaryKeyColumn: string,
+    sourceIds: Set<unknown>,
+  ): Promise<unknown[]> {
+    const modelName = this.getPrismaModelName(tableName);
+    if (!this.prisma[modelName]) return [];
+
+    const destRecords: { [key: string]: unknown }[] = await this.prisma[modelName].findMany({
+      select: { [primaryKeyColumn]: true },
+    });
+
+    return destRecords
+      .map((r) => r[primaryKeyColumn])
+      .filter((id) => !sourceIds.has(id));
+  }
+
+  /**
+   * Xóa các records theo danh sách PK — dùng cho purge orphans sau khi admin xác nhận.
+   * Trả về số records đã xóa thực tế.
+   */
+  async deleteRecordsByIds(
+    tableName: string,
+    primaryKeyColumn: string,
+    ids: unknown[],
+  ): Promise<number> {
+    const modelName = this.getPrismaModelName(tableName);
+    if (!this.prisma[modelName]) {
+      throw new Error(`Model ${modelName} does not exist in Prisma.`);
+    }
+    const result = await this.prisma[modelName].deleteMany({
+      where: { [primaryKeyColumn]: { in: ids } },
+    });
+    this.logger.warn(
+      `[PURGE ORPHANS] Bảng "${tableName}": đã xóa ${result.count} records (PK: ${primaryKeyColumn}).`,
+    );
+    return result.count;
+  }
+
+  /**
    * @param tableName   Tên bảng PostgreSQL (snake_case)
    * @param dataArray   Mảng records từ source API
    * @param primaryKeyColumn  Tên cột primary key dùng để upsert
@@ -116,7 +175,7 @@ export class SyncEngineService {
     let failedCount = 0;
     const errors: Array<{ pk: any; error: string }> = [];
 
-    // [Collision Defense 1] Schema filter — loại bỏ field lạ không có trong Prisma schema
+    // [DB Safety Net] Lọc field không có trong Prisma schema — tránh lỗi "Unknown field" từ Prisma
     const validFields = this.getValidScalarFields(modelName);
 
     // [Collision Defense 2] Dedup — loại bỏ record trùng PK trong cùng 1 batch
@@ -131,7 +190,7 @@ export class SyncEngineService {
           throw new Error(`Missing primary key (${primaryKeyColumn}) in record`);
         }
 
-        // [Collision Defense 1] Lọc field không hợp lệ
+        // Lọc field không có trong Prisma schema trước khi ghi DB
         const filteredRecord = validFields
           ? Object.fromEntries(Object.entries(record).filter(([k]) => validFields.has(k)))
           : record;
@@ -173,5 +232,53 @@ export class SyncEngineService {
     }, errors);
 
     this.logger.log(`Sync table ${tableName} finished. Success: ${successCount}, Failed: ${failedCount}`);
+  }
+
+  /**
+   * Overwrite toàn bộ bảng: DELETE all → INSERT all.
+   * Dành cho bảng DM nhỏ (< vài nghìn records) cần đảm bảo destination = source 100%.
+   */
+  async overwriteTableData(tableName: string, dataArray: any[]) {
+    const modelName = this.getPrismaModelName(tableName);
+
+    if (!this.prisma[modelName]) {
+      this.logger.error(`[OVERWRITE] Model ${modelName} does not exist in Prisma.`);
+      return;
+    }
+
+    const log = await this.eventLogService.createJobLog(
+      `Overwrite Data: ${tableName}`,
+      'data_overwrite',
+      'etl_pipeline',
+    );
+
+    // [DB Safety Net] Lọc field không có trong Prisma schema
+    const validFields = this.getValidScalarFields(modelName);
+
+    const normalizedRecords = dataArray.map((record) => {
+      const filtered = validFields
+        ? Object.fromEntries(Object.entries(record).filter(([k]) => validFields.has(k)))
+        : record;
+      return this.normalizeRecord(filtered, modelName);
+    });
+
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        await tx[modelName].deleteMany({});
+        await tx[modelName].createMany({ data: normalizedRecords, skipDuplicates: true });
+      });
+
+      await this.eventLogService.finishJobLog(log._id as unknown as string, 'done', {
+        totalDeleted: 'all',
+        totalInserted: normalizedRecords.length,
+      }, []);
+
+      this.logger.log(`[OVERWRITE] Table ${tableName}: deleted all → inserted ${normalizedRecords.length} records.`);
+    } catch (error) {
+      await this.eventLogService.finishJobLog(log._id as unknown as string, 'failed', {
+        totalInserted: 0,
+      }, [error.message]);
+      throw error;
+    }
   }
 }

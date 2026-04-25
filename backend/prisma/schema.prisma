@@ -571,6 +571,7 @@ model NguoiHoc {
   dangNgayVao          DateTime?
   bhytSoThe            String?    @db.VarChar(255)
   bhtnSoThe            String?    @db.VarChar(255)
+  hinhThePath          String?    @db.VarChar(500)
   createdAt            DateTime   @default(now())
   updatedAt            DateTime   @updatedAt
   nhDaoTaos            NhDaoTao[]
