@@ -668,6 +668,14 @@ model NhViPhamKyLuat {
   @@map("nh_vi_pham_ky_luat")
 }
 
+model BackupRetentionPolicy {
+  trigger   String   @id
+  days      Int?
+  updatedAt DateTime @updatedAt
+
+  @@map("backup_retention_policy")
+}
+
 enum UserRole {
   admin
   reader

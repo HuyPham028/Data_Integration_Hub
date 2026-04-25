@@ -1,7 +1,8 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { BackupService } from './backup.service';
 import { TriggerBackupDto } from './dto/trigger-backup.dto';
 import { RestoreBackupDto } from './dto/restore-backup.dto';
+import { UpdateRetentionDto } from './dto/update-retention.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -66,6 +67,35 @@ export class BackupController {
       message: `Restore bảng "${result.tableName}" thành công.`,
       ...result,
     };
+  }
+
+  /**
+   * Xóa 1 file backup theo key.
+   * Body: { "key": "manual/nguoi_hoc/2026-04-25T...json" }
+   */
+  @Delete('file')
+  async deleteBackup(@Body() body: RestoreBackupDto) {
+    await this.backupService.deleteBackup(body.key);
+    return { message: `Đã xóa backup "${body.key}" thành công.` };
+  }
+
+  /**
+   * Lấy danh sách retention policy hiện tại.
+   */
+  @Get('retention')
+  async getRetentionPolicies() {
+    return this.backupService.getRetentionPolicies();
+  }
+
+  /**
+   * Cập nhật retention policy cho 1 trigger.
+   * Body: { "trigger": "manual", "days": 45 }
+   * Body: { "trigger": "schema-change", "days": null }  → giữ vĩnh viễn
+   */
+  @Patch('retention')
+  async updateRetentionPolicy(@Body() body: UpdateRetentionDto) {
+    const updated = await this.backupService.updateRetentionPolicy(body.trigger, body.days ?? null);
+    return { message: `Đã cập nhật retention policy cho "${body.trigger}".`, data: updated };
   }
 
   /**

@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { OnEvent } from '@nestjs/event-emitter';
 import { MinioService } from './minio.service';
@@ -7,16 +7,17 @@ import { SchemaRegistryService } from 'src/common/schema-registry/schema-registr
 
 type BackupTrigger = 'scheduled' | 'schema-change' | 'manual' | 'pre-sync';
 
-// Retention: số ngày giữ lại theo trigger
-const RETENTION_DAYS: Record<BackupTrigger, number | null> = {
+const BACKUP_TRIGGERS: BackupTrigger[] = ['scheduled', 'manual', 'pre-sync', 'schema-change'];
+
+const DEFAULT_RETENTION: Record<BackupTrigger, number | null> = {
   scheduled: 60,
   manual: 30,
   'pre-sync': 30,
-  'schema-change': null, // giữ vĩnh viễn
+  'schema-change': null,
 };
 
 @Injectable()
-export class BackupService {
+export class BackupService implements OnModuleInit {
   private readonly logger = new Logger(BackupService.name);
 
   constructor(
@@ -24,6 +25,40 @@ export class BackupService {
     private readonly prisma: PrismaService,
     private readonly schemaRegistry: SchemaRegistryService,
   ) {}
+
+  async onModuleInit() {
+    for (const trigger of BACKUP_TRIGGERS) {
+      await this.prisma.backupRetentionPolicy.upsert({
+        where: { trigger },
+        update: {},
+        create: { trigger, days: DEFAULT_RETENTION[trigger] },
+      });
+    }
+    this.logger.log('[BACKUP] Retention policy defaults seeded.');
+  }
+
+  // ---------------------------------------------------------------------------
+  // RETENTION POLICY API
+  // ---------------------------------------------------------------------------
+
+  async getRetentionPolicies() {
+    return this.prisma.backupRetentionPolicy.findMany();
+  }
+
+  async updateRetentionPolicy(trigger: string, days: number | null) {
+    if (!BACKUP_TRIGGERS.includes(trigger as BackupTrigger)) {
+      throw new BadRequestException(`Trigger không hợp lệ: "${trigger}". Hợp lệ: ${BACKUP_TRIGGERS.join(', ')}`);
+    }
+    return this.prisma.backupRetentionPolicy.update({
+      where: { trigger },
+      data: { days },
+    });
+  }
+
+  private async getRetentionMap(): Promise<Record<string, number | null>> {
+    const policies = await this.prisma.backupRetentionPolicy.findMany();
+    return Object.fromEntries(policies.map((p) => [p.trigger, p.days]));
+  }
 
   // ---------------------------------------------------------------------------
   // CORE
@@ -116,8 +151,9 @@ export class BackupService {
   async cleanupOldBackups(): Promise<void> {
     this.logger.log('[BACKUP CLEANUP] Bắt đầu dọn dẹp backup cũ...');
     let totalDeleted = 0;
+    const retentionMap = await this.getRetentionMap();
 
-    for (const [trigger, retentionDays] of Object.entries(RETENTION_DAYS)) {
+    for (const [trigger, retentionDays] of Object.entries(retentionMap)) {
       if (retentionDays === null) continue; // schema-change giữ vĩnh viễn
 
       const cutoff = new Date();
@@ -144,21 +180,34 @@ export class BackupService {
   // ---------------------------------------------------------------------------
 
   async listBackups(prefix?: string): Promise<
-    Array<{ key: string; size: number; lastModified: Date }>
+    Array<{ key: string; size: number; lastModified: Date; expiresAt: Date | null }>
   > {
-    const objects = await this.minio.listObjects(prefix ?? '');
+    const [objects, retentionMap] = await Promise.all([
+      this.minio.listObjects(prefix ?? ''),
+      this.getRetentionMap(),
+    ]);
     return objects
       .filter((o) => o.name)
-      .map((o) => ({
-        key: o.name!,
-        size: o.size ?? 0,
-        lastModified: o.lastModified ?? new Date(0),
-      }))
+      .map((o) => {
+        const lastModified = o.lastModified ?? new Date(0);
+        const trigger = o.name!.split('/')[0];
+        const retentionDays = retentionMap[trigger] ?? null;
+        const expiresAt =
+          retentionDays !== null
+            ? new Date(lastModified.getTime() + retentionDays * 24 * 60 * 60 * 1000)
+            : null;
+        return { key: o.name!, size: o.size ?? 0, lastModified, expiresAt };
+      })
       .sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime());
   }
 
   async getDownloadUrl(objectKey: string): Promise<string> {
     return this.minio.getPresignedUrl(objectKey, 3600);
+  }
+
+  async deleteBackup(objectKey: string): Promise<void> {
+    await this.minio.deleteObject(objectKey);
+    this.logger.log(`[BACKUP DELETE] Đã xóa file: ${objectKey}`);
   }
 
   /**
