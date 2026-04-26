@@ -34,6 +34,7 @@ services:
           - /jobs
           - /schema-registry
           - /event-logs
+          - /backup
         strip_path: false
 
 plugins:

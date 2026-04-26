@@ -6,6 +6,7 @@ import * as Minio from 'minio';
 export class MinioService implements OnModuleInit {
   private readonly logger = new Logger(MinioService.name);
   private client: Minio.Client;
+  private publicClient: Minio.Client;
   readonly bucket: string;
 
   constructor(private readonly config: ConfigService) {
@@ -16,6 +17,15 @@ export class MinioService implements OnModuleInit {
       useSSL: this.config.get<string>('MINIO_USE_SSL', 'false') === 'true',
       accessKey: this.config.get<string>('MINIO_ACCESS_KEY', 'admin'),
       secretKey: this.config.get<string>('MINIO_SECRET_KEY', 'password123'),
+    });
+
+    this.publicClient = new Minio.Client({
+      endPoint: this.config.get<string>('MINIO_PUBLIC_ENDPOINT', 'localhost'),
+      port: parseInt(this.config.get<string>('MINIO_PUBLIC_PORT', '9000'), 10),
+      useSSL: this.config.get<string>('MINIO_PUBLIC_USE_SSL', 'false') === 'true',
+      accessKey: this.config.get<string>('MINIO_ACCESS_KEY', 'admin'),
+      secretKey: this.config.get<string>('MINIO_SECRET_KEY', 'password123'),
+      region: 'ap-southeast-1',
     });
   }
 
@@ -61,7 +71,7 @@ export class MinioService implements OnModuleInit {
   }
 
   async getPresignedUrl(objectKey: string, expirySeconds = 3600): Promise<string> {
-    return this.client.presignedGetObject(this.bucket, objectKey, expirySeconds);
+    return this.publicClient.presignedGetObject(this.bucket, objectKey, expirySeconds);
   }
 
   async downloadJson<T = unknown>(objectKey: string): Promise<T> {
