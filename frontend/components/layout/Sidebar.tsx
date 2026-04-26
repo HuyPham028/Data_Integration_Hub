@@ -2,8 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Database, Activity, Network, LogOut, Clock, Shield } from 'lucide-react';
+import { LayoutDashboard, Database, Activity, Network, LogOut, Clock, Shield, DatabaseBackup } from 'lucide-react';
 import { clearAuthSession } from '@/lib/auth-session';
+
+type SidebarProps = {
+  isAdmin: boolean;
+};
 
 const navItems = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -11,11 +15,16 @@ const navItems = [
   { name: 'Access Control', href: '/access-control', icon: Shield },
   { name: 'Schema Registry', href: '/schemas', icon: Database },
   { name: 'Sync History', href: '/sync-logs', icon: Activity },
+  { name: 'Backup', href: '/backup', icon: DatabaseBackup },
   { name: 'API Gateway (Kong)', href: '/gateway', icon: Network },
 ];
 
-export function Sidebar() {
+export function Sidebar({ isAdmin }: SidebarProps) {
   const pathname = usePathname();
+  const visibleNavItems = isAdmin
+    ? navItems
+    : navItems.filter((item) => item.href === '/data-explorers');
+
   const handleLogOut = () => {
     clearAuthSession();
     window.location.href = '/login';
@@ -27,7 +36,7 @@ export function Sidebar() {
         <h1 className="text-xl font-bold text-white tracking-wider">UNIV HUB</h1>
       </div>
       <nav className="flex-1 space-y-1 p-4">
-        {navItems.map((item) => {
+        {visibleNavItems.map((item) => {
           const isActive = pathname === item.href;
           return (
             <Link

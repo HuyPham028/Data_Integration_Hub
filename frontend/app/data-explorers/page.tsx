@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Database, Search, LayoutGrid, FileDown, Loader2, ChevronLeft, ChevronRight, Lock } from "lucide-react";
+import { Database, Search, LayoutGrid, FileDown, Loader2, ChevronLeft, ChevronRight, Lock, LogOut } from "lucide-react";
+import { clearAuthSession } from '@/lib/auth-session';
 
 export default function DataExplorerPage() {
   // States cho danh sách bảng
@@ -70,6 +71,11 @@ export default function DataExplorerPage() {
     setSearchTerm(''); // Xóa search cũ
   };
 
+  const handleLogOut = () => {
+    clearAuthSession();
+    window.location.href = '/login';
+  }
+
   return (
     <div className="flex h-[calc(100vh-4rem)] gap-6">
       
@@ -108,6 +114,16 @@ export default function DataExplorerPage() {
             </div>
           )}
         </CardContent>
+
+        <div className="p-3 border-t bg-white">
+            <button
+              onClick={handleLogOut}
+              className="w-full flex items-center justify-center gap-2 p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition"
+            >
+              <LogOut className="w-4 h-4" />
+              Đăng xuất
+            </button>
+          </div>
       </Card>
 
       {/* CỘT PHẢI: Hiển thị Dữ liệu */}

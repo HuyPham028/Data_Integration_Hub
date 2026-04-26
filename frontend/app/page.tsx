@@ -13,6 +13,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
 import TableSelect from '@/components/modals/TableSelect';
+import { getAccessToken } from '@/lib/auth-session';
 
 type ScheduledJob = {
   _id: string;
@@ -66,7 +67,8 @@ export default function DashboardPage() {
 
   // 1. Khởi tạo SSE cho Terminal
   useEffect(() => {
-    const eventSource = new EventSource(`${API_URL}/integration/stream-logs`);
+    const token = getAccessToken();
+    const eventSource = new EventSource(`${API_URL}/integration/stream-logs?token=${token}`);
 
     eventSource.onmessage = (event) => {
       const parsedLog = JSON.parse(event.data) as IncomingLogLine;

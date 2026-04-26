@@ -20,7 +20,7 @@ apiClient.interceptors.request.use((config) => {
       requestUrl.includes('/auth/refresh-token');
 
     if (token && !isAuthRequest) {
-      config.headers.Authorization = `Bearer ${token}`;
+      config.headers.set('Authorization', `Bearer ${token}`);
     }
   }
   return config;
@@ -84,6 +84,39 @@ export const IntegrationAPI = {
     const response = await apiClient.post('/integration/run-custom-sync', { tables });
     return response.data
   }
+};
+
+export const BackupAPI = {
+  listBackups: async (prefix?: string) => {
+    const response = await apiClient.get('/backup/list', {
+      params: prefix ? { prefix } : undefined,
+    });
+
+    return response.data;
+  },
+
+  triggerBackup: async (tables?: string[]) => {
+    const response = await apiClient.post('/backup/trigger', {
+      ...(tables && tables.length > 0 ? { tables } : {}),
+    });
+
+    return response.data;
+  },
+
+  getDownloadUrl: async (key: string) => {
+    const response = await apiClient.post('/backup/download', { key });
+    return response.data;
+  },
+
+  restoreBackup: async (key: string) => {
+    const response = await apiClient.post('/backup/restore', { key });
+    return response.data;
+  },
+
+  cleanupBackups: async () => {
+    const response = await apiClient.post('/backup/cleanup');
+    return response.data;
+  },
 };
 
 export const JobAPI = {

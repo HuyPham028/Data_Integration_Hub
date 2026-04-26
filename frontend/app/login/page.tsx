@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AuthAPI } from '@/lib/api-client';
+import { decodeJwtPayload } from '@/lib/auth-session'; 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Loader2, Lock, Mail, User } from 'lucide-react';
+import { Loader2, Lock, User } from 'lucide-react';
 import Link from 'next/link';
 
 export default function LoginPage() {
@@ -25,14 +26,20 @@ export default function LoginPage() {
 
     try {
       const response = await AuthAPI.login({ username, password });
-      // Lưu token vào Local Storage
-      localStorage.setItem('access_token', response.accessToken);
-      if (response.user) {
-        localStorage.setItem('user_info', JSON.stringify(response.user));
+      const token = response.accessToken;
+
+      localStorage.setItem('access_token', token);
+      
+      const decodedUser = decodeJwtPayload(token);
+      
+      if (decodedUser) {
+        localStorage.setItem('user_info', JSON.stringify(decodedUser));
       }
       
-      // Chuyển hướng về Dashboard
-      window.location.href = '/'; // Dùng window.location để force reload layout
+      const role = decodedUser?.role;
+
+      window.location.href = role === 'admin' ? '/' : '/data-explorers';
+      
     } catch (err: any) {
       setError(err.response?.data?.message || 'Lỗi kết nối đến máy chủ');
     } finally {
