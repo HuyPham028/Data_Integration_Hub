@@ -106,4 +106,28 @@ export class BackupController {
     await this.backupService.cleanupOldBackups();
     return { message: 'Cleanup completed' };
   }
+
+  /**
+   * Sync 1 file từ MinIO → AWS S3.
+   * Body: { "key": "manual/nguoi_hoc/2026-04-25T...json" }
+   */
+  @Post('sync-s3')
+  async syncToS3(@Body() body: RestoreBackupDto) {
+    const result = await this.backupService.syncToS3(body.key);
+    return {
+      message: result.skipped
+        ? `File "${body.key}" đã tồn tại trên S3 — bỏ qua.`
+        : `Đã sync "${body.key}" lên S3 thành công.`,
+      ...result,
+    };
+  }
+
+  /**
+   * Sync toàn bộ MinIO → AWS S3 (chạy nền, trả về ngay).
+   */
+  @Post('sync-s3/all')
+  syncAllToS3() {
+    this.backupService.syncAllToS3().catch(() => {});
+    return { message: 'S3 sync đang chạy nền. Kiểm tra log để xem tiến trình.' };
+  }
 }

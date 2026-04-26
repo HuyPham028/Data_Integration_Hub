@@ -668,6 +668,41 @@ model NhViPhamKyLuat {
   @@map("nh_vi_pham_ky_luat")
 }
 
+/// Bảng hoạt động ngoại khoa sinh viên
+model NhHoatDongNgoaiKhoa {
+  id           String    @id @db.VarChar(36)
+  maNguoiHoc   String?   @db.VarChar(10)
+  namHocHocKy  Int?
+  tenHoatDong  String?   @db.VarChar(20)
+  noiDung      String?   @db.VarChar(255)
+  ngayBd       DateTime?
+  ngayKt       DateTime?
+  ngayThamGia  Float?
+  soNgay       Float?
+  diaDiem      String?   @db.VarChar(100)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([maNguoiHoc])
+  @@map("nh_hoat_dong_ngoai_khoa")
+}
+
+/// Bảng sinh hoạt công dân sinh viên
+model NhSinhHoatCongDan {
+  id           String    @id @db.VarChar(36)
+  maNguoiHoc   String?   @db.VarChar(10)
+  dotSinhHoat  String?   @db.VarChar(100)
+  chuyenDe     String?   @db.VarChar(255)
+  ngayBd       DateTime?
+  ngayKt       DateTime?
+  kqThamGia    String?   @db.VarChar(50)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([maNguoiHoc])
+  @@map("nh_sinh_hoat_cong_dan")
+}
+
 model BackupRetentionPolicy {
   trigger   String   @id
   days      Int?

@@ -2,6 +2,7 @@ import { Injectable, Logger, BadRequestException, NotFoundException, OnModuleIni
 import { Cron } from '@nestjs/schedule';
 import { OnEvent } from '@nestjs/event-emitter';
 import { MinioService } from './minio.service';
+import { S3Service } from './s3.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { SchemaRegistryService } from 'src/common/schema-registry/schema-registry.service';
 
@@ -22,6 +23,7 @@ export class BackupService implements OnModuleInit {
 
   constructor(
     private readonly minio: MinioService,
+    private readonly s3: S3Service,
     private readonly prisma: PrismaService,
     private readonly schemaRegistry: SchemaRegistryService,
   ) {}
@@ -180,12 +182,21 @@ export class BackupService implements OnModuleInit {
   // ---------------------------------------------------------------------------
 
   async listBackups(prefix?: string): Promise<
-    Array<{ key: string; size: number; lastModified: Date; expiresAt: Date | null }>
+    Array<{
+      key: string;
+      size: number;
+      lastModified: Date;
+      expiresAt: Date | null;
+      s3Status: 'not_synced' | 'synced' | 'out_of_date';
+      s3UploadedAt: Date | null;
+    }>
   > {
-    const [objects, retentionMap] = await Promise.all([
+    const [objects, retentionMap, s3Map] = await Promise.all([
       this.minio.listObjects(prefix ?? ''),
       this.getRetentionMap(),
+      this.s3.isConfigured() ? this.s3.listObjectsWithUploadTime() : Promise.resolve(new Map<string, Date>()),
     ]);
+
     return objects
       .filter((o) => o.name)
       .map((o) => {
@@ -196,7 +207,18 @@ export class BackupService implements OnModuleInit {
           retentionDays !== null
             ? new Date(lastModified.getTime() + retentionDays * 24 * 60 * 60 * 1000)
             : null;
-        return { key: o.name!, size: o.size ?? 0, lastModified, expiresAt };
+
+        const s3UploadedAt = s3Map.get(o.name!) ?? null;
+        let s3Status: 'not_synced' | 'synced' | 'out_of_date';
+        if (!s3UploadedAt) {
+          s3Status = 'not_synced';
+        } else if (lastModified <= s3UploadedAt) {
+          s3Status = 'synced';
+        } else {
+          s3Status = 'out_of_date';
+        }
+
+        return { key: o.name!, size: o.size ?? 0, lastModified, expiresAt, s3Status, s3UploadedAt };
       })
       .sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime());
   }
@@ -273,6 +295,70 @@ export class BackupService implements OnModuleInit {
       backedUpAt,
       trigger,
     };
+  }
+
+  // ---------------------------------------------------------------------------
+  // S3 SYNC
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Sync 1 file từ MinIO lên AWS S3.
+   * Nếu file đã tồn tại trên S3 thì bỏ qua (skip).
+   */
+  async syncToS3(objectKey: string): Promise<{ skipped: boolean }> {
+    if (!this.s3.isConfigured()) {
+      throw new BadRequestException('AWS S3 chưa được cấu hình (thiếu AWS_S3_BUCKET).');
+    }
+
+    const alreadyExists = await this.s3.exists(objectKey);
+    if (alreadyExists) {
+      this.logger.log(`[S3 SYNC] "${objectKey}" đã tồn tại trên S3 — bỏ qua.`);
+      return { skipped: true };
+    }
+
+    const stream = await this.minio['client'].getObject(this.minio.bucket, objectKey);
+    const chunks: Buffer[] = [];
+    await new Promise<void>((resolve, reject) => {
+      stream.on('data', (chunk: Buffer) => chunks.push(chunk));
+      stream.on('end', resolve);
+      stream.on('error', reject);
+    });
+
+    const buffer = Buffer.concat(chunks);
+    await this.s3.uploadBuffer(objectKey, buffer);
+    this.logger.log(`[S3 SYNC] "${objectKey}" → S3 (${buffer.length} bytes).`);
+    return { skipped: false };
+  }
+
+  /**
+   * Sync toàn bộ files trong MinIO lên S3.
+   * Chỉ upload những file chưa có trên S3.
+   */
+  async syncAllToS3(): Promise<{ synced: number; skipped: number; failed: string[] }> {
+    if (!this.s3.isConfigured()) {
+      throw new BadRequestException('AWS S3 chưa được cấu hình (thiếu AWS_S3_BUCKET).');
+    }
+
+    const objects = await this.minio.listObjects('');
+    const keys = objects.filter((o) => o.name).map((o) => o.name!);
+
+    let synced = 0;
+    let skipped = 0;
+    const failed: string[] = [];
+
+    for (const key of keys) {
+      try {
+        const result = await this.syncToS3(key);
+        if (result.skipped) skipped++;
+        else synced++;
+      } catch (err) {
+        this.logger.error(`[S3 SYNC] Lỗi sync "${key}": ${err.message}`);
+        failed.push(key);
+      }
+    }
+
+    this.logger.log(`[S3 SYNC ALL] Tổng: ${keys.length} | Synced: ${synced} | Skipped: ${skipped} | Failed: ${failed.length}`);
+    return { synced, skipped, failed };
   }
 
   private getPrismaModelName(tableName: string): string {
