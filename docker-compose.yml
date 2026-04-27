@@ -3,6 +3,7 @@ services:
   postgres-core:
     image: postgres:17-alpine
     container_name: postgres-core
+    restart: always
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -36,7 +37,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-    restart: unless-stopped
+    restart: always
     networks:
       - univ_hub_network
 
@@ -61,6 +62,7 @@ services:
       MINIO_USE_SSL: "false"
     ports:
       - "4000:4000"
+    restart: always
     depends_on:
       postgres-core:
         condition: service_healthy
@@ -73,6 +75,7 @@ services:
   kong-database:
     image: postgres:17-alpine
     container_name: kong-database
+    restart: always
     environment:
       POSTGRES_USER: kong
       POSTGRES_PASSWORD: kong
@@ -123,6 +126,7 @@ services:
     ports:
       - "8000:8000"
       - "8001:8001"
+    restart: always
     networks:
       - univ_hub_network
 
@@ -147,6 +151,7 @@ services:
   prometheus:
     image: prom/prometheus
     container_name: prometheus
+    restart: always
     ports:
       - "9090:9090"
     volumes:
@@ -159,6 +164,7 @@ services:
   grafana:
     image: grafana/grafana
     container_name: grafana
+    restart: always
     environment:
       GF_SMTP_ENABLED: "true"
       GF_SMTP_HOST: smtp.gmail.com:587
@@ -177,8 +183,9 @@ services:
       context: ./frontend
       args:
         NEXT_PUBLIC_KONG_URL: ${NEXT_PUBLIC_KONG_URL}
-    image: ${DOCKER_USERNAME:-local}/hub-frontend:latest 
+    image: ${DOCKER_USERNAME:-local}/hub-frontend:latest
     container_name: hub-frontend
+    restart: always
     ports:
       - "3000:3000"
     depends_on:
