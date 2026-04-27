@@ -8,29 +8,48 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { apiClient } from "@/lib/api-client";
-import { Plus, ArrowLeft, Download, RefreshCcw } from "lucide-react";
+import { BackupAPI, IntegrationAPI } from "@/lib/api-client";
+import { Card, CardContent } from "@/components/ui/card";
+import { Plus, ArrowLeft, Download, RefreshCcw, Database, FolderArchive, Tags } from "lucide-react";
 import { useState, useEffect } from "react";
+import BackupSelect from "@/components/modals/BackupSelect";
+
+type SchemaInfo = {
+  tableName: string;
+  recordsCount: number;
+  status: string;
+};
 
 export default function BackupPage() {
   // UI State
   const [activeTab, setActiveTab] = useState<'manual' | 'scheduled' | 'pre-sync' | 'schema-change'>('manual');
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   
   // Data State
   const [backups, setBackups] = useState<any[]>([]);
+  const [availableSchemas, setAvailableSchemas] = useState<SchemaInfo[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   // 1. Fetch Backups based on Tab
   const fetchBackups = async (tab: string) => {
     setIsLoading(true);
     try {
-      const response = await apiClient.get(`/backup/list?prefix=${tab}/`);
-      setBackups(response.data.backups || []);
+      const response = await BackupAPI.listBackups(`${tab}/`);
+      setBackups(response.backups || []);
     } catch (error) {
       console.error("Failed to fetch backups", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchSchemas = async () => {
+    try {
+      const schemas = await IntegrationAPI.getSchemas();
+      setAvailableSchemas(schemas || []);
+    } catch (error) {
+      console.error("Failed to fetch schemas", error);
     }
   };
 
@@ -39,6 +58,10 @@ export default function BackupPage() {
     fetchBackups(activeTab);
     setSelectedTable(null); // Reset view when changing tabs
   }, [activeTab]);
+
+  useEffect(() => {
+    fetchSchemas();
+  }, []);
 
   const uniqueTables = Array.from(
     new Set(backups.map((b) => b.key.split('/')[1]).filter(Boolean))
@@ -49,10 +72,11 @@ export default function BackupPage() {
     : [];
 
   // Actions
-  const handleTriggerBackup = async () => {
+  const handleTriggerBackup = async (selectedTables: string[]) => {
     try {
-      await apiClient.post('/backup/trigger', {});
-      alert("Đã bắt đầu backup thủ công!");
+      await BackupAPI.triggerBackup(selectedTables);
+      alert(`Đã bắt đầu backup cho ${selectedTables.length} bảng!`);
+      setIsModalOpen(false);
       fetchBackups(activeTab);
     } catch (error) {
       alert("Lỗi khi tạo backup.");
@@ -61,8 +85,8 @@ export default function BackupPage() {
 
   const handleDownload = async (key: string) => {
     try {
-      const response = await apiClient.post('/backup/download', { key });
-      window.open(response.data.url, '_blank'); // Open presigned URL
+      const response = await BackupAPI.getDownloadUrl(key);
+      window.open(response.url, '_blank'); // Open presigned URL
     } catch (error) {
       alert("Lỗi khi lấy link tải.");
     }
@@ -73,7 +97,7 @@ export default function BackupPage() {
     if (!isConfirm) return;
 
     try {
-      await apiClient.post('/backup/restore', { key });
+      await BackupAPI.restoreBackup(key);
       alert("Khôi phục dữ liệu thành công!");
     } catch (error) {
       alert("Lỗi khi khôi phục dữ liệu.");
@@ -124,7 +148,7 @@ export default function BackupPage() {
 
         {/* Action Button */}
         <button 
-          onClick={handleTriggerBackup}
+          onClick={() => setIsModalOpen(true)}
           className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition"
         >
           <Plus size={18} />
@@ -220,6 +244,17 @@ export default function BackupPage() {
           </div>
         )}
       </div>
+
+      <BackupSelect
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        schemas={availableSchemas}
+        onStartSync={handleTriggerBackup}
+        title="Chọn bảng để backup"
+        subtitle="Chỉ hiển thị các bảng stable để tạo manual backup"
+        searchPlaceholder="Tìm bảng cần backup..."
+        startButtonLabel="Bắt đầu Backup"
+      />
     </div>
   );
 }
