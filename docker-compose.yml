@@ -43,7 +43,7 @@ services:
   backend:
     build:
       context: ./backend
-    image: ${{ secrets.DOCKER_USERNAME }}/hub-backend:latest
+    image: ${DOCKER_USERNAME:-local}/hub-backend:latest
     container_name: hub-backend
     environment:
       PORT: 4000
@@ -177,7 +177,7 @@ services:
       context: ./frontend
       args:
         NEXT_PUBLIC_KONG_URL: ${NEXT_PUBLIC_KONG_URL}
-    image: ${{ secrets.DOCKER_USERNAME }}/hub-frontend:latest
+    image: ${DOCKER_USERNAME:-local}/hub-frontend:latest 
     container_name: hub-frontend
     ports:
       - "3000:3000"
