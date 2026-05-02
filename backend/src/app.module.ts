@@ -16,6 +16,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
 import { JobSchedulerModule } from './scheduler/job-scheduler.module';
 import { BackupModule } from './modules/backup/backup.module';
+import { NotificationModule } from './common/notification/notification.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { BackupModule } from './modules/backup/backup.module';
     DataIntegrationModule,
     JobSchedulerModule,
     BackupModule,
+    NotificationModule,
   ],
   controllers: [AppController],
   providers: [AppService],

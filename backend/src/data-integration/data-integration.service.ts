@@ -8,6 +8,7 @@ import { BackupService } from 'src/modules/backup/backup.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { EventLogService } from 'src/common/event-log/event-log.service';
 import { MemoryProfiler } from 'src/utils/memory-profiler';
+import { NotificationService } from 'src/common/notification/notification.service';
 
 interface SourceApiMetadata {
   tableName?: string;
@@ -54,6 +55,7 @@ export class DataIntegrationService {
     private readonly configService: ConfigService,
     private readonly eventLogService: EventLogService,
     private readonly backupService: BackupService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   // ---------------------------------------------------------------------------
@@ -331,8 +333,13 @@ export class DataIntegrationService {
     }
 
     // [Orphan Detection] Phát hiện records tồn tại ở destination nhưng không còn ở source
-    // Chỉ chạy cho upsert/incremental (overwrite tự xử lý bằng DELETE+INSERT)
-    if (strategy !== 'overwrite' && primaryKey && sourceIds.size > 0) {
+    // Chỉ chạy cho upsert, hoặc incremental lần đầu (lastSyncTime = null — fetch toàn bộ).
+    // Bỏ qua khi incremental có updatedAfter: sourceIds chỉ chứa records mới thay đổi,
+    // không đủ để so sánh → sẽ sinh false orphans cho toàn bộ records không thay đổi.
+    const canDetectOrphans =
+      strategy === 'upsert' ||
+      (strategy === 'incremental' && lastSyncTime === null);
+    if (canDetectOrphans && primaryKey && sourceIds.size > 0) {
       const orphanIds = await this.syncEngine.detectOrphans(
         schema.tableName,
         primaryKey,
@@ -350,6 +357,12 @@ export class DataIntegrationService {
       }
     }
 
+    if (!canDetectOrphans) {
+      this.broadcastLog(
+        `[ORPHAN CHECK] Bảng "${schema.tableName}": bỏ qua — incremental với updatedAfter không đủ sourceIds để phát hiện orphan chính xác.`,
+      );
+    }
+
     // Cập nhật lastSyncTime sau khi sync thành công
     await this.schemaRegistry.updateLastSyncTime(schema.tableName, new Date());
 
@@ -363,11 +376,44 @@ export class DataIntegrationService {
   }
 
   // ---------------------------------------------------------------------------
+  // NOTIFICATION HELPER
+  // ---------------------------------------------------------------------------
+
+  private async sendSyncNotification(
+    pipelineType: string,
+    status: string,
+    syncResults: TableSyncResult[],
+    durationMs: number,
+  ): Promise<void> {
+    const failed = syncResults.filter((r): r is TableSyncFailedResult => r.status === 'failed');
+    const succeeded = syncResults.filter((r): r is TableSyncSuccessResult => r.status === 'success');
+    const totalSynced = succeeded.reduce((sum, r) => sum + r.totalRecordsSynced, 0);
+
+    if (status === 'done') {
+      await this.notificationService.sendJobSuccessSummary(
+        pipelineType,
+        `Đồng bộ thành công ${succeeded.length} bảng — tổng ${totalSynced} records.`,
+        durationMs,
+      );
+    } else {
+      const errorLines = failed.map((r) => `• ${r.table}: ${r.error}`).join('\n');
+      await this.notificationService.sendJobFailureAlert(
+        pipelineType,
+        new Error(
+          `${failed.length} bảng thất bại:\n${errorLines}\n\nThành công: ${succeeded.length} bảng (${totalSynced} records).`,
+        ),
+        durationMs,
+      );
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // PUBLIC PIPELINES
   // ---------------------------------------------------------------------------
 
   async runFullIntegrationPipeline() {
     this.broadcastLog('--- STARTING FULL INTEGRATION PIPELINE ---');
+    const startedAt = Date.now();
     const runLog = await this.eventLogService.createJobLog(
       'Full Integration Sync',
       'FULL_SYNC',
@@ -494,6 +540,7 @@ export class DataIntegrationService {
       );
 
       this.broadcastLog('--- FULL INTEGRATION PIPELINE FINISHED ---');
+      await this.sendSyncNotification('Full Integration Sync', status, syncResults, Date.now() - startedAt);
       return syncResults;
     } catch (error: any) {
       await this.eventLogService.finishJobLog(
@@ -506,12 +553,14 @@ export class DataIntegrationService {
         },
         [error.message || 'Unknown integration pipeline error'],
       );
+      await this.notificationService.sendJobFailureAlert('Full Integration Sync', error, Date.now() - startedAt);
       throw error;
     }
   }
 
   async runCustomIntegrationPipeline(tableNames: string[]) {
     this.broadcastLog('--- STARTING CUSTOM INTEGRATION PIPELINE ---');
+    const startedAt = Date.now();
     const runLog = await this.eventLogService.createJobLog(
       'Custom Integration Sync',
       'CUSTOM_SYNC',
@@ -689,6 +738,7 @@ export class DataIntegrationService {
       );
 
       this.broadcastLog('--- CUSTOM INTEGRATION PIPELINE FINISHED ---');
+      await this.sendSyncNotification('Custom Integration Sync', status, syncResults, Date.now() - startedAt);
       return {
         requestedTables: normalizedTableNames,
         syncedTables: schemasToSync.map((s) => s.tableName),
@@ -713,6 +763,7 @@ export class DataIntegrationService {
         },
         [error.message || 'Unknown custom integration pipeline error'],
       );
+      await this.notificationService.sendJobFailureAlert('Custom Integration Sync', error, Date.now() - startedAt);
       throw error;
     }
   }

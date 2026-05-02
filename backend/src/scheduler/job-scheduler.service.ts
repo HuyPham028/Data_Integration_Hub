@@ -5,6 +5,7 @@ import { Model } from 'mongoose';
 import { CronJob, CronTime } from 'cron';
 import { SyncJob } from './sync-job.schema';
 import { DataIntegrationService } from 'src/data-integration/data-integration.service';
+import { NotificationService } from 'src/common/notification/notification.service';
 
 type SyncJobDto = {
   _id: unknown;
@@ -26,6 +27,7 @@ export class JobSchedulerService implements OnModuleInit {
     @InjectModel(SyncJob.name) private jobModel: Model<SyncJob>,
     private schedulerRegistry: SchedulerRegistry,
     private dataIntegrationService: DataIntegrationService,
+    private notificationService: NotificationService,
   ) {}
 
   // App starts, load all active job from mongo
@@ -103,11 +105,26 @@ export class JobSchedulerService implements OnModuleInit {
   }
 
   private async executeJobLogic(job: any) {
-    if (job.jobType === 'FULL_SYNC') {
-      await this.dataIntegrationService.runFullIntegrationPipeline();
+    const startedAt = Date.now();
+    try {
+      if (job.jobType === 'FULL_SYNC') {
+        await this.dataIntegrationService.runFullIntegrationPipeline();
+      }
+
+      const durationMs = Date.now() - startedAt;
+      await this.jobModel.findByIdAndUpdate(job._id, { lastRunAt: new Date() });
+      this.logger.log(`[CRON DONE] Job "${job.jobName}" hoàn thành sau ${(durationMs / 1000).toFixed(1)}s`);
+
+      await this.notificationService.sendJobSuccessSummary(
+        job.jobName,
+        `Job "${job.jobName}" đã chạy thành công.`,
+        durationMs,
+      );
+    } catch (err) {
+      const durationMs = Date.now() - startedAt;
+      this.logger.error(`[CRON ERROR] Job "${job.jobName}" thất bại: ${err.message}`);
+      await this.notificationService.sendJobFailureAlert(job.jobName, err, durationMs);
     }
-    
-    await this.jobModel.findByIdAndUpdate(job._id, { lastRunAt: new Date() });
   }
 
   // --- API function for frontend ---  
@@ -173,8 +190,7 @@ export class JobSchedulerService implements OnModuleInit {
     if (!job) throw new Error('Job not found');
     
     this.logger.log(`[MANUAL TRIGGER] Executing job: ${job.jobName}`);
-    // Không đợi hàm chạy xong (chạy ngầm) để trả response HTTP về ngay
-    this.executeJobLogic(job).catch(err => this.logger.error(err)); 
+    this.executeJobLogic(job).catch(err => this.logger.error(err));
     
     return { message: 'Job started manually', jobName: job.jobName };
   }
