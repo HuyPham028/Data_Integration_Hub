@@ -8,6 +8,7 @@ import {
   Delete,
   Query,
   UseGuards,
+  Request,
 } from '@nestjs/common';
 
 import { MasterDataService } from './master-data.service';
@@ -34,6 +35,11 @@ export class MasterDataController {
     @Query('search') search?: string,
   ) {
     return this.masterDataService.findAll(table, page, limit, search);
+  }
+
+  @Get('allowed')
+  async getAllowedTables(@Request() req) {
+    return this.masterDataService.getAllowedTablesForUser(req.user);
   }
 
   // GET /api/master-data/dm_gioi_tinh/1

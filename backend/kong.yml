@@ -35,6 +35,7 @@ services:
           - /schema-registry
           - /event-logs
           - /backup
+          - /api/master-data
         strip_path: false
 
 plugins:

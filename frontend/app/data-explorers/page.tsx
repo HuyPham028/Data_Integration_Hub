@@ -168,28 +168,37 @@ export default function DataExplorerPage() {
               ) : null}
 
               <Table className="bg-white min-w-max">
+                {/* Header */}
                 <TableHeader className="bg-slate-100 sticky top-0 z-0">
                   <TableRow>
-                    {columns.map((col, idx) => (
-                      <TableHead key={idx} className="font-bold text-slate-700 uppercase text-xs">
-                        {col}
+                    {columns.length > 0 ? (
+                      columns.map((col, idx) => (
+                        <TableHead key={idx} className="font-bold text-slate-700 uppercase text-xs">
+                          {col}
+                        </TableHead>
+                      ))
+                    ) : (
+                      <TableHead className="font-bold text-slate-700 uppercase text-xs">
+                        Dữ liệu
                       </TableHead>
-                    ))}
+                    )}
                   </TableRow>
                 </TableHeader>
+
+                {/* Body */}
                 <TableBody>
                   {tableData.length > 0 ? (
                     tableData.map((row, rowIndex) => (
                       <TableRow key={rowIndex} className="hover:bg-blue-50/50">
                         {columns.map((col, colIndex) => (
-                          <TableCell key={colIndex} className="text-slate-700">
-                            {/* Format boolean đẹp mắt */}
+                          <TableCell key={colIndex} className="text-slate-700 max-w-[200px] truncate">
                             {typeof row[col] === 'boolean' ? (
                               <Badge variant={row[col] ? "default" : "secondary"} className={row[col] ? "bg-green-500" : ""}>
                                 {row[col] ? "True" : "False"}
                               </Badge>
                             ) : (
-                              row[col] || <span className="text-slate-300 italic">null</span>
+                              // Bổ sung String() để tránh lỗi nếu dữ liệu là Object/Array
+                              row[col] ? String(row[col]) : <span className="text-slate-300 italic">null</span>
                             )}
                           </TableCell>
                         ))}
@@ -197,7 +206,7 @@ export default function DataExplorerPage() {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={columns.length || 1} className="h-32 text-center text-slate-500">
+                      <TableCell colSpan={Math.max(columns.length, 1)} className="h-32 text-center text-slate-500">
                         Không tìm thấy dữ liệu khớp với "{searchTerm}".
                       </TableCell>
                     </TableRow>
