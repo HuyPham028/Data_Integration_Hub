@@ -17,6 +17,7 @@
 
 % Better enum
 \usepackage{enumitem}
+\usepackage{longtable}
 
 % Graphics
 \usepackage{caption,float}
@@ -88,6 +89,55 @@
 \tableofcontents
 \listoffigures
 \listoftables
+
+\newpage
+\section*{Danh mục thuật ngữ và từ viết tắt}
+\addcontentsline{toc}{section}{Danh mục thuật ngữ và từ viết tắt}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.5}
+\begin{longtable}{|l|p{10cm}|}
+\hline
+\textbf{Từ viết tắt/Thuật ngữ} & \textbf{Ý nghĩa} \\
+\hline
+\textbf{ACID} & Atomicity, Consistency, Isolation, Durability - Các thuộc tính đảm bảo độ tin cậy của giao dịch cơ sở dữ liệu. \\
+\hline
+\textbf{API} & Application Programming Interface - Giao diện lập trình ứng dụng. \\
+\hline
+\textbf{CI/CD} & Continuous Integration/Continuous Deployment - Tích hợp liên tục và Triển khai liên tục. \\
+\hline
+\textbf{Data Silo} & Ốc đảo dữ liệu - Tình trạng dữ liệu bị cô lập, phân mảnh giữa các hệ thống. \\
+\hline
+\textbf{ETL} & Extract, Transform, Load - Quá trình trích xuất, biến đổi và tải dữ liệu. \\
+\hline
+\textbf{Golden Record} & Bản ghi lõi/Bản ghi vàng - Phiên bản dữ liệu duy nhất, đầy đủ và đáng tin cậy nhất sau khi đã qua chuẩn hóa từ nhiều nguồn. \\
+\hline
+\textbf{HTTP} & Hypertext Transfer Protocol - Giao thức truyền tải siêu văn bản. \\
+\hline
+\textbf{JSON} & JavaScript Object Notation - Định dạng trao đổi dữ liệu. \\
+\hline
+\textbf{JWT} & JSON Web Token - Định dạng token để xác thực và trao đổi thông tin. \\
+\hline
+\textbf{MDM} & Master Data Management - Quản trị dữ liệu chủ. \\
+\hline
+\textbf{OIDC} & OpenID Connect - Lớp xác thực người dùng trên nền tảng OAuth 2.0. \\
+\hline
+\textbf{ORM} & Object-Relational Mapping - Kỹ thuật ánh xạ dữ liệu giữa cơ sở dữ liệu quan hệ và đối tượng trong code. \\
+\hline
+\textbf{RBAC} & Role-Based Access Control - Phân quyền truy cập dựa trên vai trò. \\
+\hline
+\textbf{Schema Registry} & Nơi lưu trữ, quản lý cấu trúc siêu dữ liệu (metadata) của các bảng. \\
+\hline
+\textbf{SSO} & Single Sign-On - Cơ chế đăng nhập một lần. \\
+\hline
+\textbf{UI} & User Interface - Giao diện người dùng. \\
+\hline
+\textbf{Upsert} & Update or Insert - Thao tác cập nhật bản ghi nếu đã tồn tại, hoặc tạo mới nếu chưa tồn tại. \\
+\hline
+\textbf{Prisma DMMF} & Data Model Meta Format — một cấu trúc dữ liệu (JSON) nội bộ mà Prisma ORM tạo ra từ file schema.prisma \\ 
+\hline
+\end{longtable}
+\end{center}
 
 \clearpage
 \input{sections/Overview} % H done
