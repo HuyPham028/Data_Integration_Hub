@@ -1,0 +1,72 @@
+\newpage
+\section{Phân tích nghiệp vụ và đặc trưng dữ liệu của trường đại học}
+
+\begin{enumerate}
+    \item \textbf{Tính chu kỳ và sự biến động theo thời gian}
+    
+    Dữ liệu trong trường đại học không phát sinh đồng đều mà phụ thuộc chặt chẽ vào lịch trình của năm học. Ở một số thời điểm, hệ thống có thể phải xử lý khối lượng dữ liệu rất lớn trong thời gian ngắn.
+    
+    Các giai đoạn có lưu lượng truy cập cao bao gồm:
+    \begin{itemize}
+        \item Đăng ký học phần: Đây là thời điểm hệ thống chịu tải lớn nhất do số lượng truy vấn và cập nhật tăng đột biến trong thời gian ngắn.
+        \item Kỳ thi và nhập điểm: Cuối mỗi học kỳ, lượng dữ liệu điểm số từ các hệ thống đào tạo được chuyển về trục tích hợp rất lớn.
+        \item Tuyển sinh: Trong giai đoạn từ tháng 7 đến tháng 9, hệ thống phải tiếp nhận số lượng lớn hồ sơ sinh viên mới.
+    \end{itemize}
+    
+    Ngược lại, trong thời gian nghỉ hè hoặc giữa học kỳ, dữ liệu phát sinh rất ít và tần suất cập nhật thấp. Vì vậy, trục tích hợp cần được thiết kế để có khả năng mở rộng linh hoạt theo từng thời điểm, tránh quá tải vào giai đoạn cao điểm nhưng vẫn tiết kiệm tài nguyên khi nhu cầu thấp.
+
+    \item \textbf{Sự thay đổi vai trò của đối tượng}
+    
+    Một đặc trưng quan trọng của dữ liệu đại học là cùng một cá nhân có thể thay đổi vai trò trong suốt quá trình gắn bó với nhà trường nhưng vẫn phải được quản lý như một đối tượng duy nhất.
+    
+    Ví dụ, một người có thể trải qua các giai đoạn:
+    
+    Sinh viên đại học $\rightarrow$ Cựu sinh viên $\rightarrow$ Học viên cao học $\rightarrow$ Giảng viên hoặc nhân viên chức.
+    
+    Mỗi giai đoạn có thể được quản lý bởi một hệ thống khác nhau và sử dụng các mã định danh khác nhau, chẳng hạn mã số sinh viên đại học, mã học viên cao học hoặc mã viên chức. Nếu không có cơ chế liên kết, dữ liệu của cùng một người sẽ bị tách rời thành nhiều bản ghi khác nhau.
+    
+    Do đó, trục tích hợp cần xây dựng một định danh duy nhất cho mỗi cá nhân, có thể dựa trên căn cước công dân hoặc mã định danh nội bộ. Định danh này được sử dụng để liên kết toàn bộ lịch sử và vai trò của đối tượng trong các hệ thống khác nhau.
+
+    \item \textbf{Tính đa dạng về cấu trúc dữ liệu}
+    
+    Dữ liệu của trường đại học rất đa dạng về nội dung và định dạng. Một hệ thống tích hợp phải có khả năng xử lý đồng thời nhiều loại dữ liệu khác nhau.
+    
+    Các nhóm dữ liệu tiêu biểu bao gồm:
+    \begin{itemize}
+        \item Dữ liệu định danh: họ tên, ngày sinh, giới tính, quê quán, địa chỉ.
+        \item Dữ liệu học tập: học phần, số tín chỉ, điểm số, kết quả học tập.
+        \item Dữ liệu tài chính: học phí, học bổng, các khoản thu chi.
+        \item Dữ liệu nghiên cứu khoa học: bài báo, đề tài, minh chứng, tệp tài liệu.
+    \end{itemize}
+    
+    Trong đó, có những dữ liệu được tổ chức theo cấu trúc chặt chẽ dưới dạng bảng, nhưng cũng có những dữ liệu tồn tại dưới dạng tệp văn bản, hình ảnh hoặc tài liệu đính kèm. Vì vậy, trục tích hợp cần hỗ trợ cả dữ liệu có cấu trúc và dữ liệu phi cấu trúc.
+
+    \item \textbf{Tính phụ thuộc và yêu cầu nhất quán giữa các hệ thống}
+    
+    Dữ liệu của một đơn vị thường là đầu vào cho hoạt động của đơn vị khác. Do đó, sự thay đổi dữ liệu ở hệ thống nguồn phải được phản ánh kịp thời đến các hệ thống liên quan.
+    
+    Ví dụ, sinh viên chỉ được phép đóng học phí nếu đã hoàn tất đăng ký học phần. Khi thông tin đăng ký học phần thay đổi, dữ liệu tương ứng trong hệ thống tài chính, thư viện hoặc ứng dụng dành cho sinh viên cũng cần được cập nhật.
+    
+    Vì vậy, trục tích hợp cần hỗ trợ cơ chế xử lý theo sự kiện. Khi có một thay đổi xảy ra ở hệ thống nguồn, trục tích hợp sẽ tự động phát sinh các tác vụ đồng bộ đến các hệ thống phụ thuộc nhằm bảo đảm dữ liệu luôn nhất quán.
+
+    \item \textbf{Tính phân cấp và nhu cầu tổng hợp dữ liệu}
+    
+    Dữ liệu trong trường đại học thường được hình thành theo nhiều cấp độ, từ dữ liệu chi tiết đến dữ liệu tổng hợp để phục vụ công tác thống kê và báo cáo.
+    
+    Ví dụ:
+    
+    Điểm thành phần $\rightarrow$ Điểm học phần $\rightarrow$ Điểm trung bình tích lũy $\rightarrow$ Xếp loại học lực.
+    
+    Trục tích hợp không chỉ lưu trữ dữ liệu chi tiết mà còn cần có khả năng tính toán, tổng hợp và chuẩn hóa dữ liệu ở mức cao hơn. Điều này đặc biệt quan trọng khi đồng bộ dữ liệu lên các hệ thống cấp trên, vì các hệ thống này thường chỉ yêu cầu dữ liệu tổng hợp thay vì toàn bộ dữ liệu chi tiết.
+
+    \item \textbf{Yêu cầu khác nhau về độ trễ đồng bộ}
+    
+    Không phải mọi loại dữ liệu đều cần được đồng bộ ngay lập tức. Tùy theo mức độ quan trọng của nghiệp vụ, mỗi loại dữ liệu sẽ có yêu cầu khác nhau về thời gian cập nhật.
+    
+    \begin{itemize}
+        \item Dữ liệu điểm thi hoặc báo cáo thống kê có thể chấp nhận độ trễ từ vài chục phút đến cuối ngày.
+        \item Dữ liệu về tình trạng sinh viên như thôi học, bảo lưu hoặc bị đình chỉ cần được cập nhật gần như ngay lập tức để kịp thời khóa hoặc thay đổi quyền truy cập của sinh viên trên các hệ thống khác.
+    \end{itemize}
+    
+    Vì vậy, trục tích hợp cần phân loại dữ liệu theo mức độ ưu tiên để lựa chọn cơ chế đồng bộ phù hợp, tránh lãng phí tài nguyên nhưng vẫn đáp ứng yêu cầu nghiệp vụ.
+\end{enumerate}
