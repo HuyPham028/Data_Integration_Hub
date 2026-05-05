@@ -11,6 +11,18 @@
 \usepackage{listings}
 \usepackage{xcolor}
 
+\lstdefinelanguage{yaml}{
+  keywords={true,false,null,yes,no},
+  keywordstyle=\color{blue}\bfseries,
+  basicstyle=\ttfamily\footnotesize,
+  sensitive=false,
+  comment=[l]{\#},
+  commentstyle=\color{gray}\itshape,
+  stringstyle=\color{orange},
+  morestring=[b]',
+  morestring=[b]"
+}
+
 % Better tables
 % Wide tables go to https://tex.stackexchange.com/q/332902
 \usepackage{array,multirow,siunitx,tabularx}
@@ -39,8 +51,8 @@
 % https://github.com/MartinScharrer/standalone
 
 % Configurations
-\coursename{Đồ án chuyên ngành}
-\reporttype{Báo cáo đồ án chuyên ngành}
+\coursename{Đồ án tốt nghiệp}
+\reporttype{Báo cáo đồ án tốt nghiệp}
 \title{Trục tích hợp dữ liệu \\(Data Integration Hub)}
 \advisor{
     & ThS. Nguyễn Cao Đạt & \\
@@ -148,8 +160,9 @@
 \input{sections/ETL_Pipeline} % T done
 \input{sections/Backup} % T done
 \input{sections/Test_and_Performance} % T  done
-% \input{sections/CICD_and_Deployment} % T done
+\input{sections/CICD_and_Deployment} % T done
 \input{sections/Frontend}
+\input{sections/Conclusion}
 
 \clearpage
 
