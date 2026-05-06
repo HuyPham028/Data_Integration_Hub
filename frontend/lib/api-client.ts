@@ -130,7 +130,7 @@ export const JobAPI = {
 export const ReaderAPI = {
   getAllowedTables: async () => {
     try {
-      const response= await apiClient.get('/api/master-data/allowed');
+      const response= await apiClient.get('/tables/allowed');
       return response.data; // Trả về mảng [{ id, name, description }]
     } catch (error) {
       console.error("Lỗi lấy danh sách bảng:", error);
@@ -146,7 +146,7 @@ export const ReaderAPI = {
         ...(search ? { search } : {})
       });
 
-      const res = await apiClient.get(`/master-data/${tableId}?${query}`);
+      const res = await apiClient.get(`/api/master-data/${tableId}?${query}`);
       const response = res.data;
       
       // Response trả về từ service findAll của bạn có dạng: { data: [...], meta: { totalPages: ... } }
