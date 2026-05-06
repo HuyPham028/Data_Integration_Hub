@@ -78,6 +78,7 @@ export default function SchemaRegistryPage() {
   const [selectedSchema, setSelectedSchema] = useState<any | null>(null);
   const [isResolving, setIsResolving] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const [confirmPrismaUpdated, setConfirmPrismaUpdated] = useState(false);
 
   // Fetch Data
   const fetchSchemas = async () => {
@@ -115,8 +116,10 @@ export default function SchemaRegistryPage() {
   // Tính toán Diff realtime khi mở Modal
   const diffData = useMemo(() => {
     if (!selectedSchema) return { diff: [], stats: { added: 0, removed: 0, changed: 0 } };
-    const oldData = selectedSchema.oldDetails?.[selectedSchema.oldDetails.length - 1] || [];
-    const diff = calculateDiff(selectedSchema.details, oldData);
+    const oldData = selectedSchema.status === 'new'
+      ? []
+      : (selectedSchema.oldDetails?.[selectedSchema.oldDetails.length - 1] || []);
+    const diff = calculateDiff(selectedSchema.details || [], oldData);
     
     return {
       diff,
@@ -195,7 +198,15 @@ export default function SchemaRegistryPage() {
       </Card>
 
       {/* GitHub-style Diff Modal */}
-      <Dialog open={selectedSchema !== null} onOpenChange={(open) => !open && setSelectedSchema(null)}>
+      <Dialog
+        open={selectedSchema !== null}
+        onOpenChange={(open) => {
+          if(!open) {
+            setSelectedSchema(null);
+            setConfirmPrismaUpdated(false);
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-5xl p-0 overflow-hidden bg-white shadow-2xl border-slate-200 sm:rounded-xl data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
           
           {/* Header */}
@@ -292,20 +303,36 @@ export default function SchemaRegistryPage() {
           </div>
 
           {/* Footer */}
-          <div className="p-5 border-t border-slate-200 bg-white flex justify-between items-center">
-             <p className="text-sm text-slate-500 flex items-center">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-slate-600 mr-2 text-xs font-bold">!</span>
-                Hãy đảm bảo bạn đã chạy <code className="mx-1 px-1.5 py-0.5 bg-slate-100 text-slate-800 rounded">npx prisma db push</code> trước khi xác nhận.
-             </p>
-            <Button 
-              size="lg"
-              onClick={handleResolve} 
-              disabled={isResolving}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-sm px-6"
-            >
-              {isResolving ? <Loader2 className="animate-spin w-5 h-5 mr-2" /> : <CheckCircle className="w-5 h-5 mr-2"/>}
-              Sync Schema
-            </Button>
+          <div className="p-5 border-t border-slate-200 bg-white flex flex-col gap-4">
+            {/* Checkbox bắt buộc */}
+            <div className="flex items-center space-x-2 bg-amber-50 p-3 rounded-lg border border-amber-200">
+              <input 
+                type="checkbox" 
+                id="confirm-sync" 
+                className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer"
+                checked={confirmPrismaUpdated}
+                onChange={(e) => setConfirmPrismaUpdated(e.target.checked)}
+              />
+              <label htmlFor="confirm-sync" className="text-sm text-slate-700 font-medium cursor-pointer">
+                Tôi xác nhận đã cập nhật file <code className="text-pink-600 bg-pink-50 px-1 rounded">schema.prisma</code> và code đã được Deploy lên Server thành công.
+              </label>
+            </div>
+
+            <div className="flex justify-between items-center">
+              <p className="text-xs text-slate-500">
+                * Hành động này sẽ đổi trạng thái bảng về <span className="font-bold text-emerald-600">Stable</span> và cho phép tiến trình Sync Data chạy lại.
+              </p>
+              <Button 
+                size="lg"
+                onClick={handleResolve} 
+                // Nút bị disable nếu chưa tick Checkbox hoặc đang load
+                disabled={!confirmPrismaUpdated || isResolving} 
+                className={`${confirmPrismaUpdated ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-slate-200 text-slate-400'} font-semibold shadow-sm px-6 transition-colors`}
+              >
+                {isResolving ? <Loader2 className="animate-spin w-5 h-5 mr-2" /> : <CheckCircle className="w-5 h-5 mr-2"/>}
+                Đã xử lý xong (Resolve)
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
