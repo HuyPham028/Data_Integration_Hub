@@ -1,0 +1,538 @@
+% ============================================================
+\section{Phân tích Hiệu năng và Capacity Planning}
+\label{sec:performance}
+% ============================================================
+
+\subsection{Tổng quan}
+
+Hệ thống Data Integration Hub vận hành theo hai chiều dữ liệu với
+đặc tính tải hoàn toàn khác nhau:
+
+\begin{itemize}
+  \item \textbf{Inbound (Sync Job)}: Lấy dữ liệu từ Source API và
+        ghi vào PostgreSQL theo lịch định kỳ. Tải có thể dự đoán,
+        bottleneck chính là \textbf{RAM} và \textbf{network I/O}.
+  \item \textbf{Outbound (Export API)}: Phục vụ các hệ thống tiêu
+        thụ truy vấn dữ liệu qua REST API phân trang. Tải không dự
+        đoán được, bottleneck chính là \textbf{DB query latency} và
+        \textbf{concurrency}.
+\end{itemize}
+
+Để kiểm tra hiệu năng có kiểm soát, nhóm xây dựng một
+\textbf{Mock Source Server} (Express.js, port 3001) cung cấp các
+endpoint mô phỏng nhiều kịch bản dữ liệu khác nhau. Server này
+phục vụ đồng thời hai mục đích: kiểm thử cơ chế phòng thủ
+\textit{Data Collision} và đo lường hiệu năng pipeline.
+
+% ------------------------------------------------------------
+\subsection{Kiểm thử Data Collision — Mock Source Server}
+\label{sec:perf-collision-test}
+% ------------------------------------------------------------
+
+\subsubsection{Kiến trúc Mock Server}
+
+Mock server được thiết kế với một helper dùng chung
+\texttt{buildResponse()} chuẩn hóa mọi response theo đúng API
+Contract mà NestJS kỳ vọng:
+
+\begin{lstlisting}[
+  caption={Helper \texttt{buildResponse()} của Mock Server},
+  label={lst:build-response}]
+function buildResponse(tableName, allData, page, limit,
+                       overrideCurrentPage = null) {
+  const totalRecords = allData.length;
+  const totalPages   = Math.ceil(totalRecords / limit) || 1;
+  const startIndex   = (page - 1) * limit;
+  const payload      = allData.slice(startIndex, startIndex + limit);
+
+  return {
+    success:   true,
+    timestamp: new Date().toISOString(),
+    metadata:  { tableName, totalRecords, totalPages,
+                 currentPage: overrideCurrentPage ?? page, limit },
+    payload,
+  };
+}
+\end{lstlisting}
+
+\subsubsection{Ma trận Test Case}
+
+Bảng~\ref{tab:collision-testcases} tổng hợp toàn bộ 15 test case
+được thiết kế để kiểm tra từng lớp cơ chế phòng thủ. Mỗi test
+case trỏ vào một endpoint riêng biệt trên Mock Server và được cấu
+hình qua Schema Registry MongoDB.
+
+\begin{table}[H]
+\centering
+\caption{Ma trận kiểm thử Data Collision Defense}
+\label{tab:collision-testcases}
+\begin{tabular}{clp{5.5cm}l}
+\toprule
+\textbf{TC} & \textbf{Tên} & \textbf{Kịch bản / Cơ chế kiểm tra} & \textbf{Kỳ vọng} \\
+\midrule
+
+TC-01 & Happy Path
+  & Dữ liệu chuẩn, đúng contract, không có lỗi
+  & Sync 100\% thành công \\[4pt]
+
+TC-02 & Schema Filter
+  & Payload có 5 fields lạ không khai báo trong Prisma DMMF
+  & Fields bị lọc, upsert thành công \\[4pt]
+
+TC-03 & Dedup
+  & id=801 lặp ×3, id=804 lặp ×2 trong 1 batch
+  & Giữ record cuối, log \textit{``2 duplicates removed''} \\[4pt]
+
+TC-04 & Type Norm (Int/Bool)
+  & \texttt{id="701"} (string), \texttt{active="true"} (string)
+  & Normalize thành \texttt{Int} và \texttt{Boolean} đúng kiểu \\[4pt]
+
+TC-04b & Type Norm (DateTime)
+  & ISO string, date-only string, chuỗi sai định dạng
+  & ISO → Date; chuỗi sai → \texttt{null} (không crash) \\[4pt]
+
+TC-05 & Contract: thiếu \texttt{success}
+  & Response dùng key \texttt{data} thay vì \texttt{payload}, thiếu \texttt{success}
+  & Throw \textit{[API CONTRACT VIOLATION]}, skip bảng \\[4pt]
+
+TC-06 & Contract: \texttt{success: false}
+  & Hệ thống nguồn trả lỗi nội bộ
+  & Throw \textit{[API CONTRACT VIOLATION]}, skip bảng \\[4pt]
+
+TC-07 & Contract: payload object
+  & \texttt{payload} là \texttt{\{\}} thay vì \texttt{[]}
+  & Throw \textit{[API CONTRACT VIOLATION]}, skip bảng \\[4pt]
+
+TC-08 & Contract: thiếu \texttt{payload}
+  & Response chỉ có \texttt{metadata}, không có \texttt{payload}
+  & Throw \textit{[API CONTRACT VIOLATION]}, skip bảng \\[4pt]
+
+TC-09 & Page Mismatch
+  & Server luôn trả \texttt{currentPage: 1} dù request page 2
+  & \textit{[PAGE MISMATCH]} → dừng loop ở trang 2 \\[4pt]
+
+TC-10 & Empty Payload
+  & \texttt{totalPages: 3} nhưng page 2 trả \texttt{payload: []}
+  & \textit{[EMPTY PAYLOAD]} → dừng loop sớm \\[4pt]
+
+TC-11 & Dead Letter: thiếu PK
+  & 3/6 records có \texttt{id: null} hoặc không có field \texttt{id}
+  & 3 records lỗi vào Dead Letter Log; 3 còn lại sync thành công \\[4pt]
+
+TC-12 & Dead Letter: DB Constraint
+  & \texttt{ma = "THIS\_STRING\_EXCEEDS\_VARCHAR5"}
+  & Record vi phạm vào Dead Letter Log; batch không bị abort \\[4pt]
+
+TC-13 & Schema Status Gate
+  & Set \texttt{status="changed"} trong Schema Registry
+  & Bảng bị skip, không fetch API \\[4pt]
+
+TC-14 & Bad Endpoint
+  & Set \texttt{dataFromApi} sai đường dẫn trong Schema Registry
+  & HTTP 404, retry 3 lần, fail fast \\[4pt]
+
+TC-15 & Idempotent Upsert
+  & Chạy sync bảng \texttt{dm\_gioi\_tinh} 2 lần liên tiếp
+  & Row count PostgreSQL không tăng ở lần 2 \\
+
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Ví dụ kết quả kiểm thử — TC-03 Deduplication}
+
+\begin{lstlisting}[
+  caption={Payload TC-03: id=801 lặp 3 lần trong cùng 1 batch},
+  label={lst:tc03-payload}]
+const dupData = [
+  { id: 801, ma: "D1A", ten: "Dup801 v1 overwrite", active: true  },
+  { id: 802, ma: "N01", ten: "Binh thuong #1",       active: true  },
+  { id: 801, ma: "D1B", ten: "Dup801 v2 overwrite", active: true  },
+  { id: 803, ma: "N02", ten: "Binh thuong #2",       active: false },
+  { id: 801, ma: "D1C", ten: "Dup801 v3 KEPT",      active: false }, // <- keep
+  { id: 804, ma: "D2A", ten: "Dup804 v1 overwrite", active: true  },
+  { id: 804, ma: "D2B", ten: "Dup804 v2 KEPT",      active: false }, // <- keep
+];
+\end{lstlisting}
+
+Kết quả thực tế từ NestJS log:
+
+\begin{verbatim}
+WARN [SyncEngineService] [DEDUP] 2 duplicate records removed (pk: id)
+LOG  [SyncEngineService] Sync table dm_gioi_tinh finished.
+     Success: 5, Failed: 0
+\end{verbatim}
+
+7 records đầu vào → sau dedup còn 5 → upsert 5 thành công. Record
+\texttt{id=801} trong PostgreSQL có giá trị \texttt{ma="D1C"} (bản
+cuối cùng).
+
+\subsubsection{Ví dụ kết quả kiểm thử — TC-11 Dead Letter}
+
+\begin{lstlisting}[caption={Payload TC-11: mix records hợp lệ và thiếu PK},
+  label={lst:tc11-payload}]
+const mixedBatch = [
+  { id: 401, ma: "OK_1", ten: "Record hop le #1", active: true  },
+  { id: null, ma: "ER_1", ten: "PK null",         active: true  }, // <- dead letter
+  { id: 402, ma: "OK_2", ten: "Record hop le #2", active: false },
+  { /* thieu id */  ma: "ER_2", ten: "No id",     active: true  }, // <- dead letter
+  { id: 403, ma: "OK_3", ten: "Record hop le #3", active: true  },
+  { id: null, ma: "ER_3", ten: "PK null 2",       active: false }, // <- dead letter
+];
+\end{lstlisting}
+
+Kết quả thực tế:
+
+\begin{verbatim}
+ERROR [SyncEngineService] [FIRST ERROR SAMPLE]
+      pk=null | Missing primary key (id) in record
+WARN  [SyncEngineService] [DEDUP] 3 records with null/undefined PK detected
+LOG   [SyncEngineService] Sync table dm_gioi_tinh finished.
+      Success: 3, Failed: 3
+\end{verbatim}
+
+3 records lỗi được lưu vào \texttt{errors[]} trong MongoDB EventLog
+với chi tiết \texttt{\{pk: null, error: "Missing primary key"\}}.
+Batch không bị abort — 3 records hợp lệ vẫn được sync thành công.
+
+% ------------------------------------------------------------
+\subsection{Kiểm thử Hiệu năng — PERF Test Cases}
+\label{sec:perf-ram}
+% ------------------------------------------------------------
+
+\subsubsection{Thiết kế MemoryProfiler}
+
+Để đo RAM thực tế, nhóm implement \texttt{MemoryProfiler} tích hợp
+trực tiếp vào \texttt{syncOneTable()}. Profiler lấy mẫu
+\texttt{process.memoryUsage().rss} định kỳ 300ms trong suốt vòng
+đời của pipeline:
+
+\begin{lstlisting}[caption={\texttt{MemoryProfiler} đo peak RSS trong sync pipeline},
+  label={lst:memory-profiler}]
+export class MemoryProfiler {
+  private samples: number[] = [];
+  private interval: NodeJS.Timeout;
+
+  start(intervalMs = 500) {
+    this.samples = [];
+    this.interval = setInterval(() => {
+      this.samples.push(process.memoryUsage().rss);
+    }, intervalMs);
+  }
+
+  stop() {
+    clearInterval(this.interval);
+    const mb = (b: number) => +(b / 1024 / 1024).toFixed(1);
+    return {
+      peakMB:   mb(Math.max(...this.samples)),
+      baseMB:   mb(this.samples[0]),
+      deltaRSS: mb(Math.max(...this.samples) - this.samples[0]),
+      samples:  this.samples.length,
+    };
+  }
+}
+\end{lstlisting}
+
+Profiler được khởi động ngay đầu \texttt{syncOneTable()} và dừng
+trong block \texttt{finally} để đảm bảo luôn có kết quả kể cả khi
+pipeline thất bại.
+
+\subsubsection{PERF-01 — RAM Capacity Planning}
+
+Mock endpoint \texttt{/perf/ram-test} sinh dữ liệu tổng hợp với
+kích thước record kiểm soát được qua tham số \texttt{records} và
+\texttt{recordSize}. Padding được nhồi vào field \texttt{hinhThePath}
+(\texttt{VarChar(500)}) của bảng \texttt{nguoi\_hoc} để không vi
+phạm Schema Contract:
+
+\begin{lstlisting}[caption={PERF-01: Sinh dữ liệu tổng hợp với kích thước kiểm soát},
+  label={lst:perf01-mock}]
+// GET /perf/ram-test?records=10000&recordSize=500&page=1&limit=5000
+const paddingLen = Math.min(Math.max(0, recordSize - 120), 480);
+const pathPad    = "p".repeat(paddingLen);
+
+const allData = Array.from({ length: totalRecords }, (_, i) => ({
+  id:          10000 + i,
+  ho:          "Nguyen",
+  ten:         `SinhVien${i}`,
+  gioiTinh:    i % 2 === 0 ? "M" : "F",
+  emailCaNhan: `sv${i}@hcmut.edu.vn`,
+  hinhThePath: `/photos/sv${i}.jpg${pathPad}`,  // <- padding
+  updatedAt:   new Date(...).toISOString(),
+}));
+\end{lstlisting}
+
+\textbf{Kết quả thực nghiệm} — 10.000 records, recordSize = 500 bytes,
+batch size = 5.000:
+
+\begin{verbatim}
+[MEMORY] nguoi_hoc: peak=775.9MB, base=224.4MB, delta=551.6MB
+[DONE]   nguoi_hoc: synced=10000, skipped(unchanged)=0.
+\end{verbatim}
+
+\begin{table}[H]
+\centering
+\caption{Phân tích nguồn tiêu thụ RAM trong pipeline (PERF-01)}
+\label{tab:ram-breakdown}
+\begin{tabular}{lrl}
+\toprule
+\textbf{Thành phần} & \textbf{Ước lượng} & \textbf{Ghi chú} \\
+\midrule
+Pre-sync Backup
+  & $\approx 340$ MB
+  & Serialize 68.411 records từ PostgreSQL thành JSON \\
+Sync 2 trang (5k records/trang)
+  & $\approx 45$ MB
+  & V8 parse overhead $\times 3$, giải phóng sau mỗi trang \\
+Orphan Detection
+  & $\approx 25$ MB
+  & \texttt{findMany(\{select: \{id\}\})} — 78k IDs \\
+HTTP + EventEmitter overhead
+  & $\approx 30$ MB
+  & Axios buffer, event queue \\
+\midrule
+\textbf{Tổng delta đo được} & \textbf{551.6 MB} & RSS thực tế \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Nhận xét quan trọng}: Delta 551 MB không phản ánh chi phí
+của việc sync 10.000 records mà phản ánh toàn bộ pipeline, trong đó
+\textbf{backup chiếm phần lớn} do phải serialize 68.411 records có
+sẵn trong DB thành JSON buffer trước khi upload MinIO. Chi phí
+thuần của sync (2 trang × 5.000 records) chỉ khoảng 45 MB.
+
+\subsubsection{PERF-02 — Incremental Sync với Server-side Filter}
+
+Mock endpoint \texttt{/perf/incremental-test} tạo sẵn 1.000 records
+với \texttt{updatedAt} trải đều trong 30 ngày qua. Khi nhận tham số
+\texttt{updatedAfter}, server lọc và chỉ trả về records thỏa điều kiện:
+
+\begin{lstlisting}[caption={PERF-02: Server-side filter theo \texttt{updatedAfter}},
+  label={lst:perf02-mock}]
+// GET /perf/incremental-test?updatedAfter=2026-04-22T00:00:00Z
+const filtered = updatedAfter
+  ? allData.filter(r => new Date(r.updatedAt) > updatedAfter)
+  : allData; // lan dau sync -> full load
+
+// Log mock server:
+// total=1000, filtered=40 (4.0% tra ve) | page=1/1
+\end{lstlisting}
+
+\textbf{Kết quả thực nghiệm} — \texttt{updatedAfter=2026-04-22T00:00:00Z},
+\texttt{lastSyncTime} lấy từ Schema Registry MongoDB:
+
+\begin{verbatim}
+[STRATEGY: INCREMENTAL] nguoi_hoc
+  — server-side filter updatedAfter=2026-04-22T00:00:00.000Z
+Fetching page 1/1 -> .../perf/incremental-test?...
+    &updatedAfter=2026-04-22T00%3A00%3A00.000Z
+Table nguoi_hoc has 40 records across 1 pages.
+[INCREMENTAL] Page 1: 40 records thay đổi từ source — upsert.
+Sync table nguoi_hoc finished. Success: 40, Failed: 0
+[MEMORY] nguoi_hoc: peak=831.2MB, base=212MB, delta=619.3MB
+\end{verbatim}
+
+\begin{table}[H]
+\centering
+\caption{So sánh \texttt{upsert} vs \texttt{incremental} — kết quả thực nghiệm}
+\label{tab:perf-comparison}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Chỉ số} & \textbf{PERF-01 (upsert)} & \textbf{PERF-02 (incremental)} \\
+\midrule
+Records fetch qua network   & 10.000            & \textbf{40} \\
+Records ghi DB (upsert)     & 10.000            & \textbf{40} \\
+Số trang                    & 2                 & \textbf{1} \\
+Thời gian sync thuần        & $\approx 9$ s     & $\approx 1$ s \\
+DB writes tiết kiệm         & —                 & \textbf{99,6\%} \\
+Network tiết kiệm           & —                 & \textbf{99,6\%} \\
+\midrule
+Delta RAM                   & 551,6 MB          & 619,3 MB \\
+\multicolumn{3}{l}{\footnotesize\textit{Delta RAM của incremental cao hơn vì backup lúc này
+phải serialize nhiều records hơn}} \\
+\multicolumn{3}{l}{\footnotesize\textit{(78.411 records thay vì 68.411),
+không phải do phần sync tốn nhiều hơn.}} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Kết quả xác nhận: với \texttt{lastSyncTime = 2026-04-22T00:00:00Z},
+chỉ \textbf{4\%} dataset (40/1.000 records) được truyền và ghi,
+tiết kiệm 96\% chi phí so với full \texttt{upsert}.
+
+% ------------------------------------------------------------
+\subsection{Phân tích RAM cho Sync Job}
+\label{sec:perf-ram-analysis}
+% ------------------------------------------------------------
+
+\subsubsection{Vòng đời dữ liệu trong RAM}
+
+Kết quả từ PERF-01 và PERF-02 cho thấy pipeline tiêu thụ RAM
+qua bốn giai đoạn nối tiếp:
+
+% \begin{figure}[H]
+% \centering
+% \begin{tikzpicture}[
+%   stage/.style={rectangle, draw, rounded corners, minimum width=2.6cm,
+%                 minimum height=1.4cm, text centered, font=\small},
+%   arr/.style={-{Stealth}, thick},
+%   lbl/.style={font=\footnotesize, text=gray},
+% ]
+% \node[stage, fill=orange!20] (bk)   {Pre-sync\\Backup\\(MinIO)};
+% \node[stage, fill=blue!10,   right=0.9cm of bk]  (net)  {HTTP\\Response\\Buffer};
+% \node[stage, fill=green!10,  right=0.9cm of net]  (parse){JSON Parse\\+ Normalize\\(V8)};
+% \node[stage, fill=yellow!10, right=0.9cm of parse](db)   {Prisma\\upsert\\per-row};
+% \node[stage, fill=red!10,    right=0.9cm of db]   (orp)  {Orphan\\Detection\\(IDs only)};
+
+% \draw[arr] (bk) -- (net);
+% \draw[arr] (net) -- (parse);
+% \draw[arr] (parse) -- (db);
+% \draw[arr] (db) -- (orp);
+
+% \node[lbl, below=0.3cm of bk]    {\textasciitilde{}340 MB};
+% \node[lbl, below=0.3cm of net]   {\textasciitilde{}X MB};
+% \node[lbl, below=0.3cm of parse] {\textasciitilde{}2--3$\times$ raw};
+% \node[lbl, below=0.3cm of db]    {\textasciitilde{}nhỏ};
+% \node[lbl, below=0.3cm of orp]   {\textasciitilde{}25 MB};
+% \end{tikzpicture}
+% \caption{Vòng đời RAM trong một lần \texttt{syncOneTable()} — backup là
+% thành phần tốn RAM nhất}
+% \label{fig:ram-lifecycle}
+% \end{figure}
+
+\subsubsection{Ước lượng RAM theo kích thước bảng}
+
+\begin{table}[H]
+\centering
+\caption{Ước lượng peak RAM theo cấu hình bảng}
+\label{tab:ram-estimate}
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Bảng} & \textbf{DB records} & \textbf{Batch size} &
+\textbf{Backup RAM} & \textbf{Sync RAM/batch} \\
+\midrule
+\texttt{dm\_*} (danh mục)  & $<1.000$   & 1.000  & $\approx 5$ MB   & $\approx 2$ MB \\
+\texttt{nguoi\_hoc} (thực) & 68.411     & 5.000  & $\approx 170$ MB & $\approx 10$ MB \\
+Bảng lớn giả định         & 500.000    & 5.000  & $\approx 1,2$ GB & $\approx 10$ MB \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Kết luận}: Với bảng lớn (>100k records), \textbf{backup là
+bottleneck RAM}, không phải sync. Hướng cải thiện là stream upload
+MinIO theo từng chunk thay vì serialize toàn bộ vào buffer trước.
+
+% ------------------------------------------------------------
+\subsection{Phân tích Throughput cho Export API (Outbound)}
+\label{sec:perf-export}
+% ------------------------------------------------------------
+
+\subsubsection{Kiến trúc Export API hiện tại}
+
+Hệ thống cung cấp dữ liệu ra ngoài qua \texttt{MasterDataController}
+với endpoint phân trang:
+
+\begin{verbatim}
+GET /api/master-data/:table?page=1&limit=10&search=...
+\end{verbatim}
+
+Luồng xử lý mỗi request: \textit{HTTP Client} → \textit{JWT +
+Permission Guard} → \textit{MasterDataService} →
+\textit{PostgreSQL (Prisma)} → \textit{JSON response}.
+
+\subsubsection{Bottleneck: OFFSET Pagination}
+
+Triển khai hiện tại trong \texttt{MasterDataService.findAll()} sử dụng
+\textbf{OFFSET pagination} thông qua Prisma \texttt{skip}:
+
+\begin{lstlisting}[caption={OFFSET pagination trong \texttt{MasterDataService.findAll()}},
+  label={lst:offset-pagination}]
+const skip = (Number(page) - 1) * Number(limit);
+const [total, data] = await Promise.all([
+  model.count({ where: whereCondition }),
+  model.findMany({ where: whereCondition, skip,
+                   take: Number(limit), orderBy: { ma: 'asc' } }),
+]);
+\end{lstlisting}
+
+OFFSET tương đương SQL: PostgreSQL phải đọc và bỏ qua
+\texttt{(page-1)×limit} rows trước khi lấy \texttt{limit} rows
+cần thiết — latency tăng tuyến tính theo độ sâu trang:
+
+\begin{table}[H]
+\centering
+\caption{Ước lượng latency theo độ sâu trang — OFFSET vs Keyset}
+\label{tab:pagination-latency}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Page} & \textbf{OFFSET (hiện tại)} & \textbf{Keyset (đề xuất)} \\
+\midrule
+1    &  45 ms  &  45 ms \\
+50   & 120 ms  &  47 ms \\
+100  & 380 ms  &  47 ms \\
+500  & 2.100 ms & 48 ms \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Với các bảng danh mục nhỏ (\texttt{dm\_*}, $<$1.000 records) hiện tại,
+OFFSET không tạo vấn đề. Vấn đề xuất hiện khi bảng \texttt{nguoi\_hoc}
+(68k+ records) được query đến các trang sâu.
+
+\subsubsection{Ước lượng Throughput theo Little's Law}
+
+\[
+  \text{RPS}_{\max} = \frac{N_{\text{pool}}}{L_{\text{avg (s)}}}
+\]
+
+\begin{table}[H]
+\centering
+\caption{Ước lượng RPS tối đa theo cấu hình pool và latency}
+\label{tab:rps-estimate}
+\begin{tabular}{cccc}
+\toprule
+\textbf{Pool size} & \textbf{Avg latency} & \textbf{RPS max} & \textbf{req/phút} \\
+\midrule
+10 & 50 ms  & 200 & 12.000 \\
+10 & 200 ms & 50  & 3.000  \\
+10 & 380 ms & 26  & 1.560  \\
+20 & 50 ms  & 400 & 24.000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ------------------------------------------------------------
+\subsection{Tóm tắt và Khuyến nghị Server}
+\label{sec:perf-summary}
+% ------------------------------------------------------------
+
+\begin{table}[H]
+\centering
+\caption{Khuyến nghị cấu hình server cho Data Integration Hub}
+\label{tab:server-recommendation}
+\begin{tabular}{lll}
+\toprule
+\textbf{Thành phần} & \textbf{Tối thiểu} & \textbf{Khuyến nghị} \\
+\midrule
+RAM server              & 1 GB  & 2 GB \\
+CPU                     & 1 core & 2 cores \\
+DB connection pool      & 10    & 20 (nếu export API tải cao) \\
+\texttt{overwrite} bảng & Chỉ dùng cho $<$10k records &
+  Không dùng cho bảng lớn \\
+Sync job đồng thời      & 1 (thiết kế tuần tự) & 1 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Hai điểm cần cải thiện nếu hệ thống scale lên bảng hàng trăm nghìn
+records:
+\begin{enumerate}
+  \item \textbf{Backup streaming}: Thay vì serialize toàn bộ bảng
+        vào RAM rồi upload, dùng Prisma cursor + pipe stream trực
+        tiếp lên MinIO — giảm peak RAM backup từ hàng trăm MB
+        xuống vài chục MB.
+  \item \textbf{Keyset pagination} cho Export API: Thay \texttt{skip}
+        bằng \texttt{WHERE id > lastSeenId} để latency flat tại
+        mọi độ sâu trang.
+\end{enumerate}

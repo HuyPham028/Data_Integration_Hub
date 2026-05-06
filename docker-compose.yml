@@ -44,7 +44,7 @@ services:
   backend:
     build:
       context: ./backend
-    image: ${DOCKER_USERNAME:-local}/hub-backend:latest
+    # image: ${DOCKER_USERNAME:-local}/hub-backend:latest
     container_name: hub-backend
     environment:
       PORT: 4000
