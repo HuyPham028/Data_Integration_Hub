@@ -158,6 +158,12 @@ app.get("/", (req, res) => {
         params: "updatedAfter=ISO8601 (optional)",
         prismaModel: "nguoi_hoc",
       },
+      "TC-16 (Schema Drift / API Contract Violation)": {
+        GET: "/test/tc16-schema-change",
+        defense:
+          "Schema Contract Guard — Phát hiện field lạ không có trong SchemaRegistry metadata, ném lỗi và dừng sync bảng",
+        prismaModel: "dm_gioi_tinh",
+      },
     },
   });
 });
@@ -703,6 +709,45 @@ app.get("/perf/incremental-test", (req, res) => {
   );
 
   res.json(response);
+});
+
+// -----------------------------------------------------------------------
+// TC-16 — SCHEMA DRIFT / API CONTRACT VIOLATION
+// Defense: Schema Contract Guard (trong DataIntegrationService)
+// Vấn đề: Hệ thống nguồn thêm field mới (moTaChiTiet, ngayApDung) vào payload
+// Kỳ vọng: DataIntegrationService phát hiện unknown fields so với metadata trong SchemaRegistry
+//         -> Ném lỗi [SCHEMA CONTRACT VIOLATION], dừng sync bảng này để tránh crash Prisma.
+// Config SchemaRegistry: tableName="dm_gioi_tinh", dataFromApi="/test/tc16-schema-change", primaryKey=["id"]
+// -----------------------------------------------------------------------
+app.get("/test/tc16-schema-change", (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 5000;
+
+  const schemaChangeData = [
+    { 
+      id: 1001, 
+      ma: "NEW1", 
+      ten: "Schema Change 1", 
+      active: true,
+      // 2 field mới thêm vào từ hệ thống nguồn chưa có trong SchemaRegistry
+      moTaChiTiet: "Đây là field mới",
+      ngayApDung: "2024-01-01T00:00:00Z"
+    },
+    { 
+      id: 1002, 
+      ma: "NEW2", 
+      ten: "Schema Change 2", 
+      active: true,
+      moTaChiTiet: "Field mới dòng 2",
+      ngayApDung: "2024-02-01T00:00:00Z"
+    }
+  ];
+
+  console.log(`[TC-16 SCHEMA CHANGE] Trả về dữ liệu có field mới (moTaChiTiet, ngayApDung) chưa định nghĩa trong metadata`);
+  setTimeout(
+    () => res.json(buildResponse("dm_gioi_tinh", schemaChangeData, page, limit)),
+    100,
+  );
 });
 
 // -----------------------------------------------------------------------
