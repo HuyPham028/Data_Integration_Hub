@@ -83,20 +83,34 @@
 \begin{document}
 \coverpage%
 
-%\section*{Member list \& Workload}
-%\newcounter{memberrowno}
-%\setcounter{memberrowno}{0}
-%\begin{center}
-%  \begin{tabular}{>{\stepcounter{memberrowno}\thememberrowno}llcc}
-%    \toprule
-%    \multicolumn{1}{c}{\textbf{No.}} & \textbf{Full name} & \textbf{Student ID} & \textbf{Contribution} \\
-%    \midrule
-%                                     & h                  & xxxxxxx             & 100\%                       \\
-%                                     & h                  & xxxxxxx             & 100\%                       \\
-%    \bottomrule
-%  \end{tabular}
-%\end{center}
-%\clearpage
+\section*{Danh sách thành viên \& Phân chia công việc}
+
+\begin{center}
+\begin{tabular}{c p{3.5cm} c p{7cm}}
+    \toprule
+    \textbf{STT} &
+    \textbf{Họ và tên} &
+    \textbf{MSSV} &
+    \textbf{Công việc} \\
+    \midrule
+
+    1 & Phạm Lê Huy
+    & 2252260
+    & Xây dựng giao diện trục tích hợp, phát triển module prisma,
+      xây dựng cấu trúc prisma, MongoDB schema, phát triển logic
+      schema thay đổi, lập lịch \\
+
+    2 & Trần Mạnh Tuấn
+    & 2213807
+    & Phát triển module đồng bộ dữ liệu, xác thực và phân quyền,
+      xây dựng testcase, xử lý lỗi và ngoại lệ đối với các trường hợp
+      đụng độ dữ liệu (data collision) \\
+
+    \bottomrule
+\end{tabular}
+\end{center}
+
+\clearpage
 
 \tableofcontents
 \listoffigures
@@ -154,8 +168,8 @@
 \clearpage
 \input{sections/Overview} % H done
 \input{sections/BusinessAnalysis} % H done
-\input{sections/Quality_and_Problems} % T done
 \input{sections/OverallArchitecture}
+\input{sections/Quality_and_Problems} % T done
 \input{sections/Auth} % H done
 \input{sections/ETL_Pipeline} % T done
 \input{sections/Backup} % T done
