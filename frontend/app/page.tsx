@@ -221,12 +221,22 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <Button
-                onClick={() => setIsModalOpen(true)}
+                onClick={() => handleTriggerSync()}
                 disabled={isSyncing}
                 className="bg-blue-600 hover:bg-blue-700 text-white w-full h-10 font-semibold shadow-md"
               >
                 <RefreshCw className={`mr-2 h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
                 {isSyncing ? 'SYSTEM IS SYNCING...' : 'RUN FULL SYNC NOW'}
+              </Button>
+
+              <Button
+                variant="outline"
+                onClick={() => setIsModalOpen(true)}
+                disabled={isSyncing}
+                className="bg-blue-500 hover:bg-blue-600 text-white w-full h-10 font-semibold"
+              >
+                <PlayCircle className="mr-2 h-4 w-4" />
+                RUN CUSTOM SYNC
               </Button>
             </CardContent>
           </Card>

@@ -38,4 +38,14 @@ export class SchemaRegistryController {
   async runDetector(@Body() incomingData: any[]) {
     return this.schemaRegistryService.detectSchemaChanges(incomingData);
   }
+
+  @Put(':tableName/reject')
+  async rejectWarning(@Param('tableName') tableName: string) {
+    return this.schemaRegistryService.rejectSchemaWarning(tableName);
+  }
+
+  // @Post('migrate-standard-hash')
+  // async runHashMigration() {
+  //   return this.schemaRegistryService.migrateAllToStandardHash();
+  // }
 }

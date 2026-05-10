@@ -1,0 +1,222 @@
+\newpage
+\section{Những vấn đề trong tích hợp dữ liệu và cách giải quyết}
+\subsection{Các dạng xung đột dữ liệu thường gặp}
+Trong quá trình xây dựng trục tích hợp dữ liệu, hệ thống phải đối mặt với nhiều dạng xung đột phát sinh tại ranh giới giữa các hệ thống nguồn phân tán và cơ sở dữ liệu chủ (Master Data). Phần này trình bày các dạng xung đột đã được nhận diện và cơ chế phòng thủ tương ứng đã được hiện thực trong dự án.
+
+\begin{enumerate}
+    \item \textbf{Xung đột cấu trúc phản hồi API}
+
+    Dạng xung đột này xảy ra khi hệ thống nguồn trả về dữ liệu không tuân thủ định dạng chuẩn mà trục tích hợp kỳ vọng. Đây là dạng xung đột ở tầng tiếp nhận dữ liệu --- nguy hiểm nhất vì nếu không được phát hiện sớm, dữ liệu sai định dạng sẽ lan truyền sâu vào luồng xử lý, gây ra các lỗi rất khó truy vết.
+
+    Trong dự án, cấu trúc phản hồi (response) chuẩn được quy định như sau:
+
+    \begin{verbatim}
+    {
+      "success": true,
+      "metadata": { "totalPages": N, "currentPage": P, ... },
+      "payload": [ { ... }, { ... } ]
+    }
+    \end{verbatim}
+
+    Trong đó:
+
+    \begin{itemize}
+        \item \texttt{success}: Cho biết yêu cầu có được xử lý thành công hay không.
+        \item \texttt{timestamp}: Thời điểm hệ thống trả về dữ liệu.
+        \item \texttt{metadata}: Chứa thông tin mô tả như tên bảng dữ liệu, số lượng bản ghi, số trang và trang hiện tại.
+        \item \texttt{payload}: Chứa dữ liệu thực tế được trả về.
+    \end{itemize}
+    
+    Các vi phạm hợp đồng giao tiếp phổ biến được ghi nhận bao gồm:
+    
+    \begin{itemize}
+        \item Thiếu trường \texttt{success} hoặc \texttt{success = false} --- hệ thống nguồn đang trong trạng thái lỗi nội bộ.
+        \item Trường \texttt{payload} không tồn tại hoặc không phải kiểu mảng (\texttt{Array}) --- lỗi tuần tự hóa (serialization) ở hệ thống nguồn.
+        \item Sử dụng tên trường khác (\texttt{data}, \texttt{records}) thay vì \texttt{payload} --- sự thiếu thống nhất giữa các hệ thống nguồn.
+    \end{itemize}
+    
+    \item \textbf{Xung đột lược đồ dữ liệu}
+
+    Xung đột lược đồ (schema) xảy ra khi hệ thống nguồn thay đổi cấu trúc bảng (thêm, sửa, xóa cột) mà không thông báo cho trục tích hợp. Hậu quả trực tiếp là các trường không xác định được đưa vào Prisma ORM gây lỗi \textit{``Unknown field''}, hoặc ngược lại, các trường mới ở nguồn không được ánh xạ vào cơ sở dữ liệu chủ dẫn đến việc mất mát dữ liệu một cách thầm lặng.
+
+    \item \textbf{Xung đột kiểu dữ liệu}
+
+    Xung đột kiểu dữ liệu phát sinh do sự không đồng nhất trong cách các hệ thống nguồn biểu diễn cùng một giá trị. Các trường hợp thực tế ghi nhận trong dự án bao gồm:
+
+\begin{table}[H]
+\centering
+\caption{Các trường hợp xung đột kiểu dữ liệu điển hình}
+\begin{tabular}{llll}
+\hline
+\textbf{Trường} & \textbf{Kiểu Prisma} & \textbf{Nguồn gửi} & \textbf{Hậu quả nếu không xử lý} \\
+\hline
+\texttt{id}         & \texttt{Int}      & \texttt{"701"} (chuỗi)          & Lỗi kiểu dữ liệu Prisma \\
+\texttt{active}     & \texttt{Boolean}  & \texttt{"true"} (chuỗi)         & Lỗi kiểu dữ liệu Prisma \\
+\texttt{ngaySinh}   & \texttt{DateTime} & \texttt{"1990-06-15T..."} (chuỗi) & Lỗi kiểu dữ liệu Prisma \\
+\texttt{ngaySinh}   & \texttt{DateTime} & \texttt{"not-a-date"} (chuỗi)   & Crash hệ thống (Runtime) \\
+\hline
+\end{tabular}
+\end{table}
+
+ \item \textbf{Xung đột khóa chính}
+
+Xung đột khóa chính xảy ra dưới hai hình thức:
+
+\begin{enumerate}
+    \item \textbf{Trùng lặp trong cùng một lô dữ liệu (batch):} Hệ thống nguồn trả về nhiều bản ghi có cùng giá trị khóa chính trong một lần phân trang. Nếu lần lượt thực hiện lệnh \texttt{upsert} theo thứ tự xuất hiện, các bản ghi đầu sẽ bị ghi đè bởi bản ghi sau mà không có cảnh báo.
+    \item \textbf{Thiếu hoặc rỗng khóa chính:} Bản ghi không mang giá trị khóa chính hợp lệ, không thể thực hiện \texttt{upsert} và nếu không được xử lý sẽ bị bỏ qua một cách thầm lặng.
+\end{enumerate}
+
+    \item \textbf{Xung đột phân trang}
+
+    Đây là dạng xung đột đặc thù của kiến trúc tích hợp theo lô. Khi luồng xử lý gửi yêu cầu lấy trang thứ $p$, hệ thống nguồn có thể trả về dữ liệu của một trang khác do lỗi bộ nhớ đệm (cache CDN) hoặc lỗi định tuyến của bộ cân bằng tải. Hậu quả là dữ liệu ở các trang bị bỏ qua, trong khi luồng xử lý không nhận ra sự sai lệch và vẫn báo cáo thành công.
+
+    \item \textbf{Xung đột ràng buộc cơ sở dữ liệu}
+
+    Xung đột ràng buộc phát sinh khi dữ liệu từ nguồn vi phạm các quy tắc toàn vẹn được định nghĩa trong cơ sở dữ liệu chủ, ví dụ: giá trị vượt độ dài \texttt{VARCHAR}, vi phạm ràng buộc \texttt{NOT NULL}, hay vi phạm ràng buộc khóa ngoại. Nếu một bản ghi bị lỗi gây hủy (abort) toàn bộ lô dữ liệu, những bản ghi hợp lệ còn lại trong cùng lô đó sẽ không được đồng bộ.
+\end{enumerate}
+
+
+
+\subsection{Cách giải quyết}
+
+Để giải quyết sự đa dạng về cấu trúc dữ liệu giữa các hệ thống, trục tích hợp xây dựng một bộ đặc tả dữ liệu thống nhất và lưu trữ trong MongoDB. Bộ đặc tả này quy định rõ tên trường, kiểu dữ liệu, các ràng buộc bắt buộc, giá trị mặc định và mối liên hệ giữa các trường dữ liệu.
+
+Khi một đơn vị gửi dữ liệu lên trục tích hợp, dữ liệu đó bắt buộc phải tuân thủ đúng cấu trúc đã được định nghĩa trước. Nếu dữ liệu không phù hợp, hệ thống sẽ từ chối tiếp nhận và trả về thông báo lỗi tương ứng. Nhờ đó, các phòng ban buộc phải sử dụng cùng một chuẩn dữ liệu, giúp hạn chế sự phân mảnh giữa các hệ thống, đồng thời hỗ trợ việc kiểm tra và phát hiện lỗi dễ dàng hơn.
+
+\begin{lstlisting}[caption={Ví dụ đặc tả dữ liệu tổng quát trong MongoDB}, label={lst:mongo-schema}]
+{
+  "tableName": "ten_bang",
+  "dataFrom": "ten_he_thong",
+  "dataFromApi": "/duong_dan_api",
+  "dataFromMethod": "GET",
+  "description": "Mo ta bang du lieu",
+
+  "details": [
+    {
+      "name": "ten_truong",
+      "type": "kieu_du_lieu",
+      "length": 10
+    },
+    {
+      "name": "trang_thai",
+      "type": "boolean",
+      "length": null
+    }
+  ],
+
+  "primaryKey": ["khoa_chinh"],
+
+  "fieldsCount": 2,
+  "recordsCount": 100,
+
+  "status": "stable",
+  "syncStrategy": "overwrite"
+}
+\end{lstlisting}
+
+Hệ thống hiện thực chiến lược phòng thủ đa tầng được chia thành hai lớp xử lý tương ứng với hai thành phần cốt lõi của luồng xử lý.
+
+\subsubsection{Tầng tiếp nhận dữ liệu --- \texttt{DataIntegrationService}}
+
+Tầng tiếp nhận chịu trách nhiệm kiểm tra và lọc dữ liệu ngay tại điểm giao tiếp, trước khi bất kỳ bản ghi nào được đưa vào các bước xử lý sâu hơn.
+
+\paragraph{Kiểm tra cấu trúc phản hồi API (Fail-Fast Validation).}
+Mọi phản hồi từ hệ thống nguồn đều được kiểm tra bốn điều kiện bắt buộc ngay sau khi nhận:
+
+\begin{verbatim}
+if (!responseData
+    || responseData.success !== true
+    || !responseData.payload
+    || !Array.isArray(responseData.payload)) {
+  throw new Error('[API CONTRACT VIOLATION]...');
+}
+\end{verbatim}
+
+Chiến lược thất bại nhanh (\textit{fail-fast}) đảm bảo rằng dữ liệu sai định dạng bị từ chối ngay tại điểm tiếp nhận, không lan truyền vào các tầng xử lý phía sau. Bảng dữ liệu bị lỗi được ghi nhận và hệ thống tiếp tục xử lý các bảng kế tiếp.
+
+\paragraph{Bộ lọc trạng thái lược đồ (Schema Status Guard).}
+Trước mỗi phiên đồng bộ, hệ thống kiểm tra trạng thái lược đồ của từng bảng trong MongoDB. Chỉ các bảng có trạng thái \texttt{stable} mới được phép đồng bộ. Các bảng ở trạng thái \texttt{changed} hoặc \texttt{new} sẽ bị bỏ qua và cảnh báo được ghi vào nhật ký, chờ quản trị viên xem xét và phê duyệt thủ công.
+
+\paragraph{Bộ lọc trang lệch (Page Mismatch Guard).}
+Sau mỗi lần nhận phản hồi phân trang, hệ thống so sánh số trang thực tế trong siêu dữ liệu (\texttt{metadata}) với số trang đang được yêu cầu. Nếu phát hiện sai lệch, vòng lặp phân trang bị dừng ngay lập tức để tránh ghi đè dữ liệu sai:
+
+\begin{verbatim}
+if (meta.currentPage && meta.currentPage !== currentPage) {
+  // [PAGE MISMATCH] Expected page P, got Q. Skipping.
+  break;
+}
+\end{verbatim}
+
+\paragraph{Bộ lọc dữ liệu rỗng.}
+Nếu hệ thống nguồn trả về mảng \texttt{payload} rỗng trước khi đạt tới tổng số trang đã khai báo, vòng lặp phân trang sẽ dừng sớm để tránh lặp vô hạn do lỗi logic phân trang từ phía nguồn.
+
+\subsubsection{Tầng đồng bộ --- \texttt{SyncEngineService}}
+
+Tầng đồng bộ xử lý từng lô dữ liệu đã qua tầng tiếp nhận, áp dụng các cơ chế làm sạch và chuẩn hóa trước khi ghi vào PostgreSQL.
+
+\paragraph{Lọc trường dữ liệu không xác định.}
+Hệ thống truy vấn Prisma DMMF (\textit{Data Model Meta Format}) tại thời gian thực thi (runtime) để lấy danh sách các trường hợp lệ của từng bảng. Bất kỳ trường nào từ nguồn không nằm trong danh sách này đều bị loại bỏ trước khi tiến hành ghi cơ sở dữ liệu:
+
+\begin{verbatim}
+const validFields = this.getValidScalarFields(modelName);
+const filteredRecord = Object.fromEntries(
+  Object.entries(record).filter(([k]) => validFields.has(k))
+);
+\end{verbatim}
+
+Cơ chế này loại bỏ hoàn toàn lỗi \textit{``Unknown field''} của Prisma mà không cần can thiệp thủ công khi hệ thống nguồn tùy tiện thêm cột mới.
+
+\paragraph{Loại bỏ trùng lặp khóa chính.}
+Trước khi \texttt{upsert}, toàn bộ lô dữ liệu được xử lý qua hàm loại bỏ trùng lặp sử dụng cấu trúc \texttt{Map} với từ khóa là giá trị khóa chính. Bản ghi xuất hiện sau cùng với cùng khóa chính sẽ được giữ lại. Các bản ghi có khóa chính \texttt{null} hoặc \texttt{undefined} không bị loại bỏ tại bước này mà được chuyển tiếp sang vòng lặp \texttt{upsert} để cố ý tạo ra lỗi và được ghi nhận vào nhật ký lỗi.
+
+\paragraph{Chuẩn hóa kiểu dữ liệu.}
+Dựa trên siêu dữ liệu từ Prisma DMMF, hệ thống tự động chuyển đổi các giá trị sai kiểu từ nguồn về kiểu dữ liệu đúng:
+
+\begin{table}[H]
+\centering
+\caption{Quy tắc chuẩn hóa kiểu dữ liệu}
+\begin{tabular}{lll}
+\hline
+\textbf{Kiểu Prisma} & \textbf{Nguồn gửi} & \textbf{Sau chuẩn hóa} \\
+\hline
+\texttt{DateTime} & \texttt{"1990-06-15T00:00:00Z"} & Đối tượng \texttt{Date} \\
+\texttt{DateTime} & \texttt{"not-a-date"}           & \texttt{null} \\
+\texttt{Int}      & \texttt{"701"}                  & \texttt{701} \\
+\texttt{Float}    & \texttt{"3.14"}                 & \texttt{3.14} \\
+\texttt{Boolean}  & \texttt{"true"} / \texttt{"1"}  & \texttt{true} \\
+\texttt{Boolean}  & \texttt{"false"}                & \texttt{false} \\
+\hline
+\end{tabular}
+\end{table}
+
+\paragraph{Cập nhật bất biến (Idempotent Upsert).}
+Thay vì thực hiện \texttt{INSERT} hoặc \texttt{UPDATE} riêng lẻ, hệ thống sử dụng cơ chế \texttt{upsert} của Prisma cho mọi bản ghi. Với cơ chế này, việc chạy lại luồng xử lý nhiều lần trên cùng một tập dữ liệu không tạo ra các bản ghi trùng lặp mà chỉ cập nhật thông tin mới nhất, đảm bảo tính bất biến của hệ thống.
+
+\paragraph{Nhật ký lỗi (Dead Letter Log).}
+Mọi bản ghi gây lỗi trong quá trình \texttt{upsert} --- dù là thiếu khóa chính, vi phạm ràng buộc \texttt{VARCHAR}, hay lỗi cơ sở dữ liệu khác --- đều được bắt giữ riêng lẻ trong khối \texttt{try/catch} và ghi vào mảng \texttt{errors} của nhật ký sự kiện trong MongoDB. Luồng xử lý không bị hủy; các bản ghi hợp lệ còn lại trong cùng lô vẫn tiếp tục được đồng bộ. Quản trị viên có thể truy vết chính xác từng bản ghi lỗi thông qua giá trị khóa chính và thông báo lỗi được lưu kèm.
+
+\subsubsection{Tổng hợp cơ chế phòng thủ}
+
+\begin{table}[H]
+\centering
+\caption{Tổng hợp các cơ chế phòng thủ xung đột dữ liệu}
+\begin{tabular}{p{4.2cm}p{3.5cm}p{6.5cm}}
+\hline
+\textbf{Dạng xung đột} & \textbf{Vị trí xử lý} & \textbf{Cơ chế giải quyết} \\
+\hline
+Vi phạm cấu trúc phản hồi  & \texttt{DataIntegration} & Fail-fast validation, từ chối ngay tại đầu vào \\
+Lược đồ thay đổi chưa duyệt & \texttt{DataIntegration} & Bộ lọc trạng thái lược đồ (\texttt{status = stable}) \\
+Trang phân trang lệch   & \texttt{DataIntegration} & Bộ lọc trang lệch, dừng vòng lặp \\
+Dữ liệu rỗng bất thường & \texttt{DataIntegration} & Bộ lọc dữ liệu rỗng, dừng vòng lặp \\
+Trường lạ từ nguồn      & \texttt{SyncEngineService}      & Lọc trường hợp lệ qua Prisma DMMF \\
+Trùng khóa chính trong lô & \texttt{SyncEngineService} & Loại bỏ trùng lặp bằng cấu trúc \texttt{Map} \\
+Sai kiểu dữ liệu        & \texttt{SyncEngineService}      & Chuẩn hóa kiểu dữ liệu qua Prisma DMMF \\
+Chạy lại luồng xử lý    & \texttt{SyncEngineService}      & Cơ chế \texttt{upsert} bất biến \\
+Lỗi bản ghi đơn lẻ      & \texttt{SyncEngineService}      & Lưu nhật ký lỗi (\textit{Dead Letter Log}) vào MongoDB \\
+\hline
+\end{tabular}
+\end{table}
+
+
+% ============================================================

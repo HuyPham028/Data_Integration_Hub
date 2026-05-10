@@ -44,7 +44,7 @@ services:
   backend:
     build:
       context: ./backend
-    image: ${DOCKER_USERNAME:-local}/hub-backend:latest
+    # image: ${DOCKER_USERNAME:-local}/hub-backend:latest
     container_name: hub-backend
     environment:
       PORT: 4000
@@ -60,6 +60,11 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
       MINIO_USE_SSL: "false"
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      ALERT_EMAIL_TO: ${ALERT_EMAIL_TO}
     ports:
       - "4000:4000"
     restart: always

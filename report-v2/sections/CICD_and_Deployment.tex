@@ -1,0 +1,569 @@
+\newpage
+\section{Quy trình CI/CD Với GitHub Actions}
+\subsection{Repo chính của dự án}
+Dự án được quản lý thông qua Git - Github
+
+\hyperlink{https://github.com/HuyPham028/Data\_Integration\_Hub}{https://github.com/HuyPham028/Data\_Integration\_Hub}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{graphics/Github.png}
+    \caption{Repo Github}
+    \label{fig:epo Github}
+\end{figure}
+
+\subsection{CI/CD Tự Động }
+\label{sec:cicd-github}
+
+\subsubsection{Đặt vấn đề}
+
+Trong giai đoạn phát triển, nhóm thực hiện deploy thủ công lên EC2 qua SSH
+sau mỗi lần thay đổi mã nguồn. Quy trình này tốn thời gian, dễ bỏ sót bước
+và không đảm bảo tính nhất quán giữa môi trường phát triển và môi trường
+production. CI/CD (Continuous Integration / Continuous Deployment) tự động
+hóa toàn bộ quy trình: từ khi developer \texttt{git push} lên nhánh
+\texttt{master} cho đến khi phiên bản mới chạy trên EC2 --- không cần thao
+tác thủ công.
+
+\subsubsection{Kiến trúc pipeline}
+
+Pipeline CI/CD được triển khai qua \textbf{GitHub Actions},
+kích hoạt mỗi khi có commit được push lên nhánh \texttt{master}.
+Pipeline gồm hai job chạy tuần tự:
+
+\begin{enumerate}
+  \item \textbf{Build \& Push}: Build Docker image cho backend (NestJS)
+        và frontend (Next.js), đẩy lên Docker Hub với tag \texttt{latest}.
+  \item \textbf{Deploy}: SSH vào EC2 (Amazon Linux~2023, t3.medium),
+        pull image mới và khởi động lại container bằng Docker~Compose.
+\end{enumerate}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  node distance=1.6cm,
+  box/.style={rectangle, rounded corners=4pt,
+              draw=blue!55, fill=blue!8,
+              minimum width=2.6cm, minimum height=0.8cm,
+              font=\small\bfseries, align=center, text=blue!80},
+  arr/.style={-{Stealth[length=5pt,width=4pt]}, thick, black!55}
+]
+  \node[box] (push)   {git push\\master};
+  \node[box, right=1cm of push]  (trig)   {GitHub\\Actions};
+  \node[box, right=1cm of trig]  (build)  {Build\\Docker Image};
+  \node[box, right=1cm of build] (hub)    {Push\\Docker Hub};
+  \node[box, right=1cm of hub]   (deploy) {SSH Deploy\\EC2};
+
+  \draw[arr] (push)  -- (trig);
+  \draw[arr] (trig)  -- (build);
+  \draw[arr] (build) -- (hub);
+  \draw[arr] (hub)   -- (deploy);
+\end{tikzpicture}
+\caption{Luồng CI/CD từ push code đến deploy EC2}
+\label{fig:cicd_pipeline}
+\end{figure}
+
+\subsubsection{File workflow GitHub Actions}
+
+File workflow được đặt tại \texttt{.github/workflows/deploy.yml} trong
+repository. Toàn bộ thông tin nhạy cảm (địa chỉ EC2, khóa SSH, thông tin
+Docker Hub) được lưu trong \textbf{GitHub Secrets} thay vì hard-code.
+
+\begin{lstlisting}[language=yaml,
+                   caption={.github/workflows/deploy.yml},
+                   label={lst:cicd-workflow}]
+name: Build and Deploy to EC2
+
+on:
+  push:
+    branches: [ master ]
+
+env:
+  IMAGE_BACKEND:  ${{ secrets.DOCKER_USERNAME }}/hub-backend
+  IMAGE_FRONTEND: ${{ secrets.DOCKER_USERNAME }}/hub-frontend
+
+jobs:
+  # Job 1: Build Docker images va push len Docker Hub
+  build:
+    name: Build & Push Docker Images
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build & push Backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ env.IMAGE_BACKEND }}:latest
+
+      - name: Build & push Frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: ${{ env.IMAGE_FRONTEND }}:latest
+          build-args: |
+            NEXT_PUBLIC_KONG_URL=${{ secrets.NEXT_PUBLIC_KONG_URL }}
+
+  # Job 2: SSH vao EC2, pull image moi va restart container
+  deploy:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: SSH and deploy
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host:     ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key:      ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd ~/Data_Integration_Hub
+
+            # Pull image moi tu Docker Hub
+            docker compose pull backend frontend
+
+            # Restart chi hai service thay doi
+            docker compose up -d --no-build backend frontend
+
+            # Xoa image cu de tiet kiem disk
+            docker image prune -f
+
+            echo "Deploy hoan thanh: $(date)"
+\end{lstlisting}
+
+\subsubsection{Cấu hình GitHub Secrets}
+
+Trước khi workflow có thể chạy, cần khai báo các secret sau tại
+\textbf{Settings $\to$ Secrets and variables $\to$ Actions} của repository:
+
+\begin{table}[H]
+\centering
+\caption{Danh sách GitHub Secrets cần cấu hình}
+\label{tab:github-secrets}
+\begin{tabular}{lll}
+\hline
+\textbf{Secret} & \textbf{Giá trị} & \textbf{Mục đích} \\
+\hline
+\texttt{DOCKER\_USERNAME}        & Tên tài khoản Docker Hub    & Đăng nhập Docker Hub \\
+\texttt{DOCKER\_PASSWORD}        & Access Token Docker Hub     & Xác thực push image \\
+\texttt{EC2\_HOST}               & Elastic IP của EC2          & Địa chỉ SSH \\
+\texttt{EC2\_USERNAME}           & \texttt{ec2-user}           & Tài khoản SSH \\
+\texttt{EC2\_SSH\_KEY}           & Nội dung file \texttt{.pem} & Khóa xác thực SSH \\
+\texttt{NEXT\_PUBLIC\_KONG\_URL} & \texttt{http://<IP>:8000}   & Build-time env Next.js \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsubsection{Lưu ý kỹ thuật}
+
+\paragraph{NEXT\_PUBLIC\_KONG\_URL phải khai báo lúc build.}
+Next.js đặt giá trị biến môi trường
+\texttt{NEXT\_PUBLIC\_*} vào bundle JavaScript tại thời điểm build,
+không phải lúc runtime. Biến này phải được truyền qua \texttt{build-args}
+trong bước build Frontend --- không thể truyền vào container sau khi đã
+build xong.
+
+\paragraph{Chỉ pull backend và frontend, không restart toàn bộ stack.}
+Các service nền tảng như PostgreSQL, MinIO, Kong, Redis không thay đổi
+qua mỗi lần deploy. Lệnh \texttt{docker compose pull backend frontend}
+chỉ kéo image của hai service thay đổi, giúp giảm thời gian deploy từ
+10--15 phút (build lại toàn bộ trên EC2) xuống còn khoảng 2--3 phút.
+
+\paragraph{Elastic IP là bắt buộc.}
+EC2 cấp phát Public IP động --- địa chỉ sẽ thay đổi mỗi khi instance
+Stop/Start. Nếu không gán Elastic IP tĩnh, secret \texttt{EC2\_HOST} sẽ
+bị sai sau lần khởi động lại đầu tiên và toàn bộ pipeline thất bại ở bước
+deploy.
+
+\subsection{Kiểm thử tự động (Unit Testing)}
+
+Song song với việc thiết lập pipeline CI/CD, nhóm xây dựng bộ unit test
+cho các thành phần cốt lõi của backend bằng \textbf{Jest} --- framework
+kiểm thử mặc định của NestJS. Tổng cộng \textbf{41 test case} được viết
+trên 3 file, bao phủ các logic nghiệp vụ quan trọng nhất:
+
+\begin{table}[H]
+\centering
+\caption{Bộ unit test của backend}
+\label{tab:unit-tests}
+\begin{tabular}{llp{7cm}}
+\hline
+\textbf{File} & \textbf{Tests} & \textbf{Nội dung kiểm thử} \\
+\hline
+\texttt{string.util.spec.ts}           & 6  & Hàm \texttt{snakeToCamel} chuyển đổi tên bảng \\
+\texttt{sync-engine.service.spec.ts}   & 20 & Dedup records, phát hiện field lạ, phát hiện orphan, xóa theo ID \\
+\texttt{data-integration.service.spec.ts} & 15 & Lọc records theo thời gian, cơ chế retry, xử lý pipeline rỗng \\
+\hline
+\end{tabular}
+\end{table}
+
+Toàn bộ test được chạy bằng lệnh \texttt{npm test} và pass 100\%.
+Bước tiếp theo là tích hợp bộ test này vào pipeline GitHub Actions:
+thêm job \texttt{test} chạy \textbf{trước} job \texttt{build}, đảm bảo
+mọi commit lên \texttt{master} đều phải vượt qua kiểm thử tự động trước
+khi Docker image được build và deploy lên production.
+
+\subsection{Đánh giá}
+
+\textbf{Ưu điểm:}
+\begin{itemize}
+  \item \textbf{Tự động hóa hoàn toàn}: Developer chỉ cần \texttt{git push},
+        phiên bản mới lên production sau 3--5 phút.
+  \item \textbf{Tách biệt build và runtime}: Image được build trên
+        GitHub-hosted runner (Ubuntu 24.04), không tiêu tốn CPU/RAM của EC2.
+  \item \textbf{Rollback dễ dàng}: Docker Hub lưu các image theo tag.
+        Rollback bằng cách chỉnh tag trong \texttt{docker-compose.yml}
+        và chạy lại \texttt{docker compose up -d}.
+  \item \textbf{Nền tảng kiểm thử sẵn sàng}: Bộ 41 unit test đã được
+        xây dựng và pass 100\%, sẵn sàng tích hợp vào pipeline.
+\end{itemize}
+
+
+
+\newpage
+\section{Triển Khai Hệ Thống Lên AWS EC2}
+
+\subsection{Tổng Quan Kiến Trúc Triển Khai}
+
+Hệ thống được triển khai theo mô hình \textbf{Docker Compose trên một EC2
+instance duy nhất}. Toàn bộ các thành phần — PostgreSQL, MongoDB Atlas,
+MinIO, Kong API Gateway, NestJS backend, Next.js frontend, Prometheus và
+Grafana — chạy trong cùng một mạng Docker nội bộ (\texttt{univ\_hub\_network}).
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  box/.style={rectangle, draw, rounded corners, minimum width=3cm,
+              minimum height=0.8cm, text centered, font=\small},
+  arrow/.style={->, >=stealth}
+]
+\node[box, fill=blue!10, minimum width=5cm] (browser) {Browser / Client};
+\node[box, fill=orange!15, below=0.8cm of browser, minimum width=5cm]
+    (kong) {Kong API Gateway :8000};
+\node[box, fill=green!15, below left=0.8cm and 1.5cm of kong]
+    (backend) {NestJS Backend :4000};
+\node[box, fill=green!15, below right=0.8cm and 1.5cm of kong]
+    (frontend) {Next.js Frontend :3000};
+
+% Đặt 3 node phía dưới theo hàng ngang, cách đều nhau
+\node[box, fill=gray!15, below=1.5cm of backend, xshift=2cm]
+    (pg) {PostgreSQL :5432};
+\node[box, fill=gray!15, left=0.6cm of pg]
+    (minio) {MinIO :9000};
+\node[box, fill=purple!10, right=0.6cm of pg]
+    (mongo) {MongoDB Atlas (cloud)};
+
+\draw[arrow] (browser) -- (kong);
+\draw[arrow] (kong) -- (backend);
+\draw[arrow] (kong) -- (frontend);
+\draw[arrow] (backend) -- (pg);
+\draw[arrow] (backend) -- (minio);
+\draw[arrow] (backend) -- (mongo);
+\end{tikzpicture}
+}
+\caption{Kiến trúc triển khai trên EC2}
+\label{fig:ec2-arch}
+\end{figure}
+
+\subsection{Yêu Cầu Hạ Tầng}
+
+\subsubsection{Cấu Hình EC2 Instance}
+
+\begin{table}[H]
+\centering
+\caption{Cấu hình EC2 instance được sử dụng}
+\label{tab:ec2-config}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Thông số} & \textbf{Giá trị} \\
+\hline
+Instance type & \texttt{t3.medium} (2 vCPU, 4 GB RAM) \\
+\hline
+AMI & Amazon Linux 2023 \\
+\hline
+Storage & 20 GB EBS (gp3) \\
+\hline
+Region & \texttt{ap-southeast-2} (Sydney) \\
+\hline
+\end{tabular}
+\end{table}
+
+Instance loại \texttt{t3.small} (2 GB RAM) không đủ để chạy đồng thời toàn
+bộ các container. Thực nghiệm cho thấy tổng bộ nhớ tiêu thụ ở trạng thái ổn
+định vào khoảng 2.8--3.2 GB, bao gồm PostgreSQL (~200 MB), MinIO (~150 MB),
+Kong (~400 MB), NestJS (~200 MB), Next.js (~300 MB), Prometheus và Grafana
+(~500 MB).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\linewidth]{graphics/EC2.png}
+    \caption{Máy chủ EC2 trên AWS}
+    \label{fig:dashboard-ui}
+\end{figure}
+
+\subsubsection{Security Group}
+
+Các cổng sau cần được mở trong Security Group của instance:
+
+\begin{table}[H]
+\centering
+\caption{Inbound rules của Security Group}
+\label{tab:security-group}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{|c|l|l|}
+\hline
+\textbf{Port} & \textbf{Dịch vụ} & \textbf{Mục đích} \\
+\hline
+22 & SSH & Quản trị từ xa \\
+\hline
+3000 & Next.js Frontend & Truy cập giao diện \\
+\hline
+4000 & NestJS Backend & API trực tiếp (debug) \\
+\hline
+8000 & Kong Proxy & API Gateway cho Frontend \\
+\hline
+8001 & Kong Admin & Quản trị Kong \\
+\hline
+9000 & MinIO API & S3-compatible endpoint \\
+\hline
+9001 & MinIO Console & Giao diện quản lý MinIO \\
+\hline
+5000 & Grafana & Monitoring dashboard \\
+\hline
+9090 & Prometheus & Metrics endpoint \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Cài Đặt Môi Trường}
+
+\subsubsection{Cài Docker}
+
+Amazon Linux 2023 sử dụng trình quản lý gói \texttt{dnf} thay vì
+\texttt{apt}. Script cài đặt phổ biến \texttt{get-docker.sh} không hỗ trợ
+phân phối \texttt{amzn} và sẽ báo lỗi nếu chạy trực tiếp. Cách cài đúng:
+
+\begin{lstlisting}[language=bash, caption={Cài Docker trên Amazon Linux 2023}]
+sudo dnf update -y
+sudo dnf install -y docker git
+sudo systemctl start docker
+sudo systemctl enable docker
+sudo usermod -aG docker ec2-user
+newgrp docker
+\end{lstlisting}
+
+\subsubsection{Cài Docker Compose Plugin và Buildx}
+
+Docker Compose phiên bản 5.x yêu cầu \textbf{buildx từ 0.17.0 trở lên}.
+Phiên bản buildx đi kèm với Docker trên Amazon Linux 2023 thường cũ hơn
+và cần nâng cấp thủ công:
+
+\begin{lstlisting}[language=bash,
+    caption={Cài Docker Compose plugin và buildx}]
+# Docker Compose plugin
+sudo mkdir -p /usr/local/lib/docker/cli-plugins
+sudo curl -SL https://github.com/docker/compose/releases/download/\
+v5.1.3/docker-compose-linux-x86_64 \
+  -o /usr/local/lib/docker/cli-plugins/docker-compose
+sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+
+# Buildx (cap nhat len phien ban moi)
+mkdir -p ~/.docker/cli-plugins
+curl -SL https://github.com/docker/buildx/releases/download/\
+v0.23.0/buildx-v0.23.0.linux-amd64 \
+  -o ~/.docker/cli-plugins/docker-buildx
+chmod +x ~/.docker/cli-plugins/docker-buildx
+
+# Kiem tra
+docker --version
+docker compose version
+docker buildx version
+\end{lstlisting}
+
+\subsection{Triển Khai Ứng Dụng}
+
+\subsubsection{Clone Repository}
+
+\begin{lstlisting}[language=bash]
+git clone https://github.com/HuyPham028/Data_Integration_Hub.git
+cd Data_Integration_Hub
+\end{lstlisting}
+
+\subsubsection{Cấu Hình Biến Môi Trường}
+
+File \texttt{.env} không được commit vào repository vì lý do bảo mật. Cần
+tạo file này thủ công trên EC2. Trước tiên, lấy Public IP của instance:
+
+\begin{lstlisting}[language=bash]
+curl -s http://169.254.169.254/latest/meta-data/public-ipv4
+\end{lstlisting}
+
+Sau đó tạo file \texttt{.env} tại thư mục gốc của project:
+
+\begin{lstlisting}[language=bash, caption={Nội dung file .env trên EC2}]
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=pass123456
+POSTGRES_DB=Data_Integration_Hub
+MONGO_URI="mongodb+srv://user:pass@cluster.mongodb.net/..."
+SOURCE_API_BASE_URL=https://source-api.example.com
+SOURCE_API_TOKEN=<api-token>
+JWT_SECRET=supersecretkey
+JWT_EXPIRES_IN=1h
+PORT=4000
+MINIO_ACCESS_KEY=admin
+MINIO_SECRET_KEY=password123
+MINIO_ROOT_USER=admin
+MINIO_ROOT_PASSWORD=password123
+GRAFANA_SMTP_USER=admin@gmail.com
+GRAFANA_SMTP_PASSWORD=<app-password>
+# Thay <PUBLIC_IP> bang IP that cua EC2 instance
+NEXT_PUBLIC_KONG_URL=http://<PUBLIC_IP>:8000
+\end{lstlisting}
+
+Biến \texttt{NEXT\_PUBLIC\_KONG\_URL} đặc biệt quan trọng: Next.js nhúng
+(\textit{bake}) giá trị này vào bundle JavaScript tại thời điểm build.
+Nếu đặt sai địa chỉ, toàn bộ API call từ giao diện sẽ thất bại và cần
+build lại container frontend.
+
+\subsubsection{Build và Khởi Động}
+
+\begin{lstlisting}[language=bash]
+docker compose up -d --build
+\end{lstlisting}
+
+Lần đầu chạy lệnh này mất khoảng 10--15 phút trên \texttt{t3.medium} vì
+phải pull image, cài \texttt{npm install} và build cả backend lẫn frontend.
+Các lần sau (không có thay đổi code) sẽ nhanh hơn nhờ Docker layer cache.
+
+\subsubsection{Khởi Tạo Cơ Sở Dữ Liệu}
+
+Sau khi tất cả container đã khởi động, chạy Prisma migration để tạo schema:
+
+\begin{lstlisting}[language=bash]
+docker exec hub-backend npx prisma migrate deploy
+\end{lstlisting}
+
+Lệnh \texttt{migrate deploy} chỉ áp dụng các migration đã có trong thư mục
+\texttt{prisma/migrations}, không tạo migration mới — phù hợp với môi trường
+production. Nếu PostgreSQL đã có dữ liệu cũ gây xung đột:
+
+\begin{lstlisting}[language=bash]
+# Xoa va tao lai schema truoc khi migrate
+docker exec postgres-core psql -U postgres -d Data_Integration_Hub \
+  -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+docker exec hub-backend npx prisma migrate deploy
+\end{lstlisting}
+
+\subsection{Cấu Hình CORS Cho Kong API Gateway}
+
+Next.js frontend gọi API thông qua Kong ở địa chỉ
+\texttt{http://<PUBLIC\_IP>:8000}. Mặc định, file \texttt{kong.yml} chỉ
+cho phép origin \texttt{localhost:3000}, dẫn đến lỗi CORS khi truy cập
+từ trình duyệt qua Public IP.
+
+Cập nhật \texttt{backend/kong.yml} trực tiếp trên EC2:
+
+\begin{lstlisting}[language=bash]
+# Dung sed de tranh loi tab character khi chinh sua bang nano/vim
+sed -i 's|- http://localhost:3000|- http://localhost:3000\n\
+        - http://<PUBLIC_IP>:3000|' backend/kong.yml
+\end{lstlisting}
+
+Sau đó đồng bộ cấu hình vào Kong đang chạy:
+
+\begin{lstlisting}[language=bash]
+docker run --rm \
+  --network data_integration_hub_univ_hub_network \
+  -v $(pwd)/backend/kong.yml:/kong/kong.yml \
+  kong/deck gateway sync /kong/kong.yml --kong-addr http://kong:8001
+\end{lstlisting}
+
+Lệnh này không cần restart Kong — cấu hình được áp dụng nóng
+(\textit{hot reload}) thông qua Kong Admin API.
+
+\subsection{Quản Lý Sau Triển Khai}
+
+\subsubsection{Tự Động Khởi Động Lại}
+
+Tất cả các service chính trong \texttt{docker-compose.yml} được cấu hình
+\texttt{restart: always}. Khi EC2 instance khởi động lại sau sự cố hoặc
+bảo trì, Docker daemon sẽ tự động kéo lên toàn bộ container mà không cần
+can thiệp thủ công.
+
+\subsubsection{Vấn Đề Thay Đổi Public IP}
+
+Theo mặc định, AWS cấp phát Public IP động cho EC2 instance. Mỗi lần
+instance bị \textit{Stop} rồi \textit{Start} lại, Public IP sẽ thay đổi,
+dẫn đến hai hậu quả:
+
+\begin{itemize}
+    \item \texttt{NEXT\_PUBLIC\_KONG\_URL} trong \texttt{.env} bị sai —
+    cần cập nhật và build lại container frontend.
+    \item Origin trong Kong CORS không còn khớp — cần cập nhật
+    \texttt{kong.yml} và re-sync.
+\end{itemize}
+
+Giải pháp là gán \textbf{Elastic IP} — địa chỉ IP tĩnh của AWS — cho
+instance. Elastic IP miễn phí khi instance đang chạy, chỉ tính phí khi
+instance bị dừng hoặc IP không được gắn với instance nào:
+
+\begin{enumerate}
+    \item Vào AWS Console $\to$ EC2 $\to$ \textbf{Elastic IPs}.
+    \item Chọn \textbf{Allocate Elastic IP address}.
+    \item Chọn \textbf{Actions} $\to$ \textbf{Associate Elastic IP address}
+    $\to$ chọn instance EC2.
+\end{enumerate}
+
+Sau khi gán Elastic IP, cập nhật \texttt{.env} và \texttt{kong.yml} một
+lần duy nhất với IP tĩnh này. Từ đó trở đi, IP không thay đổi dù instance
+có restart bao nhiêu lần.
+
+\subsubsection{Kiểm Tra Trạng Thái Hệ Thống}
+
+\begin{lstlisting}[language=bash]
+# Tat ca container phai o trang thai Up
+docker compose ps
+
+# Kiem tra backend
+curl http://localhost:4000/api/v1
+
+# Xem log realtime
+docker logs hub-backend --tail 50 -f
+\end{lstlisting}
+
+Sau khi triển khai thành công, các dịch vụ có thể truy cập tại:
+
+\begin{table}[H]
+\centering
+\caption{Địa chỉ truy cập các dịch vụ sau triển khai}
+\label{tab:service-urls}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Dịch vụ} & \textbf{Địa chỉ} \\
+\hline
+Frontend & \texttt{http://<PUBLIC\_IP>:3000} \\
+\hline
+Kong API Gateway & \texttt{http://<PUBLIC\_IP>:8000} \\
+\hline
+MinIO Console & \texttt{http://<PUBLIC\_IP>:9001} \\
+\hline
+Grafana & \texttt{http://<PUBLIC\_IP>:5000} \\
+\hline
+Prometheus & \texttt{http://<PUBLIC\_IP>:9090} \\
+\hline
+\end{tabular}
+\end{table}
