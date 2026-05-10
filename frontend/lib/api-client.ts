@@ -69,6 +69,10 @@ export const IntegrationAPI = {
     const response = await apiClient.put(`/schema-registry/${tableName}/resolve`);
     return response.data;
   },
+
+  rejectSchema: async (tableName: string) => {
+    const response = await apiClient.put(`/schema-registry/${tableName}/reject`);
+  },
   
   getLogs: async () => {
     const response = await apiClient.get('/event-logs?type=sync');
