@@ -10,14 +10,27 @@ import {
 } from "@/components/ui/table";
 import { BackupAPI, IntegrationAPI } from "@/lib/api-client";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, ArrowLeft, Download, RefreshCcw, Database, FolderArchive, Tags } from "lucide-react";
+import { Plus, ArrowLeft, Download, RefreshCcw, Database, FolderArchive, Tags, CloudUpload, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import BackupSelect from "@/components/modals/BackupSelect";
+import ConfirmDialog from "@/components/modals/ConfirmModal";
+import { toast } from "sonner";
+import Image from "next/image";
+import { formatDate, getS3StatusBadge } from "@/lib/utils";
 
 type SchemaInfo = {
   tableName: string;
   recordsCount: number;
   status: string;
+};
+
+type BackupItem = {
+  key: string;
+  size: number;
+  lastModified: string;
+  expiresAt?: string | null;
+  s3Status?: 'not_synced' | 'synced' | 'out_of_date';
+  s3UploadedAt?: string | null;
 };
 
 export default function BackupPage() {
@@ -27,9 +40,17 @@ export default function BackupPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   
   // Data State
-  const [backups, setBackups] = useState<any[]>([]);
+  const [backups, setBackups] = useState<BackupItem[]>([]);
   const [availableSchemas, setAvailableSchemas] = useState<SchemaInfo[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isRestoreOpen, setIsRestoreOpen] = useState(false);
+  const [selectedRestoreKey, setSelectedRestoreKey] = useState<string | null>(null);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [isCleaningUp, setIsCleaningUp] = useState(false);
+
+  // Sync to S3
+  const [syncingKey, setSyncingKey] = useState<string | null>(null);
+  const [isSyncingAllS3, setIsSyncingAllS3] = useState(false);
 
   // 1. Fetch Backups based on Tab
   const fetchBackups = async (tab: string) => {
@@ -75,32 +96,97 @@ export default function BackupPage() {
   const handleTriggerBackup = async (selectedTables: string[]) => {
     try {
       await BackupAPI.triggerBackup(selectedTables);
-      alert(`Đã bắt đầu backup cho ${selectedTables.length} bảng!`);
-      setIsModalOpen(false);
+
+      toast.success(
+        `Đã bắt đầu backup cho ${selectedTables.length} bảng!`
+      );
+
+      setIsModalOpen(false)
       fetchBackups(activeTab);
     } catch (error) {
-      alert("Lỗi khi tạo backup.");
+      toast.error("Lỗi khi tạo backup.");
     }
   };
 
   const handleDownload = async (key: string) => {
     try {
       const response = await BackupAPI.getDownloadUrl(key);
-      window.open(response.url, '_blank'); // Open presigned URL
+
+      window.open(response.url, '_blank');
+
+      toast.success("Đang mở link tải backup...");
     } catch (error) {
-      alert("Lỗi khi lấy link tải.");
+      toast.error("Lỗi khi lấy link tải.");
     }
   };
 
-  const handleRestore = async (key: string) => {
-    const isConfirm = window.confirm("Bạn có chắc chắn muốn khôi phục bản sao lưu này? Dữ liệu hiện tại sẽ bị ghi đè.");
-    if (!isConfirm) return;
+  const handleCleanupBackups = async () => {
+    try {
+      setIsCleaningUp(true);
+
+      const result = await BackupAPI.cleanupBackups();
+
+      toast.success(result.message || 'Cleanup completed');
+
+      fetchBackups(activeTab);
+    } catch (error) {
+      toast.error('Lỗi khi cleanup backup quá hạn');
+    } finally {
+      setIsCleaningUp(false);
+    }
+  };
+
+  const handleRestoreClick = (key: string) => {
+    setSelectedRestoreKey(key);
+    setIsRestoreOpen(true);
+  };
+
+  const handleConfirmRestore = async () => {
+    if (!selectedRestoreKey) return;
 
     try {
-      await BackupAPI.restoreBackup(key);
-      alert("Khôi phục dữ liệu thành công!");
+      setIsRestoring(true);
+
+      await BackupAPI.restoreBackup(selectedRestoreKey);
+
+      toast.success("Khôi phục dữ liệu thành công!");
+
+      setIsRestoreOpen(false);
+      setSelectedRestoreKey(null);
+
+      fetchBackups(activeTab);
     } catch (error) {
-      alert("Lỗi khi khôi phục dữ liệu.");
+      toast.error("Lỗi khi khôi phục dữ liệu.");
+    } finally {
+      setIsRestoring(false);
+    }
+  };
+
+  const handleSyncToS3 = async (key: string) => {
+    try {
+      setSyncingKey(key);
+
+      const result = await BackupAPI.syncToS3(key);
+
+      toast.success(result.message || "Đã sync file lên S3");
+    } catch (error) {
+      toast.error("Lỗi khi sync file lên S3");
+    } finally {
+      setSyncingKey(null);
+    }
+  };
+
+  const handleSyncAllToS3 = async () => {
+    try {
+      setIsSyncingAllS3(true);
+
+      const result = await BackupAPI.syncAllToS3();
+
+      toast.success(result.message || "Đã bắt đầu sync toàn bộ lên S3");
+    } catch (error) {
+      toast.error("Lỗi khi sync toàn bộ lên S3");
+    } finally {
+      setIsSyncingAllS3(false);
     }
   };
 
@@ -147,13 +233,36 @@ export default function BackupPage() {
         </div>
 
         {/* Action Button */}
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition"
-        >
-          <Plus size={18} />
-          <span>Thêm backup</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={handleCleanupBackups}
+            disabled={isCleaningUp}
+            className="flex items-center gap-2 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white px-4 py-2 rounded-md transition"
+          >
+            <Trash2 size={18} />
+            <span>
+              {isCleaningUp ? 'Đang xóa...' : 'Xóa bảng quá hạn'}
+            </span>
+          </button>
+          <button
+            onClick={handleSyncAllToS3}
+            disabled={isSyncingAllS3}
+            className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white px-4 py-2 rounded-md transition"
+          >
+            <FolderArchive size={18} />
+            <span>
+              {isSyncingAllS3 ? 'Đang sync...' : 'Đồng bộ tất cả'}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition"
+          >
+            <Plus size={18} />
+            <span>Thêm backup</span>
+          </button>
+        </div>
       </div>
 
       {/* Main Content Area */}
@@ -206,7 +315,10 @@ export default function BackupPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Tên File Backup</TableHead>
-                  <TableHead>Thời gian</TableHead>
+                  <TableHead>Lần cập nhật cuối</TableHead>
+                  <TableHead>Lần S3 cập nhật cuối</TableHead>
+                  <TableHead>Trạng thái S3</TableHead>
+                  <TableHead>Thời gian hết hạn</TableHead>
                   <TableHead className="text-right">Hành động</TableHead>
                 </TableRow>
               </TableHeader>
@@ -219,8 +331,29 @@ export default function BackupPage() {
                   return (
                     <TableRow key={backup.key}>
                       <TableCell className="font-medium">{fileName}</TableCell>
-                      <TableCell>{time}</TableCell>
+                      <TableCell>{formatDate(backup.lastModified)}</TableCell>
+                      <TableCell className={`${backup.s3UploadedAt? '' : 'text-center'}`}>{backup.s3UploadedAt? formatDate(backup.s3UploadedAt) : '//'}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-1">
+                          {getS3StatusBadge(backup.s3Status)}
+                        </div>
+                      </TableCell>
+
+                      <TableCell>
+                        <span className="text-sm">
+                          {formatDate(backup.expiresAt)}
+                        </span>
+                      </TableCell>
+
                       <TableCell className="text-right space-x-3">
+                        <button
+                          onClick={() => handleSyncToS3(backup.key)}
+                          className="text-orange-500 hover:text-orange-700 disabled:opacity-50"
+                          title="Upload lên S3"
+                          disabled={syncingKey === backup.key}
+                        >
+                          <CloudUpload size={18} className={`inline ${syncingKey === backup.key ? 'animate-pulse' : ''}`} />
+                        </button>
                         <button 
                           onClick={() => handleDownload(backup.key)}
                           className="text-blue-600 hover:text-blue-800"
@@ -229,7 +362,7 @@ export default function BackupPage() {
                           <Download size={18} className="inline" />
                         </button>
                         <button 
-                          onClick={() => handleRestore(backup.key)}
+                          onClick={() => handleRestoreClick(backup.key)}
                           className="text-orange-500 hover:text-orange-700"
                           title="Khôi phục"
                         >
@@ -254,6 +387,18 @@ export default function BackupPage() {
         subtitle="Chỉ hiển thị các bảng stable để tạo manual backup"
         searchPlaceholder="Tìm bảng cần backup..."
         startButtonLabel="Bắt đầu Backup"
+      />
+
+      <ConfirmDialog
+        open={isRestoreOpen}
+        onOpenChange={setIsRestoreOpen}
+        title="Khôi phục bản sao lưu?"
+        description="Bạn có chắc chắn muốn khôi phục bản sao lưu này? Dữ liệu hiện tại sẽ bị ghi đè."
+        confirmText="Khôi phục"
+        cancelText="Hủy"
+        destructive
+        loading={isRestoring}
+        onConfirm={handleConfirmRestore}
       />
     </div>
   );

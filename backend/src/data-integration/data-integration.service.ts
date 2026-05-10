@@ -10,6 +10,7 @@ import { EventLogService } from 'src/common/event-log/event-log.service';
 import { MemoryProfiler } from 'src/utils/memory-profiler';
 import { NotificationService } from 'src/common/notification/notification.service';
 import { SourceConfigService } from 'src/common/source-config/source-config.service';
+import { inferDataTypeFromBatch } from 'src/utils/string.util';
 
 interface SourceApiMetadata {
   tableName?: string;
@@ -265,6 +266,24 @@ export class DataIntegrationService {
           }
         }
         if (unknownFields.size > 0) {
+          this.broadcastLog(`[SCHEMA DRIFT] Phát hiện trường mới: [${[...unknownFields].join(', ')}]. Đang cập nhật Schema Registry...`, 'WARN');
+
+          const newDetails = [...schema.details];
+          
+          for (const newField of unknownFields) {
+            newDetails.push({
+              name: newField,
+              type: inferDataTypeFromBatch(rawDataArray, newField),
+              length: null
+            });
+          }
+
+          await this.schemaRegistry.detectSchemaChanges([{
+            tableName: schema.tableName,
+            details: newDetails,
+            fieldsCount: newDetails.length
+          }]);
+
           throw new Error(
             `[SCHEMA CONTRACT VIOLATION] Payload có field chưa định nghĩa trong metadata: [${[...unknownFields].join(', ')}]. Bỏ qua sync toàn bộ bảng.`,
           );

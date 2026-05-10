@@ -11,17 +11,26 @@ import {
   Loader2, Server, AlertTriangle, CheckCircle, 
   Copy, Check, ArrowRight, FileJson
 } from "lucide-react";
+import ConfirmDialog from '@/components/modals/ConfirmModal';
 
 // --- CÁC HÀM LOGIC XỬ LÝ DIFF & PRISMA GENERATOR ---
 
 // 1. Hàm tính toán Diff (GitHub Style)
-const calculateDiff = (newFields: any[] = [], oldFields: any[] = []) => {
+const calculateDiff = (newFields: any = [], oldFields: any = []) => {
+  const safeNewFields = Array.isArray(newFields)
+    ? newFields
+    : [];
+
+  const safeOldFields = Array.isArray(oldFields)
+    ? oldFields
+    : [];
+
   const diff: any[] = [];
-  const oldMap = new Map(oldFields.map(f => [f.name, f]));
-  const newMap = new Map(newFields.map(f => [f.name, f]));
+  const oldMap = new Map(safeOldFields.map(f => [f.name, f]));
+  const newMap = new Map(safeNewFields.map(f => [f.name, f]));
 
   // Quét các trường mới (Added, Changed, Unchanged)
-  newFields.forEach(newF => {
+  safeNewFields.forEach(newF => {
     const oldF = oldMap.get(newF.name);
     if (!oldF) {
       diff.push({ name: newF.name, status: 'added', new: newF, old: null });
@@ -33,7 +42,7 @@ const calculateDiff = (newFields: any[] = [], oldFields: any[] = []) => {
   });
 
   // Quét các trường bị xóa (Removed)
-  oldFields.forEach(oldF => {
+  safeOldFields.forEach(oldF => {
     if (!newMap.has(oldF.name)) {
       diff.push({ name: oldF.name, status: 'removed', new: null, old: oldF });
     }
@@ -78,6 +87,10 @@ export default function SchemaRegistryPage() {
   const [selectedSchema, setSelectedSchema] = useState<any | null>(null);
   const [isResolving, setIsResolving] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const [confirmPrismaUpdated, setConfirmPrismaUpdated] = useState(false);
+  const [isRejecting, setIsRejecting] = useState(false);
+
+  const [isOpen, setIsOpen] = useState(false);
 
   // Fetch Data
   const fetchSchemas = async () => {
@@ -112,12 +125,30 @@ export default function SchemaRegistryPage() {
     setTimeout(() => setIsCopied(false), 2000);
   };
 
-  // Tính toán Diff realtime khi mở Modal
+  const handleReject = async () => {
+    if (!selectedSchema) return;
+
+    setIsRejecting(true);
+    try {
+      await IntegrationAPI.rejectSchema(selectedSchema.tableName);
+      setSelectedSchema(null);
+      setConfirmPrismaUpdated(false);
+      setIsOpen(false);
+      await fetchSchemas();
+    } catch (error) {
+      console.error("Lỗi khi Reject:", error);
+    } finally {
+      setIsRejecting(false);
+    }
+  };
+
   const diffData = useMemo(() => {
     if (!selectedSchema) return { diff: [], stats: { added: 0, removed: 0, changed: 0 } };
-    const oldData = selectedSchema.oldDetails?.[selectedSchema.oldDetails.length - 1] || [];
-    const diff = calculateDiff(selectedSchema.details, oldData);
-    
+    const oldData = selectedSchema.status === 'new'
+      ? []
+      : (selectedSchema.oldDetails || []);
+    const diff = calculateDiff(selectedSchema.details || [], oldData);
+
     return {
       diff,
       stats: {
@@ -195,7 +226,15 @@ export default function SchemaRegistryPage() {
       </Card>
 
       {/* GitHub-style Diff Modal */}
-      <Dialog open={selectedSchema !== null} onOpenChange={(open) => !open && setSelectedSchema(null)}>
+      <Dialog
+        open={selectedSchema !== null}
+        onOpenChange={(open) => {
+          if(!open) {
+            setSelectedSchema(null);
+            setConfirmPrismaUpdated(false);
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-5xl p-0 overflow-hidden bg-white shadow-2xl border-slate-200 sm:rounded-xl data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
           
           {/* Header */}
@@ -292,23 +331,62 @@ export default function SchemaRegistryPage() {
           </div>
 
           {/* Footer */}
-          <div className="p-5 border-t border-slate-200 bg-white flex justify-between items-center">
-             <p className="text-sm text-slate-500 flex items-center">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-slate-600 mr-2 text-xs font-bold">!</span>
-                Hãy đảm bảo bạn đã chạy <code className="mx-1 px-1.5 py-0.5 bg-slate-100 text-slate-800 rounded">npx prisma db push</code> trước khi xác nhận.
-             </p>
-            <Button 
-              size="lg"
-              onClick={handleResolve} 
-              disabled={isResolving}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-sm px-6"
-            >
-              {isResolving ? <Loader2 className="animate-spin w-5 h-5 mr-2" /> : <CheckCircle className="w-5 h-5 mr-2"/>}
-              Sync Schema
-            </Button>
+          <div className="p-5 border-t border-slate-200 bg-white flex flex-col gap-4">
+
+            <div className="flex items-center space-x-2 bg-amber-50 p-3 rounded-lg border border-amber-200">
+              <input
+                type="checkbox"
+                id="confirm-sync"
+                className="w-4 h-4 text-emerald-600 rounded border-gray-300 cursor-pointer"
+                checked={confirmPrismaUpdated}
+                onChange={(e) => setConfirmPrismaUpdated(e.target.checked)}
+              />
+              <label htmlFor="confirm-sync" className="text-sm text-slate-700 font-medium cursor-pointer">
+                Tôi xác nhận đã cập nhật file <code className="text-pink-600 bg-pink-50 px-1 rounded">schema.prisma</code> và code đã được Deploy lên Server thành công.
+              </label>
+            </div>
+
+            <div className="flex justify-between items-center mt-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsOpen(true)
+                }}
+                disabled={isRejecting || isResolving}
+                className="text-rose-600 border-rose-200 hover:bg-rose-50"
+              >
+                {isRejecting ? <Loader2 className="animate-spin w-4 h-4 mr-2" /> : null}
+                Từ chối thay đổi (Revert)
+              </Button>
+
+              <Button
+                size="lg"
+                onClick={handleResolve}
+                disabled={!confirmPrismaUpdated || isResolving || isRejecting}
+                className={`${confirmPrismaUpdated ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-slate-200 text-slate-400'} font-semibold shadow-sm px-6 transition-colors`}
+              >
+                {isResolving ? <Loader2 className="animate-spin w-5 h-5 mr-2" /> : <CheckCircle className="w-5 h-5 mr-2" />}
+                Đồng ý thay đổi (Resolve)
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={isOpen}
+        onOpenChange={setIsOpen}
+        title="Từ chối thay đổi?"
+        description="
+          Hệ thống sẽ khôi phục cấu trúc cũ và bỏ qua
+          sự thay đổi này của API trong tương lai.
+        "
+        confirmText="Từ chối"
+        cancelText="Hủy"
+        destructive
+        loading={isRejecting}
+        onConfirm={handleReject}
+      />
     </div>
   );
 }

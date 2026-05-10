@@ -168,6 +168,12 @@ app.get("/", (req, res) => {
         params: "updatedAfter=ISO8601 (optional)",
         prismaModel: "nguoi_hoc",
       },
+      "TC-16 (Schema Drift / API Contract Violation)": {
+        GET: "/test/tc16-schema-change",
+        defense:
+          "Schema Contract Guard — Phát hiện field lạ không có trong SchemaRegistry metadata, ném lỗi và dừng sync bảng",
+        prismaModel: "dm_gioi_tinh",
+      },
     },
   });
 });

@@ -10,6 +10,7 @@ import { SchemaRegistry } from './schemas/schema-registry.schema';
 import { EventLogService } from '../event-log/event-log.service';
 import { UpdateSchemaRegistryDto } from './dto/update-schema-registry.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { generateSchemaHash } from 'src/utils/schema.util';
 
 @Injectable()
 export class SchemaRegistryService {
@@ -36,8 +37,11 @@ export class SchemaRegistryService {
 
     for (const rawData of rawDataArray) {
       try {
+        const hashValue = generateSchemaHash(rawData.details);
+
         const sanitizedData = {
           ...rawData,
+          hashValue,
           createdAt: rawData.createdAt?.$date
             ? new Date(rawData.createdAt.$date)
             : undefined,
@@ -102,6 +106,8 @@ export class SchemaRegistryService {
         tableName: incoming.tableName,
       });
 
+      const incomingHash = generateSchemaHash(incoming.details);
+
       if (!existing) {
         const sanitized = { ...incoming, status: 'new' };
         delete sanitized._id;
@@ -112,24 +118,20 @@ export class SchemaRegistryService {
         this.logger.warn(
           `[NEW SCHEMA DETECTED] Bảng mới: ${incoming.tableName}`,
         );
-      } else if (
-        existing.hashValue !== incoming.hashValue ||
-        existing.details !== incoming.details
-      ) {
+      } else if (existing.hashValue !== incoming.hashValue) {
         // TRƯỜNG HỢP 2: Bảng đã có, nhưng cấu trúc thay đổi (Hash khác nhau)
         // Lưu details hiện tại vào oldDetails để làm lịch sử
-        const oldDetailsArray = existing.oldDetails || [];
-        oldDetailsArray.push(existing.details);
+        const currentDetails = existing.details || [];
 
         await this.registryModel.findOneAndUpdate(
           { tableName: incoming.tableName },
           {
             $set: {
               details: incoming.details,
-              hashValue: incoming.hashValue,
+              hashValue: incomingHash, 
               fieldsCount: incoming.fieldsCount,
               status: 'changed', // Cảnh báo cho Admin
-              oldDetails: oldDetailsArray,
+              oldDetails: currentDetails,
             },
           },
         );
@@ -229,5 +231,69 @@ export class SchemaRegistryService {
       { $set: { lastSyncTime: timestamp } },
       { new: true },
     );
+  }
+
+  async rejectSchemaWarning(tableName: string) {
+    const existing = await this.registryModel.findOne({ tableName });
+    if (!existing || existing.status !== 'changed') {
+      throw new BadRequestException('Không thể reject bảng này.');
+    }
+
+    const previousDetails = existing.oldDetails || [];
+    if (previousDetails.length === 0) {
+      throw new BadRequestException('Không có cấu trúc cũ để khôi phục.');
+    }
+
+    const badHash = existing.hashValue;
+    
+    const previousHash = generateSchemaHash(previousDetails);
+
+    return this.registryModel.findOneAndUpdate(
+      { tableName },
+      { 
+        $set: { 
+          status: 'stable',
+          details: previousDetails, // Phục hồi details từ oldDetails
+          hashValue: previousHash,  // Phục hồi hash
+          fieldsCount: previousDetails.length,
+          oldDetails: []
+        },
+        $addToSet: { ignoredHashes: badHash } 
+      },
+      { new: true },
+    );
+  }
+
+  async migrateAllToStandardHash() {
+    this.logger.log('--- BẮT ĐẦU MIGRATION CHUẨN HÓA HASH CHO SCHEMA REGISTRY ---');
+    
+    const allSchemas = await this.registryModel.find({}).exec();
+    let updatedCount = 0;
+    let failedCount = 0;
+
+    for (const schema of allSchemas) {
+      try {
+        const newStandardHash = generateSchemaHash(schema.details || []);
+
+        await this.registryModel.updateOne(
+          { _id: schema._id },
+          { $set: { hashValue: newStandardHash } }
+        );
+
+        updatedCount++;
+        this.logger.log(`[MIGRATED] Bảng ${schema.tableName}: ${schema.hashValue} -> ${newStandardHash}`);
+      } catch (error: any) {
+        this.logger.error(`[LỖI MIGRATION] Bảng ${schema.tableName}: ${error.message}`);
+        failedCount++;
+      }
+    }
+
+    this.logger.log(`--- HOÀN TẤT MIGRATION: ${updatedCount} thành công, ${failedCount} thất bại ---`);
+    return {
+      message: 'Migration hoàn tất',
+      total: allSchemas.length,
+      updated: updatedCount,
+      failed: failedCount
+    };
   }
 }
