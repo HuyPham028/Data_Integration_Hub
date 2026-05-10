@@ -5,10 +5,15 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { snakeToCamel } from '../utils/string.util';
+import { SchemaRegistryService } from 'src/common/schema-registry/schema-registry.service';
+import { RoleSettings } from 'src/modules/users/users.service';
 
 @Injectable()
 export class MasterDataService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private schemaRegistryService: SchemaRegistryService
+  ) { }
 
   private getModel(tableName: string) {
     const modelName = snakeToCamel(tableName);
@@ -84,5 +89,39 @@ export class MasterDataService {
     const model = this.getModel(tableName);
     await this.findOne(tableName, id);
     return model.delete({ where: { id: Number(id) } });
+  }
+
+  async getAllowedTablesForUser(user: any) {
+    const allSchemas = await this.schemaRegistryService.getAllSchema();
+
+    const mappedSchemas = allSchemas.map((schema) => ({
+      id: schema.tableName,
+      name: schema.tableName,
+      description: schema.description || `Dữ liệu bảng ${schema.tableName}`,
+    }));
+
+
+    const settings = user.roleSettings as RoleSettings | null;
+    if (!settings) return [];
+
+    const allowedPatterns = [
+      ...(settings.readScopes || []),
+      ...(settings.writeScopes || []),
+    ];
+
+    if (allowedPatterns.length === 0) return [];
+
+    const allowedTables = mappedSchemas.filter((table) => {
+      return allowedPatterns.some((pattern) => {
+        try {
+          const regex = new RegExp(pattern);
+          return regex.test(table.id);
+        } catch (e) {
+          return false;
+        }
+      });
+    });
+
+    return allowedTables;
   }
 }
