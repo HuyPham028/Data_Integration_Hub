@@ -121,6 +121,15 @@ export const BackupAPI = {
     const response = await apiClient.post('/backup/cleanup');
     return response.data;
   },
+  syncToS3: async (key: string) => {
+    const response = await apiClient.post('/backup/sync-s3', { key });
+    return response.data;
+  },
+
+  syncAllToS3: async () => {
+    const response = await apiClient.post('/backup/sync-s3/all');
+    return response.data;
+  },
 };
 
 export const JobAPI = {
