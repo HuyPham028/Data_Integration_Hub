@@ -38,4 +38,9 @@ export class SchemaRegistryController {
   async runDetector(@Body() incomingData: any[]) {
     return this.schemaRegistryService.detectSchemaChanges(incomingData);
   }
+
+  // @Post('migrate-standard-hash')
+  // async runHashMigration() {
+  //   return this.schemaRegistryService.migrateAllToStandardHash();
+  // }
 }
