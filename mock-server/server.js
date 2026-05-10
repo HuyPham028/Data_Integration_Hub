@@ -1,4 +1,4 @@
-/**
+﻿/**
  * =======================================================================
  * MOCK SOURCE SERVER — Collision Defense Test Suite
  * Data Integration Hub Capstone Project
@@ -15,16 +15,16 @@ const cors = require("cors");
 
 const app = express();
 const PORT = 3001;
-const MOCK_TOKEN = process.env.MOCK_TOKEN || 'mock-secret-2026';
+const MOCK_TOKEN = process.env.MOCK_TOKEN || "mock-secret-2026";
 
 app.use(cors());
 app.use(express.json());
 
 app.use((req, res, next) => {
-  if (req.path === '/') return next();
-  const token = req.query.accessToken || req.headers['x-api-key'];
+  if (req.path === "/") return next();
+  const token = req.query.accessToken || req.headers["x-api-key"];
   if (token !== MOCK_TOKEN) {
-    return res.status(401).json({ success: false, message: 'Unauthorized' });
+    return res.status(401).json({ success: false, message: "Unauthorized" });
   }
   next();
 });
@@ -716,6 +716,74 @@ app.get("/perf/incremental-test", (req, res) => {
 });
 
 // -----------------------------------------------------------------------
+// nh_van_bang — 100 000 records, generated deterministically at startup
+// Fields: id, maNguoiHoc, cccdSo, maCtdt, maNganh, tnSoQd, tnNgayQd,
+//         tnXepLoai, vbNgayCap, vbSoHieu, vbSoVaoSoGoc, nhDaoTaoId
+// PK: id (Int @id @default(autoincrement())) — source phải cung cấp
+// -----------------------------------------------------------------------
+const NH_VAN_BANG_TOTAL = 100000;
+
+console.log(
+  "[INIT] Generating nh_van_bang dataset (" +
+    NH_VAN_BANG_TOTAL +
+    " records)...",
+);
+const _t0 = Date.now();
+
+const _maCtdtList = [
+  "KHMT",
+  "KTPM",
+  "KTDT",
+  "HTTT",
+  "QTKD",
+  "KTXD",
+  "CNSH",
+  "VLKT",
+];
+const _maNganhList = [
+  "7480101",
+  "7480103",
+  "7520207",
+  "7340101",
+  "7580201",
+  "7420101",
+  "7510401",
+];
+const _xepLoaiList = [
+  "Xuat sac",
+  "Gioi",
+  "Kha",
+  "Trung binh kha",
+  "Trung binh",
+];
+
+const nhVanBangDataset = Array.from({ length: NH_VAN_BANG_TOTAL }, (_, i) => {
+  const gradYear = 2015 + (Math.floor(i / 10000) % 10); // spread 2015-2024
+  const seq = String(i + 1).padStart(6, "0");
+  const studentYear = gradYear - 4;
+  const month = 5 + (i % 3); // June/July/August graduation
+  const day = 1 + (i % 25);
+  const issueDay = 1 + ((i + 5) % 27);
+
+  return {
+    id: i + 1,
+    maNguoiHoc: studentYear + seq.slice(0, 7), // e.g. "20110000001"  ≤20
+    cccdSo: String(100000000000 + i), // 12-digit  ≤20
+    maCtdt: _maCtdtList[i % _maCtdtList.length], // ≤50
+    maNganh: _maNganhList[i % _maNganhList.length], // ≤50
+    tnSoQd: "QD-" + gradYear + "-" + seq, // ≤50
+    tnNgayQd: new Date(gradYear, month, day).toISOString(),
+    tnXepLoai: _xepLoaiList[i % _xepLoaiList.length], // ≤50
+    vbNgayCap: new Date(gradYear, month + 2, issueDay).toISOString(),
+    vbSoHieu: "VB-" + gradYear + "-" + seq, // ≤50
+    vbSoVaoSoGoc: "SG-" + gradYear + "-" + seq, // ≤50
+    nhDaoTaoId: null,  // nullable FK — avoid constraint violation in demo
+  };
+});
+
+console.log("[INIT] nh_van_bang ready in " + (Date.now() - _t0) + "ms");
+
+// -----------------------------------------------------------------------
 // ✅ TC-01 — HAPPY PATH (Đặt CUỐI CÙNG để không chặn /test/* routes)
 // Defense: Baseline — Toàn bộ pipeline chạy thành công
 // -----------------------------------------------------------------------
@@ -726,199 +794,233 @@ const happyPathDatasets = {
     { id: 3, ma: "O", ten: "Khác", active: false },
   ],
 
-  // ── 22 bảng danh mục cần mock ──────────────────────────────────────────
+  // ── 22 bảng danh mục cần mock (field names khớp schema.prisma) ─────────
 
+  // ma VarChar(5), ten VarChar(50)
   dm_chuc_danh_khoa_hoc: [
-    { maChucDanh: "GS", tenChucDanh: "Giáo sư" },
-    { maChucDanh: "PGS", tenChucDanh: "Phó Giáo sư" },
-    { maChucDanh: "TS", tenChucDanh: "Tiến sĩ" },
-    { maChucDanh: "ThS", tenChucDanh: "Thạc sĩ" },
-    { maChucDanh: "CN", tenChucDanh: "Cử nhân" },
-    { maChucDanh: "KS", tenChucDanh: "Kỹ sư" },
-    { maChucDanh: "BS", tenChucDanh: "Bác sĩ" },
+    { ma: "GS", ten: "Giáo sư", active: true },
+    { ma: "PGS", ten: "Phó Giáo sư", active: true },
+    { ma: "TS", ten: "Tiến sĩ", active: true },
+    { ma: "ThS", ten: "Thạc sĩ", active: true },
+    { ma: "CN", ten: "Cử nhân", active: true },
+    { ma: "KS", ten: "Kỹ sư", active: true },
+    { ma: "BS", ten: "Bác sĩ", active: true },
   ],
 
+  // ma VarChar(20), ten VarChar(100), ngoaiNgu VarChar(5)
   dm_dt_chung_chi_ngoai_ngu: [
-    { maCcnn: "IELTS", tenCcnn: "IELTS", tenNgoaiNgu: "Tiếng Anh" },
-    { maCcnn: "TOEFL", tenCcnn: "TOEFL iBT", tenNgoaiNgu: "Tiếng Anh" },
-    { maCcnn: "TOEIC", tenCcnn: "TOEIC", tenNgoaiNgu: "Tiếng Anh" },
-    { maCcnn: "DELF", tenCcnn: "DELF/DALF", tenNgoaiNgu: "Tiếng Pháp" },
-    { maCcnn: "JLPT", tenCcnn: "JLPT", tenNgoaiNgu: "Tiếng Nhật" },
-    { maCcnn: "HSK", tenCcnn: "HSK", tenNgoaiNgu: "Tiếng Trung" },
-    { maCcnn: "TOPIK", tenCcnn: "TOPIK", tenNgoaiNgu: "Tiếng Hàn" },
+    { ma: "IELTS", ten: "IELTS", ngoaiNgu: "EN", active: true },
+    { ma: "TOEFL", ten: "TOEFL iBT", ngoaiNgu: "EN", active: true },
+    { ma: "TOEIC", ten: "TOEIC", ngoaiNgu: "EN", active: true },
+    { ma: "DELF", ten: "DELF/DALF", ngoaiNgu: "FR", active: true },
+    { ma: "JLPT", ten: "JLPT", ngoaiNgu: "JA", active: true },
+    { ma: "HSK", ten: "HSK", ngoaiNgu: "ZH", active: true },
+    { ma: "TOPIK", ten: "TOPIK", ngoaiNgu: "KO", active: true },
   ],
 
+  // ma VarChar(5), ten VarChar(200)
   dm_dt_doi_tuong_anqp: [
-    { maDtAnqp: "DT1", tenDtAnqp: "Đối tượng 1 - Miễn học phần GDQPAN" },
-    { maDtAnqp: "DT2", tenDtAnqp: "Đối tượng 2 - Miễn học phần 1" },
-    { maDtAnqp: "DT3", tenDtAnqp: "Đối tượng 3 - Học đầy đủ" },
-    { maDtAnqp: "DT4", tenDtAnqp: "Đối tượng 4 - Tạm hoãn" },
+    { ma: "DT1", ten: "Đối tượng 1 - Miễn học phần GDQPAN", active: true },
+    { ma: "DT2", ten: "Đối tượng 2 - Miễn học phần 1", active: true },
+    { ma: "DT3", ten: "Đối tượng 3 - Học đầy đủ", active: true },
+    { ma: "DT4", ten: "Đối tượng 4 - Tạm hoãn", active: true },
   ],
 
+  // nhomLuong VarChar(10) @unique, tenBacLuong VarChar(10)
   dm_nhom_luong: [
-    { nhomLuong: "A", maBacLuong: 3, tenBacLuong: "Nhom A", heSoLuong: 3.00 },
+    { nhomLuong: "A", maBacLuong: 3, tenBacLuong: "Nhom A", heSoLuong: 3.0 },
     { nhomLuong: "B", maBacLuong: 3, tenBacLuong: "Nhom B", heSoLuong: 2.26 },
     { nhomLuong: "C", maBacLuong: 2, tenBacLuong: "Nhom C", heSoLuong: 1.65 },
+    // VarChar(10) violation → Dead Letter Log, 3 record trên vẫn sync thành công
+    {
+      nhomLuong: "D",
+      maBacLuong: 1,
+      tenBacLuong: "Nhom luong DAC BIET vuot gioi han",
+      heSoLuong: 9.99,
+    },
   ],
 
+  // ma VarChar(5), ten VarChar(50)
   dm_trinh_do_pho_thong: [
-    { maTrinhDo: "TH", tenTrinhDo: "Tiểu học" },
-    { maTrinhDo: "THCS", tenTrinhDo: "Trung học cơ sở" },
-    { maTrinhDo: "THPT", tenTrinhDo: "Trung học phổ thông" },
-    { maTrinhDo: "BTTH", tenTrinhDo: "Bổ túc trung học" },
+    { ma: "TH", ten: "Tiểu học", active: true },
+    { ma: "THCS", ten: "Trung học cơ sở", active: true },
+    { ma: "THPT", ten: "Trung học phổ thông", active: true },
+    { ma: "BTTH", ten: "Bổ túc trung học", active: true },
   ],
 
+  // ma VarChar(20), ten VarChar(100), loaiVtvl VarChar(20)?
   dm_vi_tri_viec_lam: [
-    { maViTri: "GV", tenViTri: "Giảng viên" },
-    { maViTri: "GVC", tenViTri: "Giảng viên chính" },
-    { maViTri: "GVCC", tenViTri: "Giảng viên cao cấp" },
-    { maViTri: "NC", tenViTri: "Nghiên cứu viên" },
-    { maViTri: "CV", tenViTri: "Chuyên viên" },
-    { maViTri: "CVC", tenViTri: "Chuyên viên chính" },
-    { maViTri: "CVCC", tenViTri: "Chuyên viên cao cấp" },
-    { maViTri: "KT", tenViTri: "Kỹ thuật viên" },
+    { ma: "GV", ten: "Giảng viên", loaiVtvl: "GD", active: true },
+    { ma: "GVC", ten: "Giảng viên chính", loaiVtvl: "GD", active: true },
+    { ma: "GVCC", ten: "Giảng viên cao cấp", loaiVtvl: "GD", active: true },
+    { ma: "NC", ten: "Nghiên cứu viên", loaiVtvl: "NC", active: true },
+    { ma: "CV", ten: "Chuyên viên", loaiVtvl: "HC", active: true },
+    { ma: "CVC", ten: "Chuyên viên chính", loaiVtvl: "HC", active: true },
+    { ma: "CVCC", ten: "Chuyên viên cao cấp", loaiVtvl: "HC", active: true },
   ],
 
+  // ma VarChar(5), ten VarChar(100)
   dm_doi_tuong_chinh_sach: [
-    { maDtCs: "CS1", tenDtCs: "Con liệt sĩ" },
-    { maDtCs: "CS2", tenDtCs: "Con thương binh loại 1/4" },
-    { maDtCs: "CS3", tenDtCs: "Con thương binh loại 2/4" },
-    { maDtCs: "CS4", tenDtCs: "Dân tộc thiểu số" },
-    { maDtCs: "CS5", tenDtCs: "Người khuyết tật" },
-    { maDtCs: "CS6", tenDtCs: "Hộ nghèo" },
-    { maDtCs: "CS7", tenDtCs: "Hộ cận nghèo" },
+    { ma: "CS1", ten: "Con liệt sĩ", active: true },
+    { ma: "CS2", ten: "Con thương binh loại 1/4", active: true },
+    { ma: "CS3", ten: "Con thương binh loại 2/4", active: true },
+    { ma: "CS4", ten: "Dân tộc thiểu số", active: true },
+    { ma: "CS5", ten: "Người khuyết tật", active: true },
+    { ma: "CS6", ten: "Hộ nghèo", active: true },
+    { ma: "CS7", ten: "Hộ cận nghèo", active: true },
   ],
 
+  // ma VarChar(5), ten VarChar(100)
   dm_dt_chung_chi_tin_hoc: [
-    { maCcTh: "A", tenCcTh: "Chứng chỉ Tin học A" },
-    { maCcTh: "B", tenCcTh: "Chứng chỉ Tin học B" },
-    { maCcTh: "IC3", tenCcTh: "IC3 - Internet and Computing Core" },
-    { maCcTh: "MOS", tenCcTh: "Microsoft Office Specialist" },
-    { maCcTh: "ICDL", tenCcTh: "ICDL - International Computer Driving Licence" },
+    { ma: "A", ten: "Chứng chỉ Tin học A", active: true },
+    { ma: "B", ten: "Chứng chỉ Tin học B", active: true },
+    { ma: "IC3", ten: "IC3 Computing Core", active: true },
+    { ma: "MOS", ten: "Microsoft Office Specialist", active: true },
+    { ma: "ICDL", ten: "ICDL", active: true },
   ],
 
+  // ma VarChar(5), ten VarChar(50)
   dm_dt_hinh_thuc_cm: [
-    { maHtCm: "DH", tenHtCm: "Đại học chính quy" },
-    { maHtCm: "VLVH", tenHtCm: "Vừa làm vừa học" },
-    { maHtCm: "LT", tenHtCm: "Liên thông" },
-    { maHtCm: "BDCM", tenHtCm: "Bồi dưỡng chuyên môn" },
-    { maHtCm: "TDH", tenHtCm: "Tự đào tạo" },
+    { ma: "DH", ten: "Đại học chính quy", active: true },
+    { ma: "VLVH", ten: "Vừa làm vừa học", active: true },
+    { ma: "LT", ten: "Liên thông", active: true },
+    { ma: "BDCM", ten: "Bồi dưỡng chuyên môn", active: true },
+    { ma: "TDH", ten: "Tự đào tạo", active: true },
   ],
 
+  // ma VarChar(5), ten VarChar(100)
   dm_dt_van_bang_llct: [
-    { maVbLlct: "SC", tenVbLlct: "Sơ cấp lý luận chính trị" },
-    { maVbLlct: "TC", tenVbLlct: "Trung cấp lý luận chính trị" },
-    { maVbLlct: "CC", tenVbLlct: "Cao cấp lý luận chính trị" },
-    { maVbLlct: "CD", tenVbLlct: "Cử nhân chính trị" },
+    { ma: "SC", ten: "Sơ cấp lý luận chính trị", active: true },
+    { ma: "TC", ten: "Trung cấp lý luận chính trị", active: true },
+    { ma: "CC", ten: "Cao cấp lý luận chính trị", active: true },
+    { ma: "CD", ten: "Cử nhân chính trị", active: true },
   ],
 
+  // ma VarChar(20), ten VarChar(100)
   dm_ngach_cdnn: [
-    { maNgach: "15.111", tenNgach: "Giảng viên cao cấp", heSo: 6.20 },
-    { maNgach: "15.112", tenNgach: "Giảng viên chính", heSo: 4.40 },
-    { maNgach: "15.113", tenNgach: "Giảng viên", heSo: 2.34 },
-    { maNgach: "01.003", tenNgach: "Chuyên viên cao cấp", heSo: 6.20 },
-    { maNgach: "01.004", tenNgach: "Chuyên viên chính", heSo: 4.40 },
-    { maNgach: "01.005", tenNgach: "Chuyên viên", heSo: 2.34 },
+    { ma: "15.111", ten: "Giảng viên cao cấp", active: true },
+    { ma: "15.112", ten: "Giảng viên chính", active: true },
+    { ma: "15.113", ten: "Giảng viên", active: true },
+    { ma: "01.003", ten: "Chuyên viên cao cấp", active: true },
+    { ma: "01.004", ten: "Chuyên viên chính", active: true },
+    { ma: "01.005", ten: "Chuyên viên", active: true },
   ],
 
+  // ma VarChar(10), ten VarChar(100)
   dm_noi_cap_cccd: [
-    { maNoiCap: "CA-HCM", tenNoiCap: "Cục Cảnh sát QLHC về TTXH - TP. HCM" },
-    { maNoiCap: "CA-HN", tenNoiCap: "Cục Cảnh sát QLHC về TTXH - Hà Nội" },
-    { maNoiCap: "CA-DN", tenNoiCap: "Cục Cảnh sát QLHC về TTXH - Đà Nẵng" },
-    { maNoiCap: "CA-BD", tenNoiCap: "Công an tỉnh Bình Dương" },
-    { maNoiCap: "CA-LA", tenNoiCap: "Công an tỉnh Long An" },
-    { maNoiCap: "CA-AG", tenNoiCap: "Công an tỉnh An Giang" },
+    { ma: "CA-HCM", ten: "Công an TP. Hồ Chí Minh", active: true },
+    { ma: "CA-HN", ten: "Công an TP. Hà Nội", active: true },
+    { ma: "CA-DN", ten: "Công an TP. Đà Nẵng", active: true },
+    { ma: "CA-BD", ten: "Công an tỉnh Bình Dương", active: true },
+    { ma: "CA-LA", ten: "Công an tỉnh Long An", active: true },
+    { ma: "CA-AG", ten: "Công an tỉnh An Giang", active: true },
   ],
 
+  // ma VarChar(50), ten VarChar(500)
   dm_xep_loai_chuyen_mon: [
-    { maXepLoai: "XS", tenXepLoai: "Xuất sắc" },
-    { maXepLoai: "G", tenXepLoai: "Giỏi" },
-    { maXepLoai: "K", tenXepLoai: "Khá" },
-    { maXepLoai: "TB", tenXepLoai: "Trung bình" },
-    { maXepLoai: "TBK", tenXepLoai: "Trung bình khá" },
-    { maXepLoai: "Y", tenXepLoai: "Yếu" },
+    { ma: "XS", ten: "Xuất sắc", active: true },
+    { ma: "G", ten: "Giỏi", active: true },
+    { ma: "K", ten: "Khá", active: true },
+    { ma: "TBK", ten: "Trung bình khá", active: true },
+    { ma: "TB", ten: "Trung bình", active: true },
+    { ma: "Y", ten: "Yếu", active: true },
   ],
 
+  // ma VarChar(5), ten VarChar(50)
   dm_dt_ngoai_ngu: [
-    { maNgoaiNgu: "EN", tenNgoaiNgu: "Tiếng Anh" },
-    { maNgoaiNgu: "FR", tenNgoaiNgu: "Tiếng Pháp" },
-    { maNgoaiNgu: "RU", tenNgoaiNgu: "Tiếng Nga" },
-    { maNgoaiNgu: "ZH", tenNgoaiNgu: "Tiếng Trung" },
-    { maNgoaiNgu: "JA", tenNgoaiNgu: "Tiếng Nhật" },
-    { maNgoaiNgu: "KO", tenNgoaiNgu: "Tiếng Hàn" },
-    { maNgoaiNgu: "DE", tenNgoaiNgu: "Tiếng Đức" },
+    { ma: "EN", ten: "Tiếng Anh", active: true },
+    { ma: "FR", ten: "Tiếng Pháp", active: true },
+    { ma: "RU", ten: "Tiếng Nga", active: true },
+    { ma: "ZH", ten: "Tiếng Trung", active: true },
+    { ma: "JA", ten: "Tiếng Nhật", active: true },
+    { ma: "KO", ten: "Tiếng Hàn", active: true },
+    { ma: "DE", ten: "Tiếng Đức", active: true },
   ],
 
+  // ma VarChar(5), ten VarChar(70)
   dm_loai_chuc_vu: [
-    { maLoaiChucVu: "LCV1", tenLoaiChucVu: "Lãnh đạo cấp Bộ" },
-    { maLoaiChucVu: "LCV2", tenLoaiChucVu: "Lãnh đạo cấp Trường" },
-    { maLoaiChucVu: "LCV3", tenLoaiChucVu: "Lãnh đạo cấp Khoa/Phòng" },
-    { maLoaiChucVu: "LCV4", tenLoaiChucVu: "Lãnh đạo cấp Bộ môn" },
-    { maLoaiChucVu: "NV", tenLoaiChucVu: "Nhân viên/Chuyên viên" },
+    { ma: "LCV1", ten: "Lãnh đạo cấp Bộ", active: true },
+    { ma: "LCV2", ten: "Lãnh đạo cấp Trường", active: true },
+    { ma: "LCV3", ten: "Lãnh đạo cấp Khoa/Phòng", active: true },
+    { ma: "LCV4", ten: "Lãnh đạo cấp Bộ môn", active: true },
+    { ma: "NV", ten: "Nhân viên/Chuyên viên", active: true },
   ],
 
+  // ma VarChar(10), ten VarChar(100)
   dm_loai_phu_cap: [
-    { maLoaiPhuCap: "PCTN", tenLoaiPhuCap: "Phụ cấp thâm niên" },
-    { maLoaiPhuCap: "PCCV", tenLoaiPhuCap: "Phụ cấp chức vụ" },
-    { maLoaiPhuCap: "PCDK", tenLoaiPhuCap: "Phụ cấp độc hại" },
-    { maLoaiPhuCap: "PCUU", tenLoaiPhuCap: "Phụ cấp ưu đãi ngành" },
-    { maLoaiPhuCap: "PCTA", tenLoaiPhuCap: "Phụ cấp trách nhiệm" },
-    { maLoaiPhuCap: "PCHT", tenLoaiPhuCap: "Phụ cấp hỗ trợ" },
+    { ma: "PCTN", ten: "Phụ cấp thâm niên", active: true },
+    { ma: "PCCV", ten: "Phụ cấp chức vụ", active: true },
+    { ma: "PCDK", ten: "Phụ cấp độc hại", active: true },
+    { ma: "PCUU", ten: "Phụ cấp ưu đãi ngành", active: true },
+    { ma: "PCTA", ten: "Phụ cấp trách nhiệm", active: true },
+    { ma: "PCHT", ten: "Phụ cấp hỗ trợ", active: true },
   ],
 
+  // ma VarChar(20), ten VarChar(200)
   dm_ngan_hang: [
-    { maNganHang: "VCB", tenNganHang: "Vietcombank" },
-    { maNganHang: "BIDV", tenNganHang: "BIDV" },
-    { maNganHang: "VTB", tenNganHang: "Vietinbank" },
-    { maNganHang: "AGRIB", tenNganHang: "Agribank" },
-    { maNganHang: "TCB", tenNganHang: "Techcombank" },
-    { maNganHang: "MB", tenNganHang: "MB Bank" },
-    { maNganHang: "ACB", tenNganHang: "ACB" },
-    { maNganHang: "VPB", tenNganHang: "VPBank" },
-    { maNganHang: "SCB", tenNganHang: "Sacombank" },
+    { ma: "VCB", ten: "Vietcombank", active: true },
+    { ma: "BIDV", ten: "BIDV", active: true },
+    { ma: "VTB", ten: "Vietinbank", active: true },
+    { ma: "AGRIB", ten: "Agribank", active: true },
+    { ma: "TCB", ten: "Techcombank", active: true },
+    { ma: "MB", ten: "MB Bank", active: true },
+    { ma: "ACB", ten: "ACB", active: true },
+    { ma: "VPB", ten: "VPBank", active: true },
+    { ma: "SCB", ten: "Sacombank", active: true },
+    { ma: "SCB", ten: "Sacombank", active: true, diachi: "HCM" },
   ],
 
+  // ma VarChar(20), ten VarChar(200)
   dm_chuyen_nganh_bgd: [
-    { maCn: "480101", tenCn: "Khoa học máy tính", capDaoTao: "ĐH" },
-    { maCn: "480102", tenCn: "Mạng máy tính và truyền thông", capDaoTao: "ĐH" },
-    { maCn: "480103", tenCn: "Kỹ thuật phần mềm", capDaoTao: "ĐH" },
-    { maCn: "520201", tenCn: "Kỹ thuật điện", capDaoTao: "ĐH" },
-    { maCn: "520207", tenCn: "Kỹ thuật điện tử - viễn thông", capDaoTao: "ĐH" },
-    { maCn: "580101", tenCn: "Khoa học máy tính", capDaoTao: "ThS" },
-    { maCn: "580201", tenCn: "Kỹ thuật điện", capDaoTao: "ThS" },
+    { ma: "480101", ten: "Khoa học máy tính", active: true },
+    {
+      ma: "480102",
+      ten: "Mạng máy tính và truyền thông dữ liệu",
+      active: true,
+    },
+    { ma: "480103", ten: "Kỹ thuật phần mềm", active: true },
+    { ma: "520201", ten: "Kỹ thuật điện", active: true },
+    { ma: "520207", ten: "Kỹ thuật điện tử - viễn thông", active: true },
   ],
 
+  // ma VarChar(5), ten VarChar(200)
   dm_danh_hieu_nha_nuoc: [
-    { maDanhHieu: "NGND", tenDanhHieu: "Nhà giáo nhân dân" },
-    { maDanhHieu: "NGUT", tenDanhHieu: "Nhà giáo ưu tú" },
-    { maDanhHieu: "NSND", tenDanhHieu: "Nghệ sĩ nhân dân" },
-    { maDanhHieu: "NSUT", tenDanhHieu: "Nghệ sĩ ưu tú" },
-    { maDanhHieu: "AHLĐ", tenDanhHieu: "Anh hùng lao động" },
-    { maDanhHieu: "AHLLVT", tenDanhHieu: "Anh hùng lực lượng vũ trang" },
+    { ma: "NGND", ten: "Nhà giáo nhân dân", active: true },
+    { ma: "NGUT", ten: "Nhà giáo ưu tú", active: true },
+    { ma: "NSND", ten: "Nghệ sĩ nhân dân", active: true },
+    { ma: "NSUT", ten: "Nghệ sĩ ưu tú", active: true },
+    { ma: "AHLD", ten: "Anh hùng lao động", active: true },
+    { ma: "AHLVT", ten: "Anh hùng lực lượng vũ trang", active: true },
   ],
 
+  // ma VarChar(5), ten VarChar(100)
   dm_dt_chung_chi_bdnv: [
-    { maCcBdnv: "QLGD", tenCcBdnv: "Chứng chỉ Quản lý giáo dục" },
-    { maCcBdnv: "NVSP", tenCcBdnv: "Chứng chỉ Nghiệp vụ sư phạm" },
-    { maCcBdnv: "QLNN", tenCcBdnv: "Chứng chỉ Quản lý nhà nước" },
-    { maCcBdnv: "BDTX", tenCcBdnv: "Chứng chỉ Bồi dưỡng thường xuyên" },
-    { maCcBdnv: "CCDG", tenCcBdnv: "Chứng chỉ Chức danh giảng viên" },
+    { ma: "QLGD", ten: "Chứng chỉ Quản lý giáo dục", active: true },
+    { ma: "NVSP", ten: "Chứng chỉ Nghiệp vụ sư phạm", active: true },
+    { ma: "QLNN", ten: "Chứng chỉ Quản lý nhà nước", active: true },
+    { ma: "BDTX", ten: "Chứng chỉ Bồi dưỡng thường xuyên", active: true },
+    { ma: "CCDG", ten: "Chứng chỉ Chức danh giảng viên", active: true },
   ],
 
+  // ma VarChar(5), ten VarChar(50)
   dm_dt_hinh_thuc_llct: [
-    { maHtLlct: "TT", tenHtLlct: "Tập trung" },
-    { maHtLlct: "VLVH", tenHtLlct: "Vừa làm vừa học" },
-    { maHtLlct: "TDH", tenHtLlct: "Tự nghiên cứu" },
-    { maHtLlct: "TT_NN", tenHtLlct: "Tập trung tại nước ngoài" },
+    { ma: "TT", ten: "Tập trung", active: true },
+    { ma: "VLVH", ten: "Vừa làm vừa học", active: true },
+    { ma: "TDH", ten: "Tự nghiên cứu", active: true },
+    { ma: "TTNN", ten: "Tập trung nước ngoài", active: true },
   ],
 
+  // dm_gioi_tinh_2 chưa có trong schema.prisma — dùng cùng cấu trúc dm_gioi_tinh
   dm_gioi_tinh_2: [
-    { maGioiTinh: "1", tenGioiTinh: "Nam" },
-    { maGioiTinh: "2", tenGioiTinh: "Nữ" },
-    { maGioiTinh: "0", tenGioiTinh: "Không xác định" },
+    { ma: "M", ten: "Nam", active: true },
+    { ma: "F", ten: "Nữ", active: true },
+    { ma: "O", ten: "Khác", active: true },
   ],
 
-  // ── Bảng nghiệp vụ (giữ nguyên) ────────────────────────────────────────
+  // ── Bảng nghiệp vụ (field names khớp schema.prisma) ────────────────────
+
+  // nh_van_bang: 100 000 records pre-generated above
+  nh_van_bang: nhVanBangDataset,
 
   // KHÔNG gửi "id" — tcns_can_bo dùng id @default(autoincrement())
   // PK để upsert là "shcc" (@unique) → config SchemaRegistry primaryKey=["shcc"]
