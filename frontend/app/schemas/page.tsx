@@ -11,6 +11,7 @@ import {
   Loader2, Server, AlertTriangle, CheckCircle, 
   Copy, Check, ArrowRight, FileJson
 } from "lucide-react";
+import ConfirmDialog from '@/components/modals/ConfirmModal';
 
 // --- CÁC HÀM LOGIC XỬ LÝ DIFF & PRISMA GENERATOR ---
 
@@ -89,6 +90,8 @@ export default function SchemaRegistryPage() {
   const [confirmPrismaUpdated, setConfirmPrismaUpdated] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
 
+  const [isOpen, setIsOpen] = useState(false);
+
   // Fetch Data
   const fetchSchemas = async () => {
     setLoading(true);
@@ -124,16 +127,13 @@ export default function SchemaRegistryPage() {
 
   const handleReject = async () => {
     if (!selectedSchema) return;
-    const confirmed = window.confirm(
-      "Bạn có chắc muốn TỪ CHỐI thay đổi này?\n\nHệ thống sẽ khôi phục cấu trúc cũ và bỏ qua sự thay đổi này của API trong tương lai."
-    );
-    if (!confirmed) return;
 
     setIsRejecting(true);
     try {
       await IntegrationAPI.rejectSchema(selectedSchema.tableName);
       setSelectedSchema(null);
       setConfirmPrismaUpdated(false);
+      setIsOpen(false);
       await fetchSchemas();
     } catch (error) {
       console.error("Lỗi khi Reject:", error);
@@ -349,7 +349,9 @@ export default function SchemaRegistryPage() {
             <div className="flex justify-between items-center mt-2">
               <Button
                 variant="outline"
-                onClick={handleReject}
+                onClick={() => {
+                  setIsOpen(true)
+                }}
                 disabled={isRejecting || isResolving}
                 className="text-rose-600 border-rose-200 hover:bg-rose-50"
               >
@@ -370,6 +372,21 @@ export default function SchemaRegistryPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={isOpen}
+        onOpenChange={setIsOpen}
+        title="Từ chối thay đổi?"
+        description="
+          Hệ thống sẽ khôi phục cấu trúc cũ và bỏ qua
+          sự thay đổi này của API trong tương lai.
+        "
+        confirmText="Từ chối"
+        cancelText="Hủy"
+        destructive
+        loading={isRejecting}
+        onConfirm={handleReject}
+      />
     </div>
   );
 }
