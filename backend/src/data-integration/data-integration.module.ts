@@ -6,6 +6,7 @@ import { SchemaRegistryModule } from 'src/common/schema-registry/schema-registry
 import { SyncEngineModule } from 'src/modules/sync-engine/sync-engine.module';
 import { EventLogModule } from 'src/common/event-log/event-log.module';
 import { BackupModule } from 'src/modules/backup/backup.module';
+import { SourceConfigModule } from 'src/common/source-config/source-config.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { BackupModule } from 'src/modules/backup/backup.module';
     SyncEngineModule,
     EventLogModule,
     BackupModule,
+    SourceConfigModule,
   ],
   controllers: [DataIntegrationController],
   providers: [DataIntegrationService],

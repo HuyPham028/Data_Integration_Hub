@@ -9,6 +9,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { EventLogService } from 'src/common/event-log/event-log.service';
 import { MemoryProfiler } from 'src/utils/memory-profiler';
 import { NotificationService } from 'src/common/notification/notification.service';
+import { SourceConfigService } from 'src/common/source-config/source-config.service';
 import { inferDataTypeFromBatch } from 'src/utils/string.util';
 
 interface SourceApiMetadata {
@@ -57,11 +58,26 @@ export class DataIntegrationService {
     private readonly eventLogService: EventLogService,
     private readonly backupService: BackupService,
     private readonly notificationService: NotificationService,
+    private readonly sourceConfigService: SourceConfigService,
   ) {}
 
   // ---------------------------------------------------------------------------
   // HELPERS
   // ---------------------------------------------------------------------------
+
+  private async resolveSourceCredentials(
+    dataFrom: string,
+  ): Promise<{ baseUrl: string; token: string }> {
+    const sourceConfig = await this.sourceConfigService.getBySourceId(dataFrom);
+    const baseUrl =
+      sourceConfig?.baseUrl ??
+      this.configService.get<string>('SOURCE_API_BASE_URL') ??
+      '';
+    const token =
+      sourceConfig?.token ??
+      this.configService.get<string>('SOURCE_API_TOKEN', '');
+    return { baseUrl, token };
+  }
 
   private broadcastLog(
     message: string,
@@ -466,9 +482,6 @@ export class DataIntegrationService {
         return { message: 'No tables ready for sync' };
       }
 
-      const baseUrl =
-        this.configService.get<string>('SOURCE_API_BASE_URL') ?? '';
-      const token = this.configService.get<string>('SOURCE_API_TOKEN', '');
       const syncResults: TableSyncResult[] = [];
 
       for (const schema of schemasToSync) {
@@ -495,6 +508,8 @@ export class DataIntegrationService {
           });
           continue;
         }
+
+        const { baseUrl, token } = await this.resolveSourceCredentials(schema.dataFrom);
 
         try {
           const { synced, skipped } = await this.syncOneTable(
@@ -670,8 +685,6 @@ export class DataIntegrationService {
         );
       }
 
-      const baseUrl = this.configService.get<string>('SOURCE_API_BASE_URL') ?? '';
-      const token = this.configService.get<string>('SOURCE_API_TOKEN', '');
       const syncResults: TableSyncResult[] = [];
 
       for (const schema of schemasToSync) {
@@ -685,6 +698,8 @@ export class DataIntegrationService {
           });
           continue;
         }
+
+        const { baseUrl, token } = await this.resolveSourceCredentials(schema.dataFrom);
 
         try {
           const { synced, skipped } = await this.syncOneTable(

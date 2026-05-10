@@ -15,9 +15,19 @@ const cors = require("cors");
 
 const app = express();
 const PORT = 3001;
+const MOCK_TOKEN = process.env.MOCK_TOKEN || 'mock-secret-2026';
 
 app.use(cors());
 app.use(express.json());
+
+app.use((req, res, next) => {
+  if (req.path === '/') return next();
+  const token = req.query.accessToken || req.headers['x-api-key'];
+  if (token !== MOCK_TOKEN) {
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
+  next();
+});
 
 // -----------------------------------------------------------------------
 // HELPER — Build chuẩn response phân trang theo API Contract
@@ -760,6 +770,201 @@ const happyPathDatasets = {
     { id: 2, ma: "F", ten: "Nữ", active: true },
     { id: 3, ma: "O", ten: "Khác", active: false },
   ],
+
+  // ── 22 bảng danh mục cần mock ──────────────────────────────────────────
+
+  dm_chuc_danh_khoa_hoc: [
+    { maChucDanh: "GS", tenChucDanh: "Giáo sư" },
+    { maChucDanh: "PGS", tenChucDanh: "Phó Giáo sư" },
+    { maChucDanh: "TS", tenChucDanh: "Tiến sĩ" },
+    { maChucDanh: "ThS", tenChucDanh: "Thạc sĩ" },
+    { maChucDanh: "CN", tenChucDanh: "Cử nhân" },
+    { maChucDanh: "KS", tenChucDanh: "Kỹ sư" },
+    { maChucDanh: "BS", tenChucDanh: "Bác sĩ" },
+  ],
+
+  dm_dt_chung_chi_ngoai_ngu: [
+    { maCcnn: "IELTS", tenCcnn: "IELTS", tenNgoaiNgu: "Tiếng Anh" },
+    { maCcnn: "TOEFL", tenCcnn: "TOEFL iBT", tenNgoaiNgu: "Tiếng Anh" },
+    { maCcnn: "TOEIC", tenCcnn: "TOEIC", tenNgoaiNgu: "Tiếng Anh" },
+    { maCcnn: "DELF", tenCcnn: "DELF/DALF", tenNgoaiNgu: "Tiếng Pháp" },
+    { maCcnn: "JLPT", tenCcnn: "JLPT", tenNgoaiNgu: "Tiếng Nhật" },
+    { maCcnn: "HSK", tenCcnn: "HSK", tenNgoaiNgu: "Tiếng Trung" },
+    { maCcnn: "TOPIK", tenCcnn: "TOPIK", tenNgoaiNgu: "Tiếng Hàn" },
+  ],
+
+  dm_dt_doi_tuong_anqp: [
+    { maDtAnqp: "DT1", tenDtAnqp: "Đối tượng 1 - Miễn học phần GDQPAN" },
+    { maDtAnqp: "DT2", tenDtAnqp: "Đối tượng 2 - Miễn học phần 1" },
+    { maDtAnqp: "DT3", tenDtAnqp: "Đối tượng 3 - Học đầy đủ" },
+    { maDtAnqp: "DT4", tenDtAnqp: "Đối tượng 4 - Tạm hoãn" },
+  ],
+
+  dm_nhom_luong: [
+    { nhomLuong: "A", maBacLuong: 3, tenBacLuong: "Nhom A", heSoLuong: 3.00 },
+    { nhomLuong: "B", maBacLuong: 3, tenBacLuong: "Nhom B", heSoLuong: 2.26 },
+    { nhomLuong: "C", maBacLuong: 2, tenBacLuong: "Nhom C", heSoLuong: 1.65 },
+  ],
+
+  dm_trinh_do_pho_thong: [
+    { maTrinhDo: "TH", tenTrinhDo: "Tiểu học" },
+    { maTrinhDo: "THCS", tenTrinhDo: "Trung học cơ sở" },
+    { maTrinhDo: "THPT", tenTrinhDo: "Trung học phổ thông" },
+    { maTrinhDo: "BTTH", tenTrinhDo: "Bổ túc trung học" },
+  ],
+
+  dm_vi_tri_viec_lam: [
+    { maViTri: "GV", tenViTri: "Giảng viên" },
+    { maViTri: "GVC", tenViTri: "Giảng viên chính" },
+    { maViTri: "GVCC", tenViTri: "Giảng viên cao cấp" },
+    { maViTri: "NC", tenViTri: "Nghiên cứu viên" },
+    { maViTri: "CV", tenViTri: "Chuyên viên" },
+    { maViTri: "CVC", tenViTri: "Chuyên viên chính" },
+    { maViTri: "CVCC", tenViTri: "Chuyên viên cao cấp" },
+    { maViTri: "KT", tenViTri: "Kỹ thuật viên" },
+  ],
+
+  dm_doi_tuong_chinh_sach: [
+    { maDtCs: "CS1", tenDtCs: "Con liệt sĩ" },
+    { maDtCs: "CS2", tenDtCs: "Con thương binh loại 1/4" },
+    { maDtCs: "CS3", tenDtCs: "Con thương binh loại 2/4" },
+    { maDtCs: "CS4", tenDtCs: "Dân tộc thiểu số" },
+    { maDtCs: "CS5", tenDtCs: "Người khuyết tật" },
+    { maDtCs: "CS6", tenDtCs: "Hộ nghèo" },
+    { maDtCs: "CS7", tenDtCs: "Hộ cận nghèo" },
+  ],
+
+  dm_dt_chung_chi_tin_hoc: [
+    { maCcTh: "A", tenCcTh: "Chứng chỉ Tin học A" },
+    { maCcTh: "B", tenCcTh: "Chứng chỉ Tin học B" },
+    { maCcTh: "IC3", tenCcTh: "IC3 - Internet and Computing Core" },
+    { maCcTh: "MOS", tenCcTh: "Microsoft Office Specialist" },
+    { maCcTh: "ICDL", tenCcTh: "ICDL - International Computer Driving Licence" },
+  ],
+
+  dm_dt_hinh_thuc_cm: [
+    { maHtCm: "DH", tenHtCm: "Đại học chính quy" },
+    { maHtCm: "VLVH", tenHtCm: "Vừa làm vừa học" },
+    { maHtCm: "LT", tenHtCm: "Liên thông" },
+    { maHtCm: "BDCM", tenHtCm: "Bồi dưỡng chuyên môn" },
+    { maHtCm: "TDH", tenHtCm: "Tự đào tạo" },
+  ],
+
+  dm_dt_van_bang_llct: [
+    { maVbLlct: "SC", tenVbLlct: "Sơ cấp lý luận chính trị" },
+    { maVbLlct: "TC", tenVbLlct: "Trung cấp lý luận chính trị" },
+    { maVbLlct: "CC", tenVbLlct: "Cao cấp lý luận chính trị" },
+    { maVbLlct: "CD", tenVbLlct: "Cử nhân chính trị" },
+  ],
+
+  dm_ngach_cdnn: [
+    { maNgach: "15.111", tenNgach: "Giảng viên cao cấp", heSo: 6.20 },
+    { maNgach: "15.112", tenNgach: "Giảng viên chính", heSo: 4.40 },
+    { maNgach: "15.113", tenNgach: "Giảng viên", heSo: 2.34 },
+    { maNgach: "01.003", tenNgach: "Chuyên viên cao cấp", heSo: 6.20 },
+    { maNgach: "01.004", tenNgach: "Chuyên viên chính", heSo: 4.40 },
+    { maNgach: "01.005", tenNgach: "Chuyên viên", heSo: 2.34 },
+  ],
+
+  dm_noi_cap_cccd: [
+    { maNoiCap: "CA-HCM", tenNoiCap: "Cục Cảnh sát QLHC về TTXH - TP. HCM" },
+    { maNoiCap: "CA-HN", tenNoiCap: "Cục Cảnh sát QLHC về TTXH - Hà Nội" },
+    { maNoiCap: "CA-DN", tenNoiCap: "Cục Cảnh sát QLHC về TTXH - Đà Nẵng" },
+    { maNoiCap: "CA-BD", tenNoiCap: "Công an tỉnh Bình Dương" },
+    { maNoiCap: "CA-LA", tenNoiCap: "Công an tỉnh Long An" },
+    { maNoiCap: "CA-AG", tenNoiCap: "Công an tỉnh An Giang" },
+  ],
+
+  dm_xep_loai_chuyen_mon: [
+    { maXepLoai: "XS", tenXepLoai: "Xuất sắc" },
+    { maXepLoai: "G", tenXepLoai: "Giỏi" },
+    { maXepLoai: "K", tenXepLoai: "Khá" },
+    { maXepLoai: "TB", tenXepLoai: "Trung bình" },
+    { maXepLoai: "TBK", tenXepLoai: "Trung bình khá" },
+    { maXepLoai: "Y", tenXepLoai: "Yếu" },
+  ],
+
+  dm_dt_ngoai_ngu: [
+    { maNgoaiNgu: "EN", tenNgoaiNgu: "Tiếng Anh" },
+    { maNgoaiNgu: "FR", tenNgoaiNgu: "Tiếng Pháp" },
+    { maNgoaiNgu: "RU", tenNgoaiNgu: "Tiếng Nga" },
+    { maNgoaiNgu: "ZH", tenNgoaiNgu: "Tiếng Trung" },
+    { maNgoaiNgu: "JA", tenNgoaiNgu: "Tiếng Nhật" },
+    { maNgoaiNgu: "KO", tenNgoaiNgu: "Tiếng Hàn" },
+    { maNgoaiNgu: "DE", tenNgoaiNgu: "Tiếng Đức" },
+  ],
+
+  dm_loai_chuc_vu: [
+    { maLoaiChucVu: "LCV1", tenLoaiChucVu: "Lãnh đạo cấp Bộ" },
+    { maLoaiChucVu: "LCV2", tenLoaiChucVu: "Lãnh đạo cấp Trường" },
+    { maLoaiChucVu: "LCV3", tenLoaiChucVu: "Lãnh đạo cấp Khoa/Phòng" },
+    { maLoaiChucVu: "LCV4", tenLoaiChucVu: "Lãnh đạo cấp Bộ môn" },
+    { maLoaiChucVu: "NV", tenLoaiChucVu: "Nhân viên/Chuyên viên" },
+  ],
+
+  dm_loai_phu_cap: [
+    { maLoaiPhuCap: "PCTN", tenLoaiPhuCap: "Phụ cấp thâm niên" },
+    { maLoaiPhuCap: "PCCV", tenLoaiPhuCap: "Phụ cấp chức vụ" },
+    { maLoaiPhuCap: "PCDK", tenLoaiPhuCap: "Phụ cấp độc hại" },
+    { maLoaiPhuCap: "PCUU", tenLoaiPhuCap: "Phụ cấp ưu đãi ngành" },
+    { maLoaiPhuCap: "PCTA", tenLoaiPhuCap: "Phụ cấp trách nhiệm" },
+    { maLoaiPhuCap: "PCHT", tenLoaiPhuCap: "Phụ cấp hỗ trợ" },
+  ],
+
+  dm_ngan_hang: [
+    { maNganHang: "VCB", tenNganHang: "Vietcombank" },
+    { maNganHang: "BIDV", tenNganHang: "BIDV" },
+    { maNganHang: "VTB", tenNganHang: "Vietinbank" },
+    { maNganHang: "AGRIB", tenNganHang: "Agribank" },
+    { maNganHang: "TCB", tenNganHang: "Techcombank" },
+    { maNganHang: "MB", tenNganHang: "MB Bank" },
+    { maNganHang: "ACB", tenNganHang: "ACB" },
+    { maNganHang: "VPB", tenNganHang: "VPBank" },
+    { maNganHang: "SCB", tenNganHang: "Sacombank" },
+  ],
+
+  dm_chuyen_nganh_bgd: [
+    { maCn: "480101", tenCn: "Khoa học máy tính", capDaoTao: "ĐH" },
+    { maCn: "480102", tenCn: "Mạng máy tính và truyền thông", capDaoTao: "ĐH" },
+    { maCn: "480103", tenCn: "Kỹ thuật phần mềm", capDaoTao: "ĐH" },
+    { maCn: "520201", tenCn: "Kỹ thuật điện", capDaoTao: "ĐH" },
+    { maCn: "520207", tenCn: "Kỹ thuật điện tử - viễn thông", capDaoTao: "ĐH" },
+    { maCn: "580101", tenCn: "Khoa học máy tính", capDaoTao: "ThS" },
+    { maCn: "580201", tenCn: "Kỹ thuật điện", capDaoTao: "ThS" },
+  ],
+
+  dm_danh_hieu_nha_nuoc: [
+    { maDanhHieu: "NGND", tenDanhHieu: "Nhà giáo nhân dân" },
+    { maDanhHieu: "NGUT", tenDanhHieu: "Nhà giáo ưu tú" },
+    { maDanhHieu: "NSND", tenDanhHieu: "Nghệ sĩ nhân dân" },
+    { maDanhHieu: "NSUT", tenDanhHieu: "Nghệ sĩ ưu tú" },
+    { maDanhHieu: "AHLĐ", tenDanhHieu: "Anh hùng lao động" },
+    { maDanhHieu: "AHLLVT", tenDanhHieu: "Anh hùng lực lượng vũ trang" },
+  ],
+
+  dm_dt_chung_chi_bdnv: [
+    { maCcBdnv: "QLGD", tenCcBdnv: "Chứng chỉ Quản lý giáo dục" },
+    { maCcBdnv: "NVSP", tenCcBdnv: "Chứng chỉ Nghiệp vụ sư phạm" },
+    { maCcBdnv: "QLNN", tenCcBdnv: "Chứng chỉ Quản lý nhà nước" },
+    { maCcBdnv: "BDTX", tenCcBdnv: "Chứng chỉ Bồi dưỡng thường xuyên" },
+    { maCcBdnv: "CCDG", tenCcBdnv: "Chứng chỉ Chức danh giảng viên" },
+  ],
+
+  dm_dt_hinh_thuc_llct: [
+    { maHtLlct: "TT", tenHtLlct: "Tập trung" },
+    { maHtLlct: "VLVH", tenHtLlct: "Vừa làm vừa học" },
+    { maHtLlct: "TDH", tenHtLlct: "Tự nghiên cứu" },
+    { maHtLlct: "TT_NN", tenHtLlct: "Tập trung tại nước ngoài" },
+  ],
+
+  dm_gioi_tinh_2: [
+    { maGioiTinh: "1", tenGioiTinh: "Nam" },
+    { maGioiTinh: "2", tenGioiTinh: "Nữ" },
+    { maGioiTinh: "0", tenGioiTinh: "Không xác định" },
+  ],
+
+  // ── Bảng nghiệp vụ (giữ nguyên) ────────────────────────────────────────
+
   // KHÔNG gửi "id" — tcns_can_bo dùng id @default(autoincrement())
   // PK để upsert là "shcc" (@unique) → config SchemaRegistry primaryKey=["shcc"]
   tcns_can_bo: [
