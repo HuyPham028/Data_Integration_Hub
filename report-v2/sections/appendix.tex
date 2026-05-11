@@ -1,0 +1,106 @@
+\section*{Phụ lục A: Đặc tả API (API Specification)}
+\addcontentsline{toc}{section}{Phụ lục A: Đặc tả API}
+
+Hệ thống \textbf{University Integration Hub} tuân theo tiêu chuẩn thiết kế RESTful API và được tài liệu hóa dựa trên chuẩn \textbf{OpenAPI 3.0 (OAS 3.0)}. Định dạng dữ liệu trao đổi (Request/Response) chủ yếu là \texttt{application/json}. 
+
+Dưới đây là danh sách tổng hợp các API endpoint cốt lõi của hệ thống, được phân nhóm theo từng nghiệp vụ quản trị và xử lý dữ liệu.
+
+\begin{longtable}{|p{1.5cm}|p{8cm}|p{5.8cm}|}
+\hline
+\textbf{Method} & \textbf{Endpoint / Đường dẫn} & \textbf{Mô tả chức năng} \\ \hline
+\endfirsthead
+
+\multicolumn{3}{c}{\textit{(Tiếp tục Phụ lục A: Đặc tả API)}} \\
+\hline
+\textbf{Method} & \textbf{Endpoint / Đường dẫn} & \textbf{Mô tả chức năng} \\ \hline
+\endhead
+
+\hline
+\endfoot
+
+\hline
+\endlastfoot
+
+% Auth Group
+\multicolumn{3}{|c|}{\textbf{1. Nhóm Xác thực (Auth)}} \\ \hline
+POST & \texttt{/api/v1/auth/login} & Đăng nhập hệ thống \\ \hline
+POST & \texttt{/api/v1/auth/register} & Đăng ký tài khoản (Payload: username, email, password) \\ \hline
+GET & \texttt{/api/v1/auth/me} & Lấy thông tin tài khoản đang đăng nhập \\ \hline
+POST & \texttt{/api/v1/auth/refresh-token} & Cấp lại Access Token mới bằng Refresh Token \\ \hline
+
+% Users Group
+\multicolumn{3}{|c|}{\textbf{2. Nhóm Quản lý Người dùng (Users)}} \\ \hline
+GET & \texttt{/api/v1/users} & Lấy danh sách người dùng trong hệ thống \\ \hline
+POST & \texttt{/api/v1/users} & Tạo tài khoản người dùng mới \\ \hline
+GET & \texttt{/api/v1/users/\{id\}} & Lấy thông tin chi tiết người dùng theo ID \\ \hline
+PUT & \texttt{/api/v1/users/\{id\}} & Cập nhật thông tin người dùng \\ \hline
+PUT & \texttt{/api/v1/users/\{id\}/role} & Thay đổi vai trò (Role) của người dùng \\ \hline
+GET & \texttt{/api/v1/users/permissions} & Lấy danh sách toàn bộ cấu hình quyền hạn \\ \hline
+GET & \texttt{/api/v1/users/\{id\}/permissions} & Lấy danh sách quyền hạn của một người dùng \\ \hline
+POST & \texttt{/api/v1/users/\{id\}/permissions} & Cấp/gán quyền hạn mới cho người dùng \\ \hline
+
+% Source Config Group
+\multicolumn{3}{|c|}{\textbf{3. Nhóm Cấu hình Nguồn Dữ liệu (Source Config)}} \\ \hline
+GET & \texttt{/api/v1/source-configs} & Lấy danh sách cấu hình các hệ thống nguồn \\ \hline
+POST & \texttt{/api/v1/source-configs} & Tạo cấu hình kết nối hệ thống nguồn mới \\ \hline
+GET & \texttt{/api/v1/source-configs/\{sourceId\}} & Lấy chi tiết một cấu hình nguồn theo ID \\ \hline
+PUT & \texttt{/api/v1/source-configs/\{sourceId\}} & Cập nhật cấu hình hệ thống nguồn \\ \hline
+DELETE & \texttt{/api/v1/source-configs/\{sourceId\}} & Xóa cấu hình hệ thống nguồn \\ \hline
+PATCH & \texttt{\seqsplit{/api/v1/source-configs/\{sourceId\}/toggle-active}} & Bật/Tắt trạng thái hoạt động của nguồn \\ \hline
+
+% Schema Registry
+\multicolumn{3}{|c|}{\textbf{4. Nhóm Quản lý Cấu trúc Dữ liệu (Schema Registry)}} \\ \hline
+POST & \texttt{/api/v1/schema-registry/import} & Import/Đăng ký cấu trúc dữ liệu (Schema) mới \\ \hline
+GET & \texttt{/api/v1/schema-registry} & Lấy danh sách các Schema đã đăng ký \\ \hline
+PUT & \texttt{/api/v1/schema-registry/\{tableName\}} & Cập nhật cấu hình Schema của một bảng \\ \hline
+POST & \texttt{/api/v1/schema-registry/run-detector} & Khởi chạy công cụ dò tìm Schema Drift \\ \hline
+PUT & \texttt{/api/v1/schema-registry/\{tableName\}/resolve} & Đánh dấu đã xử lý cảnh báo Schema Drift \\ \hline
+PUT & \texttt{/api/v1/schema-registry/\{tableName\}/reject} & Từ chối thay đổi Schema Drift của bảng \\ \hline
+
+% Data Integration
+\multicolumn{3}{|c|}{\textbf{5. Nhóm Đồng bộ Dữ liệu (Data Integration \& NguoiHoc)}} \\ \hline
+POST & \texttt{/api/v1/integration/run-full-sync} & Khởi chạy tiến trình đồng bộ toàn phần \\ \hline
+POST & \texttt{/api/v1/integration/run-custom-sync} & Khởi chạy tiến trình đồng bộ tùy chỉnh \\ \hline
+GET & \texttt{/api/v1/nguoi-hoc/trigger-sync} & Kích hoạt thủ công luồng đồng bộ Người Học \\ \hline
+POST & \texttt{/api/v1/integration/scan-orphans} & Quét tìm dữ liệu rác/mồ côi (Orphaned records) \\ \hline
+POST & \texttt{/api/v1/integration/purge-orphans} & Xóa bỏ các dữ liệu rác/mồ côi đã quét được \\ \hline
+GET & \texttt{/api/v1/integration/stream-logs} & Xem log quá trình đồng bộ thời gian thực (SSE) \\ \hline
+
+% Job Scheduler
+\multicolumn{3}{|c|}{\textbf{6. Nhóm Lập lịch Tự động (Job Scheduler)}} \\ \hline
+GET & \texttt{/api/v1/jobs} & Lấy danh sách các tiến trình đồng bộ tự động \\ \hline
+POST & \texttt{/api/v1/jobs} & Tạo mới lịch chạy đồng bộ (Cronjob) \\ \hline
+PUT & \texttt{/api/v1/jobs/\{id\}} & Cập nhật cấu hình tiến trình đồng bộ \\ \hline
+PUT & \texttt{/api/v1/jobs/\{id\}/toggle} & Bật/Tắt tiến trình chạy tự động \\ \hline
+POST & \texttt{/api/v1/jobs/\{id\}/trigger} & Kích hoạt chạy ngay một tiến trình \\ \hline
+
+% MasterData
+\multicolumn{3}{|c|}{\textbf{7. Nhóm Dữ liệu Danh mục (Master Data \& Tables)}} \\ \hline
+GET & \texttt{/api/v1/tables/allowed} & Lấy danh sách các bảng được phép thao tác \\ \hline
+GET & \texttt{/api/v1/api/master-data/allowed} & Lấy danh sách danh mục được phép truy cập \\ \hline
+GET & \texttt{/api/v1/api/master-data/\{table\}} & Lấy toàn bộ dữ liệu của một bảng danh mục \\ \hline
+POST & \texttt{/api/v1/api/master-data/\{table\}} & Thêm mới bản ghi vào bảng danh mục \\ \hline
+GET & \texttt{/api/v1/api/master-data/\{table\}/\{id\}} & Lấy chi tiết một bản ghi danh mục \\ \hline
+PATCH & \texttt{/api/v1/api/master-data/\{table\}/\{id\}} & Cập nhật một phần bản ghi danh mục \\ \hline
+DELETE & \texttt{/api/v1/api/master-data/\{table\}/\{id\}} & Xóa bản ghi trong danh mục \\ \hline
+
+% Backup
+\multicolumn{3}{|c|}{\textbf{8. Nhóm Sao lưu \& Phục hồi (Backup)}} \\ \hline
+GET & \texttt{/api/v1/backup/list} & Lấy danh sách các bản sao lưu hiện có \\ \hline
+POST & \texttt{/api/v1/backup/trigger} & Kích hoạt tiến trình tạo bản sao lưu ngay lập tức \\ \hline
+POST & \texttt{/api/v1/backup/download} & Tải xuống một bản sao lưu \\ \hline
+POST & \texttt{/api/v1/backup/restore} & Phục hồi hệ thống từ một bản sao lưu \\ \hline
+DELETE & \texttt{/api/v1/backup/file} & Xóa một file sao lưu cụ thể \\ \hline
+GET & \texttt{/api/v1/backup/retention} & Xem cấu hình vòng đời lưu trữ (Retention Policy) \\ \hline
+PATCH & \texttt{/api/v1/backup/retention} & Cập nhật vòng đời lưu trữ bản sao lưu \\ \hline
+POST & \texttt{/api/v1/backup/cleanup} & Chạy dọn dẹp các bản sao lưu đã cũ \\ \hline
+POST & \texttt{/api/v1/backup/sync-s3} & Đồng bộ bản sao lưu hiện tại lên Amazon S3 \\ \hline
+POST & \texttt{/api/v1/backup/sync-s3/all} & Đồng bộ toàn bộ bản sao lưu lên Amazon S3 \\ \hline
+
+% Event Logs
+\multicolumn{3}{|c|}{\textbf{9. Nhóm Nhật ký Hệ thống (Event Log)}} \\ \hline
+GET & \texttt{/api/v1/event-logs} & Lấy danh sách nhật ký sự kiện (Audit Logs) \\ \hline
+
+\end{longtable}
+
+\textbf{Lưu ý:} Cấu trúc dữ liệu chi tiết của các Request Payload (như \texttt{CreateUserDto}, \texttt{LoginDto}, \texttt{UpdateSchemaRegistryDto},...) và định dạng Response được đặc tả trực quan thông qua giao diện Swagger UI trên môi trường triển khai thực tế.
