@@ -104,3 +104,98 @@ GET & \texttt{/api/v1/event-logs} & Lấy danh sách nhật ký sự kiện (Aud
 \end{longtable}
 
 \textbf{Lưu ý:} Cấu trúc dữ liệu chi tiết của các Request Payload (như \texttt{CreateUserDto}, \texttt{LoginDto}, \texttt{UpdateSchemaRegistryDto},...) và định dạng Response được đặc tả trực quan thông qua giao diện Swagger UI trên môi trường triển khai thực tế.
+
+\section*{Phụ lục B: Hướng dẫn cài đặt và triển khai hệ thống}
+\addcontentsline{toc}{section}{Phụ lục B: Hướng dẫn cài đặt và triển khai}
+
+Phụ lục này cung cấp các hướng dẫn chi tiết để thiết lập môi trường, cấu hình và khởi chạy hệ thống \textbf{University Integration Hub} trên môi trường phát triển (Local Development) cũng như môi trường thực tế (Production).
+
+\subsection*{B.1. Yêu cầu hệ thống (Prerequisites)}
+Để khởi chạy toàn bộ các thành phần của hệ thống (Backend, Frontend, Mock Server, Database), máy chủ cần được cài đặt sẵn các phần mềm sau:
+\begin{itemize}
+    \item \textbf{Node.js:} Phiên bản v18.x hoặc cao hơn.
+    \item \textbf{Trình quản lý gói:} \texttt{npm} (đi kèm Node.js) hoặc \texttt{yarn}.
+    \item \textbf{Docker \& Docker Compose:} Dành cho việc khởi chạy nhanh cơ sở dữ liệu và triển khai Production.
+    \item \textbf{Cơ sở dữ liệu:} PostgreSQL 14+ (có thể thiết lập chạy qua Docker container).
+\end{itemize}
+
+\subsection*{B.2. Cấu trúc thư mục mã nguồn (Project Structure)}
+Hệ thống được tổ chức theo cấu trúc phân tách rõ ràng các service. Dưới đây là các thành phần chính yếu cấu thành nên dự án:
+\begin{verbatim}
+Data_Integration_Hub/
+|-- backend/            # Mã nguồn Backend (TypeScript / NestJS)
+|-- frontend/           # Mã nguồn giao diện quản trị (Dashboard)
+|-- mock-server/        # Máy chủ giả lập nguồn dữ liệu ngoài (server.js)
+|-- docker-compose.yml  # Cấu hình hạ tầng triển khai qua Docker
+`-- README.md           # Tài liệu hướng dẫn chung của dự án
+\end{verbatim}
+
+\subsection*{B.3. Cấu hình biến môi trường (.env)}
+Trước khi khởi chạy, cần tạo file \texttt{.env} tại thư mục gốc của \texttt{backend/} và cấu hình các thông số kết nối. Dưới đây là mẫu cấu hình tiêu biểu cần thiết:
+
+\begin{verbatim}
+# 1. Thông tin cấu hình Server
+PORT=3000
+NODE_ENV=development
+
+# 2. Thông tin cấu hình Database (PostgreSQL)
+DATABASE_URL="postgresql://postgres:password@localhost:5432/integration_hub"
+
+# 3. Cấu hình bảo mật và phân quyền (JWT)
+JWT_SECRET="your_super_secret_key_here"
+JWT_EXPIRATION="24h"
+
+# 4. Cấu hình kết nối hệ thống ngoài
+MOCK_SERVER_URL="http://localhost:4000"
+\end{verbatim}
+
+\subsection*{B.4. Khởi chạy trên môi trường phát triển (Local Development)}
+Các bước dưới đây hướng dẫn khởi chạy từng dịch vụ độc lập để thuận tiện cho việc theo dõi log và gỡ lỗi (debug) trong quá trình lập trình.
+
+\textbf{Bước 1: Khởi chạy Cơ sở dữ liệu} \\
+Sử dụng Docker Compose để dựng nhanh container cho PostgreSQL và Redis (nếu có):
+\begin{verbatim}
+$ docker-compose up -d db redis
+\end{verbatim}
+
+\textbf{Bước 2: Khởi chạy Integration Backend} \\
+Di chuyển vào thư mục backend, cài đặt các gói phụ thuộc và khởi chạy:
+\begin{verbatim}
+$ cd backend
+$ npm install
+$ npm run start:dev
+\end{verbatim}
+\textit{Hệ thống backend sẽ bắt đầu lắng nghe các API Request tại cổng 3000.}
+
+\textbf{Bước 3: Khởi chạy Mock Server (Giả lập hệ thống nguồn)} \\
+Để mô phỏng API của các trường đại học nhằm mục đích kiểm thử đồng bộ dữ liệu:
+\begin{verbatim}
+$ cd mock-server
+$ npm install
+$ node server.js
+\end{verbatim}
+\textit{Mock Server sẽ hoạt động tại cổng 4000.}
+
+\textbf{Bước 4: Khởi chạy Frontend Dashboard} \\
+\begin{verbatim}
+$ cd frontend
+$ npm install
+$ npm run dev
+\end{verbatim}
+\textit{Giao diện quản trị viên sẽ được phục vụ trên trình duyệt.}
+
+\subsection*{B.5. Hướng dẫn triển khai bằng Docker (Production)}
+Để triển khai toàn bộ hệ thống lên máy chủ thật một cách liền mạch, hệ thống đã được đóng gói sẵn với \texttt{docker-compose.yml}. Tại thư mục gốc của dự án (\texttt{Data\_Integration\_Hub/}), chỉ cần thực thi lệnh sau:
+
+\begin{verbatim}
+$ docker-compose up -d --build
+\end{verbatim}
+
+Lệnh này sẽ tự động thực hiện chuỗi quy trình:
+\begin{itemize}
+    \item Build (đóng gói) các Docker image cho Backend và Frontend.
+    \item Khởi tạo các container Cơ sở dữ liệu và ánh xạ Volume để lưu trữ dữ liệu vĩnh viễn (persistent data).
+    \item Thiết lập mạng lưới nội bộ (Docker Network) để các dịch vụ giao tiếp với nhau một cách bảo mật, không lộ port ra bên ngoài.
+    \item Tự động khởi chạy lại ứng dụng (\texttt{restart: always}) nếu máy chủ bị khởi động lại hoặc hệ thống gặp sự cố văng lỗi (crash).
+\end{itemize}
+
