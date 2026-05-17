@@ -33,13 +33,20 @@ type TableSyncSuccessResult = {
   skipped?: number;
 };
 
+type TableSyncWarningResult = {
+  table: string;
+  status: 'warning';
+  totalRecordsSynced: number;
+  orphanCount: number;
+};
+
 type TableSyncFailedResult = {
   table: string;
   status: 'failed';
   error: string;
 };
 
-type TableSyncResult = TableSyncSuccessResult | TableSyncFailedResult;
+type TableSyncResult = TableSyncSuccessResult | TableSyncWarningResult | TableSyncFailedResult;
 
 @Injectable()
 export class DataIntegrationService {
@@ -162,7 +169,7 @@ export class DataIntegrationService {
     schema: any,
     baseUrl: string,
     token: string,
-  ): Promise<{ synced: number; skipped: number }> {
+  ): Promise<{ synced: number; skipped: number; orphanCount: number }> {
     const strategy: string = schema.syncStrategy || 'upsert';
     const primaryKey: string = schema.primaryKey?.[0];
     const lastSyncTime: Date | null = schema.lastSyncTime
@@ -200,6 +207,7 @@ export class DataIntegrationService {
 
     // Thu thập source IDs để detect orphans (chỉ cho upsert/incremental)
     const sourceIds = new Set<unknown>();
+    let detectedOrphanCount = 0;
 
     do {
       const separator = schema.dataFromApi.includes('?') ? '&' : '?';
@@ -374,6 +382,7 @@ export class DataIntegrationService {
         primaryKey,
         sourceIds,
       );
+      detectedOrphanCount = orphanIds.length;
       if (orphanIds.length > 0) {
         this.broadcastLog(
           `[ORPHAN DETECTED] Bảng "${schema.tableName}": ${orphanIds.length} records tồn tại ở destination nhưng không có trong source. IDs: [${orphanIds.slice(0, 20).join(', ')}${orphanIds.length > 20 ? `, ...và ${orphanIds.length - 20} records khác` : ''}]`,
@@ -395,7 +404,7 @@ export class DataIntegrationService {
     // Cập nhật lastSyncTime sau khi sync thành công
     await this.schemaRegistry.updateLastSyncTime(schema.tableName, new Date());
 
-    return { synced: totalSynced, skipped: totalSkipped };
+    return { synced: totalSynced, skipped: totalSkipped, orphanCount: detectedOrphanCount };
   }
 
   // ---------------------------------------------------------------------------
@@ -409,7 +418,9 @@ export class DataIntegrationService {
     durationMs: number,
   ): Promise<void> {
     const failed = syncResults.filter((r): r is TableSyncFailedResult => r.status === 'failed');
-    const succeeded = syncResults.filter((r): r is TableSyncSuccessResult => r.status === 'success');
+    const succeeded = syncResults.filter(
+      (r): r is TableSyncSuccessResult | TableSyncWarningResult => r.status === 'success' || r.status === 'warning',
+    );
     const totalSynced = succeeded.reduce((sum, r) => sum + r.totalRecordsSynced, 0);
 
     if (status === 'done') {
@@ -511,20 +522,33 @@ export class DataIntegrationService {
         const { baseUrl, token } = await this.resolveSourceCredentials(schema.dataFrom);
 
         try {
-          const { synced, skipped } = await this.syncOneTable(
+          const { synced, skipped, orphanCount } = await this.syncOneTable(
             schema,
             baseUrl,
             token,
           );
-          syncResults.push({
-            table: schema.tableName,
-            status: 'success',
-            totalRecordsSynced: synced,
-            skipped,
-          });
-          this.broadcastLog(
-            `[DONE] ${schema.tableName}: synced=${synced}, skipped(unchanged)=${skipped}.`,
-          );
+          if (orphanCount > 0) {
+            syncResults.push({
+              table: schema.tableName,
+              status: 'warning',
+              totalRecordsSynced: synced,
+              orphanCount,
+            });
+            this.broadcastLog(
+              `[DONE WITH WARNINGS] ${schema.tableName}: synced=${synced}, orphans=${orphanCount}.`,
+              'WARN',
+            );
+          } else {
+            syncResults.push({
+              table: schema.tableName,
+              status: 'success',
+              totalRecordsSynced: synced,
+              skipped,
+            });
+            this.broadcastLog(
+              `[DONE] ${schema.tableName}: synced=${synced}, skipped(unchanged)=${skipped}.`,
+            );
+          }
         } catch (error: any) {
           this.broadcastLog(
             `[ERROR] ${schema.tableName}: ${error.message}`,
@@ -539,18 +563,15 @@ export class DataIntegrationService {
       }
 
       const successRecords = syncResults
-        .filter((r): r is TableSyncSuccessResult => r.status === 'success')
+        .filter((r): r is TableSyncSuccessResult | TableSyncWarningResult => r.status === 'success' || r.status === 'warning')
         .reduce((sum, r) => sum + r.totalRecordsSynced, 0);
-      const failedCount = syncResults.filter(
-        (r) => r.status === 'failed',
-      ).length;
-      const successCount = syncResults.filter(
-        (r) => r.status === 'success',
-      ).length;
+      const failedCount = syncResults.filter((r) => r.status === 'failed').length;
+      const successCount = syncResults.filter((r) => r.status === 'success').length;
+      const warningCount = syncResults.filter((r) => r.status === 'warning').length;
       const status =
         failedCount === 0
-          ? 'done'
-          : successCount > 0
+          ? warningCount > 0 ? 'done_with_warnings' : 'done'
+          : successCount + warningCount > 0
             ? 'partial_success'
             : 'failed';
 
@@ -561,10 +582,12 @@ export class DataIntegrationService {
           tableResults: syncResults,
           tables: {
             success: successCount,
+            warning: warningCount,
             failed: failedCount,
             skipped: skippedSchemas.length,
           },
           success: successRecords,
+          warning: warningCount,
           failed: failedCount,
         },
         syncResults
@@ -701,20 +724,33 @@ export class DataIntegrationService {
         const { baseUrl, token } = await this.resolveSourceCredentials(schema.dataFrom);
 
         try {
-          const { synced, skipped } = await this.syncOneTable(
+          const { synced, skipped, orphanCount } = await this.syncOneTable(
             schema,
             baseUrl,
             token,
           );
-          syncResults.push({
-            table: schema.tableName,
-            status: 'success',
-            totalRecordsSynced: synced,
-            skipped,
-          });
-          this.broadcastLog(
-            `[DONE] ${schema.tableName}: synced=${synced}, skipped(unchanged)=${skipped}.`,
-          );
+          if (orphanCount > 0) {
+            syncResults.push({
+              table: schema.tableName,
+              status: 'warning',
+              totalRecordsSynced: synced,
+              orphanCount,
+            });
+            this.broadcastLog(
+              `[DONE WITH WARNINGS] ${schema.tableName}: synced=${synced}, orphans=${orphanCount}.`,
+              'WARN',
+            );
+          } else {
+            syncResults.push({
+              table: schema.tableName,
+              status: 'success',
+              totalRecordsSynced: synced,
+              skipped,
+            });
+            this.broadcastLog(
+              `[DONE] ${schema.tableName}: synced=${synced}, skipped(unchanged)=${skipped}.`,
+            );
+          }
         } catch (error: any) {
           this.broadcastLog(
             `[ERROR] ${schema.tableName}: ${error.message}`,
@@ -729,18 +765,15 @@ export class DataIntegrationService {
       }
 
       const successRecords = syncResults
-        .filter((r): r is TableSyncSuccessResult => r.status === 'success')
+        .filter((r): r is TableSyncSuccessResult | TableSyncWarningResult => r.status === 'success' || r.status === 'warning')
         .reduce((sum, r) => sum + r.totalRecordsSynced, 0);
-      const failedCount = syncResults.filter(
-        (r) => r.status === 'failed',
-      ).length;
-      const successCount = syncResults.filter(
-        (r) => r.status === 'success',
-      ).length;
+      const failedCount = syncResults.filter((r) => r.status === 'failed').length;
+      const successCount = syncResults.filter((r) => r.status === 'success').length;
+      const warningCount = syncResults.filter((r) => r.status === 'warning').length;
       const status =
         failedCount === 0
-          ? 'done'
-          : successCount > 0
+          ? warningCount > 0 ? 'done_with_warnings' : 'done'
+          : successCount + warningCount > 0
             ? 'partial_success'
             : 'failed';
 
@@ -754,10 +787,12 @@ export class DataIntegrationService {
             matched: schemasToSync.length,
             missing: missingTables.length,
             success: successCount,
+            warning: warningCount,
             failed: failedCount,
             skipped: 0,
           },
           success: successRecords,
+          warning: warningCount,
           failed: failedCount,
         },
         [

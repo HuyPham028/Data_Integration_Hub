@@ -9,7 +9,7 @@ export class EventLog extends Document {
   @Prop()
   tag: string;
 
-  @Prop({ required: true, enum: ['running', 'done', 'failed', 'partial_success'] })
+  @Prop({ required: true, enum: ['running', 'done', 'failed', 'partial_success', 'done_with_warnings'] })
   status: string;
 
   @Prop()
