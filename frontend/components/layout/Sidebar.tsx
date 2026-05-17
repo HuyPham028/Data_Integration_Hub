@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Database, Activity, Network, LogOut, Clock, Shield, DatabaseBackup, Globe } from 'lucide-react';
+import { LayoutDashboard, Database, Activity, Network, LogOut, Clock, Shield, DatabaseBackup, Globe, TableProperties } from 'lucide-react';
 import { clearAuthSession } from '@/lib/auth-session';
 import { useLanguage } from '@/lib/i18n';
 
@@ -19,9 +19,10 @@ export function Sidebar({ isAdmin }: SidebarProps) {
     { key: 'nav.scheduler', href: '/scheduler',       icon: Clock },
     { key: 'nav.access',    href: '/access-control',  icon: Shield },
     { key: 'nav.schema',    href: '/schemas',          icon: Database },
-    { key: 'nav.syncHistory', href: '/sync-logs',     icon: Activity },
-    { key: 'nav.backup',    href: '/backup',           icon: DatabaseBackup },
-    { key: 'nav.gateway',   href: '/gateway',          icon: Network },
+    { key: 'nav.syncHistory', href: '/sync-logs',        icon: Activity },
+    { key: 'nav.backup',    href: '/backup',            icon: DatabaseBackup },
+    { key: 'nav.dataMgmt',  href: '/data-management',  icon: TableProperties },
+    { key: 'nav.gateway',   href: '/gateway',           icon: Network },
   ] as const;
 
   const visibleNavItems = isAdmin ? navItems : [];

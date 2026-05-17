@@ -87,7 +87,23 @@ export const IntegrationAPI = {
   triggerCustomSync: async (tables: string[]) => {
     const response = await apiClient.post('/integration/run-custom-sync', { tables });
     return response.data
-  }
+  },
+
+  scanOrphans: async (tables: string[]): Promise<Array<{
+    tableName: string;
+    primaryKey: string;
+    orphanCount: number;
+    orphanIds: unknown[];
+    error?: string;
+  }>> => {
+    const response = await apiClient.post('/integration/scan-orphans', { tables });
+    return response.data;
+  },
+
+  purgeOrphans: async (tableName: string, primaryKey: string, ids: unknown[]): Promise<{ deleted: number }> => {
+    const response = await apiClient.post('/integration/purge-orphans', { tableName, primaryKey, ids });
+    return response.data;
+  },
 };
 
 export const BackupAPI = {
@@ -207,6 +223,36 @@ export const ReaderAPI = {
 
     const columns = allData.length > 0 ? Object.keys(allData[0]) : [];
     return { columns, data: allData };
+  },
+};
+
+export const AdminDataAPI = {
+  getTableData: async (tableId: string, page: number, search: string) => {
+    const query = new URLSearchParams({ page: String(page), limit: '20', ...(search ? { search } : {}) });
+    const res = await apiClient.get(`/api/master-data/${tableId}?${query}`);
+    const body = res.data;
+    const rawData: Record<string, unknown>[] = body?.data || [];
+    return {
+      columns: rawData.length > 0 ? Object.keys(rawData[0]) : [],
+      data: rawData,
+      metadata: { total: body?.meta?.total ?? 0, totalPages: body?.meta?.totalPages ?? 1 },
+    };
+  },
+
+  exportAllTableData: async (tableId: string, search: string) => {
+    const PAGE_SIZE = 5000;
+    const allData: Record<string, unknown>[] = [];
+    let currentPage = 1;
+    let totalPages = 1;
+    do {
+      const query = new URLSearchParams({ page: String(currentPage), limit: String(PAGE_SIZE), ...(search ? { search } : {}) });
+      const res = await apiClient.get(`/api/master-data/${tableId}?${query}`);
+      const body = res.data;
+      allData.push(...(body?.data || []));
+      if (currentPage === 1) totalPages = body?.meta?.totalPages ?? 1;
+      currentPage++;
+    } while (currentPage <= totalPages);
+    return { columns: allData.length > 0 ? Object.keys(allData[0]) : [], data: allData };
   },
 };
 

@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import {
   Loader2, Activity, Clock, ServerCrash, CheckCircle2,
-  PlayCircle, ChevronDown, ChevronRight, FileText, Database
+  PlayCircle, ChevronDown, ChevronRight, FileText, Database, AlertTriangle,
 } from "lucide-react";
 import { useLanguage } from '@/lib/i18n';
 
@@ -71,6 +71,10 @@ export default function SyncLogsPage() {
         return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100"><Activity className="w-3 h-3 mr-1"/> {t('logs.statusPartial')}</Badge>;
       case 'failed':
         return <Badge variant="destructive"><ServerCrash className="w-3 h-3 mr-1"/> {t('logs.statusFailed')}</Badge>;
+      case 'warning':
+        return <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100"><AlertTriangle className="w-3 h-3 mr-1"/> {t('logs.statusWarning')}</Badge>;
+      case 'done_with_warnings':
+        return <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100"><AlertTriangle className="w-3 h-3 mr-1"/> {t('logs.statusDoneWarnings')}</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -138,8 +142,9 @@ export default function SyncLogsPage() {
                         </TableCell>
                         <TableCell>{renderStatusBadge(log.status)}</TableCell>
                         <TableCell className="text-sm">
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 flex-wrap">
                             <span className="text-green-700 font-medium">{metrics.success || 0} OK</span>
+                            {metrics.warning > 0 && <span className="text-orange-600 font-medium border-l pl-2">{metrics.warning} {t('logs.warnLabel')}</span>}
                             {metrics.failed > 0 && <span className="text-red-600 font-medium border-l pl-2">{metrics.failed} {t('logs.errLabel')}</span>}
                           </div>
                         </TableCell>
@@ -185,12 +190,19 @@ export default function SyncLogsPage() {
                                           <TableCell className="py-2 text-sm font-mono text-slate-700">{tResult.table}</TableCell>
                                           <TableCell className="py-2">{renderStatusBadge(tResult.status)}</TableCell>
                                           <TableCell className="py-2 text-sm font-medium">
-                                            {tResult.status === 'success' ? (
+                                            {(tResult.status === 'success' || tResult.status === 'warning') ? (
                                               <span className="text-green-600">+{tResult.totalRecordsSynced || 0}</span>
                                             ) : '-'}
                                           </TableCell>
-                                          <TableCell className="py-2 text-xs text-red-600 font-mono break-words max-w-[300px]">
-                                            {tResult.error || ''}
+                                          <TableCell className="py-2 text-xs font-mono break-words max-w-[300px]">
+                                            {tResult.status === 'warning' ? (
+                                              <span className="text-orange-600 flex items-center gap-1">
+                                                <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+                                                {tResult.orphanCount} {t('logs.orphanNote')}
+                                              </span>
+                                            ) : (
+                                              <span className="text-red-600">{tResult.error || ''}</span>
+                                            )}
                                           </TableCell>
                                         </TableRow>
                                       ))}
