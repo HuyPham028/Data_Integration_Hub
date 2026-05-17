@@ -1,0 +1,20 @@
+node_modules
+npm-debug.log
+Dockerfile
+.dockerignore
+.git
+.gitignore
+README.md
+
+# Next.js / Frontend specific
+.next
+out
+build
+dist
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.test
+.env.production

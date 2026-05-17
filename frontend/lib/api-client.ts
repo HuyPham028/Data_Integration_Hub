@@ -69,6 +69,10 @@ export const IntegrationAPI = {
     const response = await apiClient.put(`/schema-registry/${tableName}/resolve`);
     return response.data;
   },
+
+  rejectSchema: async (tableName: string) => {
+    const response = await apiClient.put(`/schema-registry/${tableName}/reject`);
+  },
   
   getLogs: async () => {
     const response = await apiClient.get('/event-logs?type=sync');
@@ -115,6 +119,15 @@ export const BackupAPI = {
 
   cleanupBackups: async () => {
     const response = await apiClient.post('/backup/cleanup');
+    return response.data;
+  },
+  syncToS3: async (key: string) => {
+    const response = await apiClient.post('/backup/sync-s3', { key });
+    return response.data;
+  },
+
+  syncAllToS3: async () => {
+    const response = await apiClient.post('/backup/sync-s3/all');
     return response.data;
   },
 };

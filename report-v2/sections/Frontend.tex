@@ -1,3 +1,4 @@
+\newpage
 \section{Giao diện người dùng và quản trị hệ thống}
 
 Giao diện người dùng của trục tích hợp dữ liệu được thiết kế dưới dạng một trang quản trị tập trung, cung cấp cho quản trị viên khả năng giám sát, điều khiển và bảo vệ luồng dữ liệu của toàn bộ hệ thống. Giao diện được chia thành ba phân hệ chính, tương ứng với các nghiệp vụ cốt lõi: bảng điều khiển trung tâm, quản lý lịch sử đồng bộ và quản lý sao lưu dữ liệu.
@@ -102,9 +103,30 @@ Hơn thế nữa, để tự động hóa tối đa quy trình cập nhật, gia
 
 Sau khi quá trình cập nhật cấu trúc cơ sở dữ liệu hoàn tất một cách an toàn, quản trị viên sẽ nhấn nút xác nhận trên giao diện. Lúc này, trạng thái của bảng sẽ trở lại trạng thái ổn định và các luồng đồng bộ dữ liệu sẽ tự động hoạt động trở lại bình thường.
 
-\begin{figure}
+\begin{figure}[H]
     \centering
     \includegraphics[width=1\linewidth]{graphics/schema.png}
     \caption{Giao diện quản lý lược đồ dữ liệu}
     \label{fig:schema-ui}
+\end{figure}
+
+\subsection{Tra cứu và khai thác dữ liệu theo phạm vi phân quyền}
+
+Bên cạnh các chức năng quản trị dành cho quản trị viên hệ thống, trục tích hợp còn cung cấp một giao diện chuyên biệt dành cho người dùng thông thường nhằm phục vụ nhu cầu tra cứu và khai thác dữ liệu đã được đồng bộ. Toàn bộ phạm vi dữ liệu hiển thị trên giao diện đều được kiểm soát chặt chẽ dựa trên cơ chế phân quyền đã được thiết lập trước đó.
+
+Khi đăng nhập vào hệ thống, người dùng chỉ nhìn thấy danh sách những bảng dữ liệu thuộc phạm vi được phép truy cập. Các bảng nằm ngoài phạm vi phân quyền hoàn toàn không xuất hiện trên giao diện, từ đó giảm thiểu nguy cơ truy cập trái phép hoặc lộ lọt thông tin giữa các phòng ban.
+
+Giao diện đọc dữ liệu được thiết kế theo hướng đơn giản và tập trung vào khả năng khai thác dữ liệu nhanh chóng. Hệ thống hiển thị dữ liệu dưới dạng bảng với khả năng phân trang nhằm đảm bảo hiệu năng ngay cả khi số lượng bản ghi lớn. Người dùng có thể thực hiện tìm kiếm trực tiếp theo từ khóa để nhanh chóng lọc ra các dòng dữ liệu cần thiết mà không phải duyệt thủ công toàn bộ bảng dữ liệu.
+
+Đối với những tài khoản chỉ có quyền đọc, mọi thao tác thay đổi dữ liệu như thêm mới, cập nhật hoặc xóa đều bị vô hiệu hóa hoàn toàn trên giao diện cũng như tại tầng kiểm tra quyền ở phía máy chủ. Điều này giúp đảm bảo dữ liệu trên trục tích hợp luôn được bảo vệ trước các thao tác ngoài ý muốn.
+
+Ngoài ra, hệ thống còn hỗ trợ phân biệt rõ ràng giữa người dùng chỉ được phép đọc dữ liệu và người dùng được phép ghi dữ liệu. Với các tài khoản có quyền ghi, giao diện sẽ hiển thị thêm các chức năng thao tác dữ liệu tương ứng với đúng phạm vi bảng được cấp quyền, trong khi các tài khoản thông thường vẫn duy trì giao diện tối giản chỉ phục vụ nhu cầu tra cứu.
+
+Cơ chế này giúp trục tích hợp vừa đảm bảo khả năng chia sẻ dữ liệu linh hoạt giữa các hệ thống thành viên, vừa duy trì được tính an toàn và cô lập dữ liệu giữa các đơn vị sử dụng khác nhau.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\linewidth]{graphics/data-explorer.png}
+    \caption{Giao diện đối với người dùng không phải là quản trị viên}
+    \label{fig:data-explorer}
 \end{figure}

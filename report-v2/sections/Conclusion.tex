@@ -1,0 +1,97 @@
+\newpage
+\section{Tổng kết}
+\label{sec:conclusion}
+
+\subsection{Những gì đã đạt được}
+
+Đề tài đặt ra bài toán thực tiễn: dữ liệu của một trường đại học bị phân tán trên nhiều hệ thống nguồn riêng biệt, không có cơ chế tích hợp tập trung, gây khó khăn cho việc quản lý, tra cứu và bảo đảm tính nhất quán. Sau quá trình nghiên cứu và triển khai, nhóm đã xây dựng được một hệ thống \textbf{Data Integration Hub} hoàn chỉnh giải quyết bài toán đó theo các khía cạnh sau:
+
+\subsubsection{Kiến trúc và thiết kế hệ thống}
+
+Nhóm áp dụng mô hình \textbf{Hub-and-Spoke} kết hợp kiến trúc \textbf{API-led Connectivity} để tập trung toàn bộ luồng dữ liệu qua một điểm trung tâm duy nhất thay vì tích hợp điểm-điểm phân tán. Hệ thống được hiện thực hóa dưới dạng \textbf{NestJS modular monolith} — một lựa chọn thực tiễn phù hợp với quy mô dự án, giúp đơn giản hóa việc triển khai và vận hành so với kiến trúc microservices phân tán. Kong API Gateway đóng vai trò lớp bảo vệ phía trước, xử lý routing, CORS và xác thực trước khi request đến các module nội bộ.
+
+\subsubsection{Luồng ETL và chiến lược đồng bộ}
+
+Pipeline ETL hỗ trợ ba chiến lược đồng bộ linh hoạt theo đặc thù từng loại bảng:
+\begin{itemize}
+    \item \textbf{Upsert} — chiến lược mặc định, phù hợp với bảng nghiệp vụ thay đổi thường xuyên.
+    \item \textbf{Incremental} — chỉ đồng bộ các bản ghi có \texttt{updatedAt} sau lần sync gần nhất, tiết kiệm băng thông và thời gian.
+    \item \textbf{Overwrite} — xóa và ghi lại toàn bộ, dùng cho bảng danh mục nhỏ cần đảm bảo destination = source tuyệt đối.
+\end{itemize}
+
+Cơ chế phân trang batch 5.000 records kết hợp với \textbf{retry có chọn lọc} (chỉ retry lỗi mạng, không retry lỗi nghiệp vụ) giúp pipeline vừa ổn định vừa không che giấu bug logic.
+
+\subsubsection{Hệ thống phòng thủ Data Collision}
+
+Nhóm thiết kế và kiểm thử một hệ thống phòng thủ hai lớp để xử lý dữ liệu không nhất quán từ các nguồn khác nhau:
+
+\begin{itemize}
+    \item \textbf{Lớp 1 — DataIntegrationService:} Kiểm tra sớm (fail-fast) với Schema Status Guard, API Contract Validator và Page Mismatch Detector. Lỗi nghiêm trọng dừng pipeline ngay lập tức để không làm hỏng dữ liệu đích.
+    \item \textbf{Lớp 2 — SyncEngineService:} Lọc field lạ, loại bỏ trùng lặp primary key, chuẩn hóa kiểu dữ liệu (Int, Boolean, DateTime). Các bản ghi vi phạm được chuyển vào \textbf{Dead Letter Log} thay vì abort toàn batch — đảm bảo partial success thay vì all-or-nothing.
+\end{itemize}
+
+Bộ 15 test case (TC-01 đến TC-15) đã kiểm thử đầy đủ các tình huống xung đột dữ liệu và xác nhận cơ chế hoạt động đúng như thiết kế.
+
+\subsubsection{Schema Registry và giám sát thay đổi schema}
+
+\textbf{Schema Registry} trên MongoDB theo dõi cấu trúc của từng bảng dữ liệu nguồn. Khi source API thay đổi schema, hệ thống tự động phát hiện thông qua so sánh \texttt{hashValue}, đánh dấu bảng về trạng thái \texttt{changed} (Schema Drift), lưu lịch sử vào \texttt{oldDetails} và dừng pipeline cho bảng đó chờ Admin xác nhận. Cơ chế này ngăn pipeline ghi sai dữ liệu khi schema chưa được cập nhật tương ứng ở tầng PostgreSQL.
+
+\subsubsection{Sao lưu và phục hồi}
+
+Hệ thống sao lưu hai tầng với \textbf{MinIO} và \textbf{AWS S3} được kích hoạt theo bốn trigger: tự động trước mỗi lần sync, theo lịch hàng tuần, khi schema thay đổi và thủ công. Quá trình restore hoàn toàn tự động qua API: tải file JSON từ MinIO → snapshot hiện tại → DELETE all → INSERT batch 1.000 records.
+
+\subsubsection{CI/CD và triển khai}
+
+Quy trình CI/CD trên \textbf{GitHub Actions} bao gồm hai job: Build \& Push (đóng gói Docker image lên Docker Hub) và Deploy (SSH vào EC2, pull image mới, khởi động lại container). 41 unit test tự động (Jest) được tích hợp trong pipeline để phát hiện regression trước khi deploy. Hệ thống được triển khai lên \textbf{Amazon EC2 t3.medium} với cấu hình Docker Compose đầy đủ bao gồm backend, frontend, Kong Gateway, PostgreSQL, MongoDB, MinIO và Grafana.
+
+\subsubsection{Giao diện quản trị}
+
+Admin Dashboard (Next.js) cung cấp đầy đủ công cụ để vận hành hệ thống mà không cần truy cập trực tiếp vào database hay terminal:
+\begin{itemize}
+    \item Kích hoạt và theo dõi pipeline đồng bộ theo thời gian thực (SSE log stream).
+    \item Xem lịch sử đồng bộ phân cấp theo từng bảng.
+    \item Quản lý backup, restore và dọn dẹp dữ liệu cũ.
+    \item Phân quyền truy cập theo role và pattern regex trên từng bảng.
+    \item Xem diff schema và phê duyệt thay đổi trực tiếp trên giao diện.
+\end{itemize}
+
+\subsection{Hạn chế và hướng phát triển}
+
+Mặc dù hệ thống đã đáp ứng đầy đủ các yêu cầu đặt ra, vẫn còn một số hạn chế cần được khắc phục trong các phiên bản tiếp theo:
+
+\begin{table}[H]
+\centering
+\caption{Hạn chế hiện tại và hướng phát triển}
+\label{tab:limitations}
+\begin{tabular}{p{5.5cm}p{7.5cm}}
+\toprule
+\textbf{Hạn chế} & \textbf{Hướng khắc phục} \\
+\midrule
+Pipeline ETL chạy tuần tự từng bảng, thời gian đồng bộ tỷ lệ tuyến tính với số bảng &
+Triển khai worker pool song song (Promise.allSettled với concurrency limit) để đồng bộ nhiều bảng cùng lúc \\[6pt]
+
+Export API nguồn dùng OFFSET pagination, gây chậm với bảng lớn &
+Chuyển sang Keyset pagination (cursor-based) ở phía source API để đảm bảo \(O(1)\) mỗi trang \\[6pt]
+
+Cơ chế phát hiện schema drift phụ thuộc vào \texttt{hashValue} từ source API &
+Tích hợp engine tự phát hiện thay đổi bằng cách so sánh \texttt{details} nội bộ, không phụ thuộc nguồn ngoài \\[6pt]
+
+Restore dùng DELETE all → INSERT, có khoảng trống dữ liệu tạm thời &
+Áp dụng kỹ thuật Blue/Green restore: ghi vào bảng tạm, sau đó swap atomic \\[6pt]
+
+Chưa có cơ chế audit log cho hành động của Admin &
+Bổ sung audit trail ghi lại mọi thao tác của admin (ai, khi nào, thao tác gì) vào MongoDB \\[6pt]
+
+Unit test chưa bao phủ toàn bộ các module &
+Tăng coverage với integration test thực (không mock) cho các module Backup, SchemaRegistry \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Kết luận}
+
+Dự án \textbf{Data Integration Hub} đã chứng minh rằng việc xây dựng một hệ thống tích hợp dữ liệu tập trung, an toàn và có khả năng vận hành độc lập là hoàn toàn khả thi với stack công nghệ hiện đại. Từ kiến trúc Hub-and-Spoke, cơ chế phòng thủ dữ liệu hai lớp, hệ thống backup thông minh đến giao diện quản trị trực quan — mỗi thành phần được thiết kế có chủ đích để giải quyết một vấn đề cụ thể trong bài toán tích hợp dữ liệu đại học.
+
+Quan trọng hơn, hệ thống không chỉ hoạt động đúng trong điều kiện lý tưởng mà còn được kiểm thử với các tình huống dữ liệu xấu thực tế: API trả sai cấu trúc, dữ liệu trùng lặp, schema thay đổi đột ngột, database constraint vi phạm. Đây là yếu tố quyết định sự tin cậy của một hệ thống tích hợp trong môi trường sản xuất.
+
+Nhóm hi vọng đề tài này đặt nền tảng cho một hướng phát triển tiếp theo: mở rộng hệ thống thành nền tảng tích hợp dữ liệu có thể tái sử dụng cho nhiều trường đại học, hướng tới mô hình \textbf{Data Mesh} nơi mỗi phòng ban tự quản lý domain dữ liệu của mình nhưng vẫn tuân theo một chuẩn tích hợp chung.

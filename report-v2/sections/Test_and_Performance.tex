@@ -1,4 +1,5 @@
 % ============================================================
+\newpage
 \section{Phân tích Hiệu năng và Capacity Planning}
 \label{sec:performance}
 % ============================================================
@@ -62,14 +63,23 @@ Bảng~\ref{tab:collision-testcases} tổng hợp toàn bộ 15 test case
 case trỏ vào một endpoint riêng biệt trên Mock Server và được cấu
 hình qua Schema Registry MongoDB.
 
-\begin{table}[H]
-\centering
+\begin{longtable}{cp{3cm}p{5cm}p{4.5cm}}
 \caption{Ma trận kiểm thử Data Collision Defense}
-\label{tab:collision-testcases}
-\begin{tabular}{clp{5.5cm}l}
+\label{tab:collision-testcases} \\
 \toprule
 \textbf{TC} & \textbf{Tên} & \textbf{Kịch bản / Cơ chế kiểm tra} & \textbf{Kỳ vọng} \\
 \midrule
+\endfirsthead
+\multicolumn{4}{r}{\textit{(tiếp theo)}} \\
+\toprule
+\textbf{TC} & \textbf{Tên} & \textbf{Kịch bản / Cơ chế kiểm tra} & \textbf{Kỳ vọng} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{4}{r}{\textit{(xem trang sau)}} \\
+\endfoot
+\bottomrule
+\endlastfoot
 
 TC-01 & Happy Path
   & Dữ liệu chuẩn, đúng contract, không có lỗi
@@ -120,7 +130,7 @@ TC-11 & Dead Letter: thiếu PK
   & 3 records lỗi vào Dead Letter Log; 3 còn lại sync thành công \\[4pt]
 
 TC-12 & Dead Letter: DB Constraint
-  & \texttt{ma = "THIS\_STRING\_EXCEEDS\_VARCHAR5"}
+  & \texttt{ma = "THIS\_STRING\_} \texttt{EXCEEDS\_VARCHAR5"}
   & Record vi phạm vào Dead Letter Log; batch không bị abort \\[4pt]
 
 TC-13 & Schema Status Gate
@@ -135,9 +145,7 @@ TC-15 & Idempotent Upsert
   & Chạy sync bảng \texttt{dm\_gioi\_tinh} 2 lần liên tiếp
   & Row count PostgreSQL không tăng ở lần 2 \\
 
-\bottomrule
-\end{tabular}
-\end{table}
+\end{longtable}
 
 \subsubsection{Ví dụ kết quả kiểm thử — TC-03 Deduplication}
 

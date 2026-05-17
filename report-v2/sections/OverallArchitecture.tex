@@ -81,7 +81,7 @@ của kiến trúc microservice đầy đủ.
 \begin{figure}[!htp]
     \centering
     \includegraphics[width=0.9\textwidth]{graphics/overall.png}
-    \caption{Luồng cấp lại mã truy cập}
+    \caption{Sơ đồ kiến trúc tổng thể}
     \label{fig:refresh_token_flow}
 \end{figure}
 
@@ -194,6 +194,12 @@ Gửi email cảnh báo qua SMTP (Gmail) khi tác vụ đồng bộ thất bại
 hoàn thành. Email chứa thông tin: tên tác vụ, thời gian, thời lượng
 thực thi, và chi tiết lỗi (nếu có). Module được đánh dấu \texttt{@Global}
 để có thể inject vào bất kỳ module nào mà không cần khai báo lại.
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{graphics/detailed.png}
+    \caption{Tương tác giữa các module backend và với các thành phần bên ngoài}
+\end{figure}
 
 \subsubsection{Tầng Lưu Trữ}
 

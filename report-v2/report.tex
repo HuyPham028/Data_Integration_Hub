@@ -11,9 +11,22 @@
 \usepackage{listings}
 \usepackage{xcolor}
 
+\lstdefinelanguage{yaml}{
+  keywords={true,false,null,yes,no},
+  keywordstyle=\color{blue}\bfseries,
+  basicstyle=\ttfamily\footnotesize,
+  sensitive=false,
+  comment=[l]{\#},
+  commentstyle=\color{gray}\itshape,
+  stringstyle=\color{orange},
+  morestring=[b]',
+  morestring=[b]"
+}
+
 % Better tables
 % Wide tables go to https://tex.stackexchange.com/q/332902
 \usepackage{array,multirow,siunitx,tabularx}
+\usepackage{seqsplit}
 
 % Better enum
 \usepackage{enumitem}
@@ -39,9 +52,9 @@
 % https://github.com/MartinScharrer/standalone
 
 % Configurations
-\coursename{Đồ án chuyên ngành}
-\reporttype{Báo cáo đồ án chuyên ngành}
-\title{Trục tích hợp dữ liệu \\(Data Integration Hub)}
+\coursename{Đồ án tốt nghiệp}
+\reporttype{Báo cáo đồ án tốt nghiệp}
+\title{Tìm hiểu và hiện thực hệ thống trục tích hợp dữ liệu cho trường đại học}
 \advisor{
     & ThS. Nguyễn Cao Đạt & \\
     & ThS. Nguyễn Quang Sang
@@ -71,20 +84,80 @@
 \begin{document}
 \coverpage%
 
-%\section*{Member list \& Workload}
-%\newcounter{memberrowno}
-%\setcounter{memberrowno}{0}
-%\begin{center}
-%  \begin{tabular}{>{\stepcounter{memberrowno}\thememberrowno}llcc}
-%    \toprule
-%    \multicolumn{1}{c}{\textbf{No.}} & \textbf{Full name} & \textbf{Student ID} & \textbf{Contribution} \\
-%    \midrule
-%                                     & h                  & xxxxxxx             & 100\%                       \\
-%                                     & h                  & xxxxxxx             & 100\%                       \\
-%    \bottomrule
-%  \end{tabular}
-%\end{center}
-%\clearpage
+\section*{Lời cam đoan}
+\addcontentsline{toc}{section}{Lời cam đoan}
+
+Nhóm xin cam đoan Đồ án chuyên ngành này là công trình nghiên cứu của riêng nhóm.
+
+Các kết quả nghiên cứu, số liệu và kết luận được trình bày trong báo cáo là trung thực. Mọi thông tin tham khảo, trích dẫn từ các tài liệu, sách báo, trang web và các nghiên cứu trước đây đều đã được chỉ rõ nguồn gốc trong danh mục tài liệu tham khảo theo đúng quy định.
+
+Nếu phát hiện có bất kỳ sự gian lận nào, nhóm xin chịu hoàn toàn trách nhiệm trước Hội đồng và Nhà trường.
+
+\vspace{2cm}
+
+\noindent
+\textbf{\textit{Thành phố Hồ Chí Minh, Tháng 05/2026}}
+
+\vspace{1.5cm}
+
+\begin{center}
+  \begin{tabular}{p{0.45\textwidth} p{0.45\textwidth}}
+  \multicolumn{1}{c}{\textbf{SVTH1}} &
+  \multicolumn{1}{c}{\textbf{SVTH2}} \\
+
+  \multicolumn{1}{c}{(Ký, ghi rõ họ tên)} &
+  \multicolumn{1}{c}{(Ký, ghi rõ họ tên)} \\[3cm]
+
+  \multicolumn{1}{c}{Trần Mạnh Tuấn} &
+  \multicolumn{1}{c}{Phạm Lê Huy}
+  \end{tabular}
+\end{center}
+
+\newpage
+
+\section*{Lời cảm ơn}
+\addcontentsline{toc}{section}{Lời cảm ơn}
+
+Nhóm thực hiện xin bày tỏ lòng biết ơn chân thành và sâu sắc đến \textbf{ThS. Nguyễn Cao Đạt} và \textbf{ThS. Nguyễn Quang Sang} - hai giảng viên hướng dẫn đã luôn tận tình hỗ trợ, định hướng và đồng hành cùng nhóm trong suốt quá trình thực hiện đồ án tốt nghiệp.
+
+Trong suốt quá trình nghiên cứu và phát triển hệ thống, nhóm đã nhận được rất nhiều góp ý quý báu từ thầy về cả mặt kỹ thuật lẫn phương pháp triển khai thực tế. Những buổi trao đổi và phản hồi chi tiết của thầy đã giúp nhóm nhận ra các hạn chế trong thiết kế ban đầu, từng bước hoàn thiện kiến trúc hệ thống, cải thiện tư duy tổ chức mã nguồn cũng như nâng cao chất lượng tài liệu kỹ thuật đi kèm.
+
+Bên cạnh đó, sự định hướng của thầy còn giúp nhóm tiếp cận bài toán theo góc nhìn thực tiễn hơn, không chỉ dừng lại ở mức xây dựng một sản phẩm mang tính học thuật mà còn hướng tới khả năng triển khai trong môi trường thực tế với các yêu cầu về ổn định, bảo mật và khả năng mở rộng lâu dài. Những góp ý liên quan đến quy trình đồng bộ dữ liệu, kiểm soát thay đổi lược đồ và cơ chế phân quyền đã góp phần quan trọng trong việc hình thành kiến trúc tổng thể của trục tích hợp dữ liệu.
+
+Nhóm cũng đặc biệt trân trọng sự hỗ trợ và động viên của thầy trong những giai đoạn gặp khó khăn về kỹ thuật cũng như áp lực tiến độ. Sự tận tâm và trách nhiệm của thầy không chỉ giúp nhóm hoàn thành đồ án đúng định hướng mà còn tạo động lực để các thành viên tiếp tục học hỏi, nghiên cứu và nâng cao năng lực chuyên môn của bản thân.
+
+Cuối cùng, nhóm xin gửi lời cảm ơn chân thành đến quý thầy cô trong Khoa Khoa học và Kỹ thuật Máy tính, Trường Đại học Bách khoa - Đại học Quốc gia Thành phố Hồ Chí Minh đã truyền đạt những kiến thức nền tảng quý giá trong suốt quá trình học tập. Những kiến thức và kinh nghiệm đó chính là nền tảng quan trọng để nhóm có thể hoàn thành đồ án này.
+
+\newpage
+
+\section*{Danh sách thành viên \& Phân chia công việc}
+
+\begin{center}
+\begin{tabular}{c p{3.5cm} c p{7cm}}
+    \toprule
+    \textbf{STT} &
+    \textbf{Họ và tên} &
+    \textbf{MSSV} &
+    \textbf{Công việc} \\
+    \midrule
+
+    1 & Phạm Lê Huy
+    & 2252260
+    & Xây dựng giao diện trục tích hợp, phát triển module prisma,
+      xây dựng cấu trúc prisma, MongoDB schema, phát triển logic
+      schema thay đổi, lập lịch \\
+
+    2 & Trần Mạnh Tuấn
+    & 2213807
+    & Phát triển module đồng bộ dữ liệu, xác thực và phân quyền,
+      xây dựng testcase, xử lý lỗi và ngoại lệ đối với các trường hợp
+      đụng độ dữ liệu (data collision) \\
+
+    \bottomrule
+\end{tabular}
+\end{center}
+
+\clearpage
 
 \tableofcontents
 \listoffigures
@@ -142,14 +215,16 @@
 \clearpage
 \input{sections/Overview} % H done
 \input{sections/BusinessAnalysis} % H done
-\input{sections/Quality_and_Problems} % T done
 \input{sections/OverallArchitecture}
+\input{sections/Quality_and_Problems} % T done
 \input{sections/Auth} % H done
 \input{sections/ETL_Pipeline} % T done
 \input{sections/Backup} % T done
 \input{sections/Test_and_Performance} % T  done
-% \input{sections/CICD_and_Deployment} % T done
+\input{sections/CICD_and_Deployment} % T done
 \input{sections/Frontend}
+\input{sections/Conclusion}
+\input{sections/appendix.tex}
 
 \clearpage
 
