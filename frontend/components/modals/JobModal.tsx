@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { X, Search, CheckSquare, Square } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,26 @@ interface JobModalProps {
   initialData?: any;
 }
 
+function getFrequencyName(cron: string) {
+  if (!cron) return "Custom";
+  if (cron === "0 * * * *") return "Hourly";
+  if (cron.startsWith("0 0")) return "Midnight";
+  if (cron.startsWith("0 2")) return "Nightly";
+  if (cron.endsWith("* * 0") || cron.endsWith("* * 6")) return "Weekly";
+  if (cron.includes("* * *")) return "Daily";
+  return "Scheduled";
+}
+
+function generateJobName(jobType: string, cron: string, tables: string[]) {
+  const freq = getFrequencyName(cron);
+  let target = jobType === "FULL_SYNC" ? "All-Tables" : "0-Tables";
+  
+  if (jobType === 'CUSTOM_SYNC' && tables.length > 0) {
+    target = tables.length <= 2 ? tables.join("-and-") : `${tables.length}-Tables`;
+  }
+  return `${freq}-${jobType}-${target}`;
+}
+
 export default function JobModal({ isOpen, onClose, schemas, onSave, initialData }: JobModalProps) {
   const [jobName, setJobName] = useState('');
   const [description, setDescription] = useState('');
@@ -28,6 +48,9 @@ export default function JobModal({ isOpen, onClose, schemas, onSave, initialData
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  // Track if user manually typed a name so we stop auto-generating
+  const [isManuallyEdited, setIsManuallyEdited] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -37,16 +60,26 @@ export default function JobModal({ isOpen, onClose, schemas, onSave, initialData
         setCronExpression(initialData.cronExpression || '0 0 * * *');
         setJobType(initialData.jobType || 'FULL_SYNC');
         setSelectedTables(initialData.targetTables || []);
+        setIsManuallyEdited(true); // Don't auto-rename existing jobs
       } else {
         setJobName('');
         setDescription('');
         setCronExpression('0 0 * * *');
         setJobType('FULL_SYNC');
         setSelectedTables([]);
+        setIsManuallyEdited(false); // Enable auto-gen for new jobs
       }
       setError('');
     }
   }, [isOpen, initialData]);
+
+  useEffect(() => {
+    // Only auto-generate if we are NOT editing an existing job, 
+    // and the user hasn't typed a custom name yet.
+    if (!initialData && !isManuallyEdited) {
+      setJobName(generateJobName(jobType, cronExpression, selectedTables));
+    }
+  }, [jobType, cronExpression, selectedTables, isManuallyEdited, initialData]);
 
   const stableSchemas = useMemo(() => schemas.filter(s => s.status === 'stable'), [schemas]);
   const filteredSchemas = useMemo(() => {
@@ -117,8 +150,15 @@ export default function JobModal({ isOpen, onClose, schemas, onSave, initialData
           {error && <div className="p-3 bg-red-50 text-red-600 rounded text-sm">{error}</div>}
           
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-slate-700">Tên Job</label>
-            <Input value={jobName} onChange={e => setJobName(e.target.value)} placeholder="Vd: daily-sync-users" />
+            <label className="text-sm font-semibold text-slate-700">Tên Job (Tự động tạo)</label>
+            <Input 
+              value={jobName} 
+              onChange={e => {
+                setJobName(e.target.value);
+                setIsManuallyEdited(true); // Stop auto-generating if user types manually
+              }} 
+              placeholder="Vd: daily-sync-users" 
+            />
           </div>
 
           <div className="space-y-2">

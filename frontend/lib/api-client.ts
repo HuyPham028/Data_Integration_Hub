@@ -79,14 +79,14 @@ export const IntegrationAPI = {
     return response.data;
   },
 
-  triggerFullSync: async () => {
-    const response = await apiClient.post('/integration/run-full-sync');
+  triggerFullSync: async (jobName?: string) => {
+    const response = await apiClient.post('/integration/run-full-sync', { jobName });
     return response.data;
   },
 
-  triggerCustomSync: async (tables: string[]) => {
-    const response = await apiClient.post('/integration/run-custom-sync', { tables });
-    return response.data
+  triggerCustomSync: async (tables: string[], jobName?: string) => {
+    const response = await apiClient.post('/integration/run-custom-sync', { tables, jobName });
+    return response.data;
   }
 };
 

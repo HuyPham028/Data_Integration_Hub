@@ -97,10 +97,15 @@ export default function DashboardPage() {
       const logsData = await IntegrationAPI.getLogs();
       setRecentRuns(logsData.slice(0, 8));
 
-      const formattedChartData = logsData.slice(0, 7).reverse().map((log: EventLog) => {
+      const formattedChartData = logsData.slice(0, 20).reverse().map((log: EventLog) => {
         const date = new Date(log.createdAt);
         return {
-          name: `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`,
+          name: date.toLocaleString('vi-VN', {
+            day: '2-digit',
+            month: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+          }),
           success: Number(log.details?.metrics?.success || 0),
           failed: Number(log.details?.metrics?.failed || 0),
         };
@@ -124,9 +129,9 @@ export default function DashboardPage() {
         await JobAPI.triggerJob(jobId);
       } else {
         if (selectedTables && selectedTables.length > 0) {
-          await IntegrationAPI.triggerCustomSync(selectedTables);
+          await IntegrationAPI.triggerCustomSync(selectedTables, 'Dashboard Custom Sync');
         } else {
-          await IntegrationAPI.triggerFullSync();
+          await IntegrationAPI.triggerFullSync('Dashboard Full Sync');
         }
       }
       setTimeout(fetchDashboardData, 3000);
@@ -162,76 +167,193 @@ export default function DashboardPage() {
   const failedRuns = recentRuns.filter((run) => run.status === 'failed').length;
   const successRate = totalRuns > 0 ? Math.round((successfulRuns / totalRuns) * 100) : 0;
 
+  // Additional useful stats
+  const activeJobsCount = scheduledJobs.filter((j) => j.isActive).length;
+
+  const avgDurationMs = (() => {
+    const durations = recentRuns
+      .map((r) => r.details?.durationMs)
+      .filter((d): d is number => typeof d === 'number' && !Number.isNaN(d));
+    if (durations.length === 0) return 0;
+    return Math.round(durations.reduce((a, b) => a + b, 0) / durations.length);
+  })();
+
+  const formatDuration = (ms: number) => {
+    if (!ms) return 'N/A';
+    const s = Math.round(ms / 1000);
+    if (s < 60) return `${s}s`;
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m}m ${sec}s`;
+  };
+
+  const lastRunAt = (() => {
+    if (!recentRuns.length) return 'N/A';
+    const latest = recentRuns.reduce((best, cur) => (new Date(cur.createdAt) > new Date(best.createdAt) ? cur : best), recentRuns[0]);
+    return formatDateTime(latest.createdAt);
+  })();
+
+  const nextRunAt = (() => {
+    const nexts = scheduledJobs
+      .map((j) => j.nextRunAt)
+      .filter((n): n is string => !!n)
+      .map((s) => new Date(s));
+    if (!nexts.length) return 'N/A';
+    const earliest = new Date(Math.min(...nexts.map((d) => d.getTime())));
+    return formatDateTime(earliest.toISOString());
+  })();
+
   return (
     <div className="h-full min-h-0 flex flex-col gap-4">
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 shrink-0">
-        <div className="flex flex-col gap-4 xl:col-span-1">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 shrink-0">
+        {/* LEFT PANEL */}
+        <div className="xl:col-span-5 flex flex-col gap-4">
           <Card className="border-slate-200 shadow-sm">
             <CardHeader>
-              <CardTitle className="text-slate-800 flex items-center text-lg"><PlayCircle className="mr-2 h-5 w-5 text-blue-600" /> Manual Run</CardTitle>
-              <CardDescription>Kích hoạt đồng bộ ngay lập tức</CardDescription>
+              <CardTitle className="text-slate-800 flex items-center text-lg">
+                <PlayCircle className="mr-2 h-5 w-5 text-blue-600" />
+                Manual Run
+              </CardTitle>
+              <CardDescription>
+                Kích hoạt đồng bộ ngay lập tức
+              </CardDescription>
             </CardHeader>
+
             <CardContent className="space-y-4">
-              <Button onClick={() => handleTriggerSync()} disabled={isSyncing} className="bg-slate-900 hover:bg-slate-800 text-white w-full h-12 font-bold shadow-md">
-                <RefreshCw className={`mr-2 h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} /> FULL SYNC NOW
+              <Button
+                onClick={() => handleTriggerSync()}
+                disabled={isSyncing}
+                className="bg-slate-900 hover:bg-slate-800 text-white w-full h-12 font-bold shadow-md"
+              >
+                <RefreshCw
+                  className={`mr-2 h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`}
+                />
+                FULL SYNC NOW
               </Button>
-              <Button variant="outline" onClick={() => setIsModalOpen(true)} disabled={isSyncing} className="w-full h-12 border-slate-300 text-slate-700 font-semibold">
+
+              <Button
+                variant="outline"
+                onClick={() => setIsModalOpen(true)}
+                disabled={isSyncing}
+                className="w-full h-12 border-slate-300 text-slate-700 font-semibold"
+              >
                 CUSTOM SYNC (CHỌN BẢNG)
               </Button>
             </CardContent>
           </Card>
+
+          {/* Optional lightweight stats */}
+          <div className="grid grid-cols-3 gap-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-2xl font-bold">{totalRuns}</div>
+                <div className="text-sm text-slate-500">Runs</div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-2xl font-bold text-emerald-600">
+                  {successRate}%
+                </div>
+                <div className="text-sm text-slate-500">Success</div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-2xl font-bold text-red-500">
+                  {failedRuns}
+                </div>
+                <div className="text-sm text-slate-500">Failed</div>
+              </CardContent>
+            </Card>
+          </div>
+          
+          <div className="grid grid-cols-3 gap-4 mt-1">
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-2xl font-bold">{activeJobsCount}</div>
+                <div className="text-sm text-slate-500">Active Jobs</div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-2xl font-bold text-slate-800">
+                  {formatDuration(avgDurationMs)}
+                </div>
+                <div className="text-sm text-slate-500">Avg Duration</div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-2xl font-bold text-slate-700">
+                  {nextRunAt}
+                </div>
+                <div className="text-sm text-slate-500">Next Run</div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
-        <div className="xl:col-span-2 flex flex-col gap-4">
-          <Card className="border-slate-200 shadow-sm flex flex-col">
-            <CardHeader className="pb-0">
-              <CardTitle className="text-slate-800 flex items-center text-lg"><Activity className="mr-2 h-5 w-5 text-green-600" /> Execution Metrics</CardTitle>
-            </CardHeader>
-            <CardContent className="flex-1 pt-6 pb-4">
-              <div className="h-60 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                    <YAxis axisLine={false} tickLine={false} />
-                    <Tooltip cursor={{ fill: '#f1f5f9' }} />
-                    <Legend iconType="circle" wrapperStyle={{ paddingTop: '10px' }} />
-                    <Bar dataKey="success" name="Success" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={50} />
-                    <Bar dataKey="failed" name="Failed" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={50} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
+        {/* RIGHT PANEL */}
+        <div className="xl:col-span-7">
+          <Card className="border-slate-200 shadow-sm h-full">
+            <CardHeader>
+              <CardTitle className="text-slate-800 flex items-center text-lg">
+                <Activity className="mr-2 h-5 w-5 text-green-600" />
+                Execution Metrics
+              </CardTitle>
 
-          <Card className="border-slate-200 shadow-sm">
-            <CardHeader className="pb-3 border-b">
-              <CardTitle className="text-slate-800 text-lg">Recently Run Jobs</CardTitle>
-              <CardDescription>Latest executions and their outcomes.</CardDescription>
+              <CardDescription>
+                Successful vs failed synchronization runs
+              </CardDescription>
             </CardHeader>
-            <CardContent className="p-0">
-              <div className="divide-y max-h-62.5 overflow-y-auto">
-                {recentRuns.length === 0 ? (
-                  <div className="p-4 text-sm text-center text-slate-500 italic">No run history available.</div>
-                ) : (
-                  recentRuns.map((run) => (
-                    <div key={run._id} className="p-4 flex items-center justify-between gap-4">
-                      <div>
-                        <div className="text-sm font-semibold text-slate-800">{run.title}</div>
-                        <div className="text-xs text-slate-500 mt-1">{formatDateTime(run.createdAt)}</div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <Badge variant="outline" className={statusBadgeClass(run.status)}>
-                          {run.status}
-                        </Badge>
-                        <div className="text-xs text-slate-500">
-                          {(run.details?.durationMs || 0) > 0 ? `${Math.round((run.details?.durationMs || 0) / 1000)}s` : '-'}
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
+
+            <CardContent className="h-90 mt-3">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={chartData}
+                  margin={{ top: 5, right: 20, left: 0, bottom: 30 }}
+                >
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    stroke="#e2e8f0"
+                  />
+
+                  <XAxis
+                    dataKey="name"
+                    axisLine={false}
+                    tickLine={false}
+                    angle={-15}
+                    textAnchor="end"
+                    height={60}
+                  />
+
+                  <YAxis axisLine={false} tickLine={false} />
+
+                  <Tooltip cursor={{ fill: '#f1f5f9' }} />
+
+                  <Legend />
+
+                  <Bar
+                    dataKey="success"
+                    name="Success"
+                    fill="#10b981"
+                    radius={[4, 4, 0, 0]}
+                  />
+
+                  <Bar
+                    dataKey="failed"
+                    name="Failed"
+                    fill="#ef4444"
+                    radius={[4, 4, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
             </CardContent>
           </Card>
         </div>

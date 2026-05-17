@@ -20,8 +20,9 @@ export class DataIntegrationController {
   ) {}
 
   @Post('run-full-sync')
-  async triggerFullSync() {
-    this.integrationService.runFullIntegrationPipeline();
+  async triggerFullSync(@Body() body: { jobName?: string }) {
+    const jobName = body?.jobName || 'Manual Full Sync';
+    this.integrationService.runFullIntegrationPipeline(jobName);
     return {
       message: 'Integration pipeline started. Please check EventLogs (MongoDB) or Dashboard for progress.',
       timestamp: new Date(),
@@ -29,10 +30,11 @@ export class DataIntegrationController {
   }
 
   @Post('run-custom-sync')
-  async triggerCustomSync(@Body() body: { tables?: string[] }) {
+  async triggerCustomSync(@Body() body: { tables?: string[], jobName?: string }) {
     const tables = body?.tables ?? [];
+    const jobName = body?.jobName || 'Manual Custom Sync';
     this.logger.log(`[run-custom-sync] received tables: ${JSON.stringify(tables)}`);
-    this.integrationService.runCustomIntegrationPipeline(tables);
+    this.integrationService.runCustomIntegrationPipeline(jobName, tables);
     return {
       message: 'Integration custom pipeline started. Please check EventLogs (MongoDB) or Dashboard for progress.',
       timestamp: new Date(),

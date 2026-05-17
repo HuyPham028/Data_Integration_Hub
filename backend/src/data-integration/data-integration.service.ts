@@ -446,11 +446,11 @@ export class DataIntegrationService {
   // PUBLIC PIPELINES
   // ---------------------------------------------------------------------------
 
-  async runFullIntegrationPipeline() {
+  async runFullIntegrationPipeline(jobName: string) {
     this.broadcastLog('--- STARTING FULL INTEGRATION PIPELINE ---');
     const startedAt = Date.now();
     const runLog = await this.eventLogService.createJobLog(
-      'Full Integration Sync',
+      jobName,
       'FULL_SYNC',
       'sync',
     );
@@ -592,11 +592,11 @@ export class DataIntegrationService {
     }
   }
 
-  async runCustomIntegrationPipeline(tableNames: string[]) {
+  async runCustomIntegrationPipeline(jobName: string, tableNames: string[]) {
     this.broadcastLog('--- STARTING CUSTOM INTEGRATION PIPELINE ---');
     const startedAt = Date.now();
     const runLog = await this.eventLogService.createJobLog(
-      'Custom Integration Sync',
+      jobName,
       'CUSTOM_SYNC',
       'sync',
     );

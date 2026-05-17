@@ -9,6 +9,9 @@ export class SyncJob extends Document {
   @Prop({ required: true })
   jobType: string;
 
+  @Prop({ type: [String], default: [] })
+  targetTables: string[];
+
   @Prop({ required: true })
   cronExpression: string; // Biểu thức Cron: "0 2 * * *" (2h sáng mỗi ngày)
 

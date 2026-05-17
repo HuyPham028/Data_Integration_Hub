@@ -139,12 +139,12 @@ export class JobSchedulerService implements OnModuleInit {
     const startedAt = Date.now();
     try {
       if (job.jobType === 'FULL_SYNC') {
-        await this.dataIntegrationService.runFullIntegrationPipeline();
+        await this.dataIntegrationService.runFullIntegrationPipeline(job.jobName);
       } else if (job.jobType === 'CUSTOM_SYNC' && job.targetTables && job.targetTables.length > 0) {
-      await this.dataIntegrationService.runCustomIntegrationPipeline(job.targetTables);
-    } else {
-      this.logger.warn(`Job [${job.jobName}] is CUSTOM_SYNC but has no targetTables. Skipped.`);
-    }
+        await this.dataIntegrationService.runCustomIntegrationPipeline(job.jobName, job.targetTables);
+      } else {
+        this.logger.warn(`Job [${job.jobName}] is CUSTOM_SYNC but has no targetTables. Skipped.`);
+      }
 
       const durationMs = Date.now() - startedAt;
       await this.jobModel.findByIdAndUpdate(job._id, { lastRunAt: new Date() });

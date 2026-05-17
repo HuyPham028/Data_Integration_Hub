@@ -42,4 +42,17 @@ export class EventLogService {
       .limit(limit)
       .exec();
   }
+
+  async onModuleInit() {
+    // Mark any orphaned 'running' logs as failed when the app boots
+    await this.logModel.updateMany(
+      { status: 'running' },
+      { 
+        $set: { 
+          status: 'failed', 
+          'details.errors': ['Server restarted while job was running'] 
+        } 
+      }
+    );
+  }
 }
