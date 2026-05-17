@@ -214,8 +214,8 @@ export class JobSchedulerService implements OnModuleInit {
     }
 
     const updatedJob = await this.jobModel.findByIdAndUpdate(id, updateData, { new: true });
-    // Refresh lại lịch chạy trong bộ nhớ
-    this.registerCronJob(updatedJob); 
+    if (!updatedJob) throw new Error(`Job ${id} not found`);
+    this.registerCronJob(updatedJob);
     return updatedJob;
   }
 

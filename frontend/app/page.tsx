@@ -12,6 +12,7 @@ import {
 } from 'recharts';
 import TableSelect from '@/components/modals/TableSelect';
 import { getAccessToken } from '@/lib/auth-session';
+import { useLanguage } from '@/lib/i18n';
 
 type ScheduledJob = {
   _id: string;
@@ -46,6 +47,7 @@ interface IncomingLogLine {
 }
 
 export default function DashboardPage() {
+  const { t } = useLanguage();
   const [isSyncing, setIsSyncing] = useState(false);
   const [logs, setLogs] = useState<LogLine[]>([]);
   const [scheduledJobs, setScheduledJobs] = useState<ScheduledJob[]>([]);
@@ -211,8 +213,7 @@ export default function DashboardPage() {
           <Card className="border-slate-200 shadow-sm">
             <CardHeader>
               <CardTitle className="text-slate-800 flex items-center text-lg">
-                <PlayCircle className="mr-2 h-5 w-5 text-blue-600" />
-                Manual Run
+                <PlayCircle className="mr-2 h-5 w-5 text-blue-600" /> {t('dash.manualTrigger')}
               </CardTitle>
               <CardDescription>
                 Kích hoạt đồng bộ ngay lập tức
@@ -225,10 +226,8 @@ export default function DashboardPage() {
                 disabled={isSyncing}
                 className="bg-slate-900 hover:bg-slate-800 text-white w-full h-12 font-bold shadow-md"
               >
-                <RefreshCw
-                  className={`mr-2 h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`}
-                />
-                FULL SYNC NOW
+                <RefreshCw className={`mr-2 h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                {isSyncing ? t('dash.syncing') : t('dash.runFull')}
               </Button>
 
               <Button
@@ -237,7 +236,8 @@ export default function DashboardPage() {
                 disabled={isSyncing}
                 className="w-full h-12 border-slate-300 text-slate-700 font-semibold"
               >
-                CUSTOM SYNC (CHỌN BẢNG)
+                <PlayCircle className="mr-2 h-4 w-4" />
+                {t('dash.runCustom')}
               </Button>
             </CardContent>
           </Card>

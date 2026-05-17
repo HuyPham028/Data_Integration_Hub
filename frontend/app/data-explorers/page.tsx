@@ -9,8 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Database, Search, LayoutGrid, FileDown, Loader2, ChevronLeft, ChevronRight, Lock, LogOut } from "lucide-react";
 import { clearAuthSession } from '@/lib/auth-session';
+import { useLanguage } from '@/lib/i18n';
 
 export default function DataExplorerPage() {
+  const { t } = useLanguage();
+
   // States cho danh sách bảng
   const [allowedTables, setAllowedTables] = useState<any[]>([]);
   const [selectedTable, setSelectedTable] = useState<any | null>(null);
@@ -25,6 +28,9 @@ export default function DataExplorerPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+
+  // Export CSV
+  const [exportingCSV, setExportingCSV] = useState(false);
 
   // 1. Load danh sách bảng khi vào trang
   useEffect(() => {
@@ -71,6 +77,44 @@ export default function DataExplorerPage() {
     setSearchTerm(''); // Xóa search cũ
   };
 
+  const handleExportCSV = async () => {
+    if (!selectedTable) return;
+    setExportingCSV(true);
+    try {
+      const { columns, data } = await ReaderAPI.exportAllTableData(selectedTable.id, searchTerm);
+
+      if (data.length === 0) return;
+
+      // Escape giá trị có chứa dấu phẩy, ngoặc kép, hoặc xuống dòng
+      const escapeCell = (val: unknown): string => {
+        if (val === null || val === undefined) return '';
+        const str = String(val);
+        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+          return `"${str.replace(/"/g, '""')}"`;
+        }
+        return str;
+      };
+
+      const rows = [
+        columns.join(','),
+        ...data.map((row) => columns.map((col) => escapeCell(row[col])).join(',')),
+      ];
+
+      // BOM ﻿ để Excel nhận diện đúng UTF-8 (tiếng Việt không bị lỗi)
+      const blob = new Blob(['﻿' + rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${selectedTable.id}_${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Lỗi khi export CSV:', error);
+    } finally {
+      setExportingCSV(false);
+    }
+  };
+
   const handleLogOut = () => {
     clearAuthSession();
     window.location.href = '/login';
@@ -83,7 +127,7 @@ export default function DataExplorerPage() {
       <Card className="w-1/4 flex flex-col border-slate-200 h-full overflow-hidden">
         <CardHeader className="bg-slate-50 border-b py-4">
           <CardTitle className="text-lg flex items-center text-slate-800">
-            <Lock className="w-4 h-4 mr-2 text-green-600" /> Quyền truy cập
+            <Lock className="w-4 h-4 mr-2 text-green-600" /> {t('explorer.accessTitle')}
           </CardTitle>
         </CardHeader>
         <CardContent className="p-2 overflow-y-auto flex-1">
@@ -109,7 +153,7 @@ export default function DataExplorerPage() {
                 </button>
               ))}
               {allowedTables.length === 0 && (
-                <div className="text-center p-4 text-sm text-slate-500">Tài khoản chưa được cấp quyền xem bảng nào.</div>
+                <div className="text-center p-4 text-sm text-slate-500">{t('explorer.noTables')}</div>
               )}
             </div>
           )}
@@ -121,7 +165,7 @@ export default function DataExplorerPage() {
               className="w-full flex items-center justify-center gap-2 p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition"
             >
               <LogOut className="w-4 h-4" />
-              Đăng xuất
+              {t('explorer.logout')}
             </button>
           </div>
       </Card>
@@ -136,7 +180,7 @@ export default function DataExplorerPage() {
                 <CardTitle className="text-xl flex items-center">
                   <LayoutGrid className="mr-2 h-5 w-5 text-blue-600" /> {selectedTable.name}
                 </CardTitle>
-                <p className="text-sm text-slate-500 mt-1">Nguồn dữ liệu: Master Hub ({selectedTable.id})</p>
+                <p className="text-sm text-slate-500 mt-1">{t('explorer.sourceLabel')} ({selectedTable.id})</p>
               </div>
               
               <div className="flex items-center gap-3">
@@ -144,7 +188,7 @@ export default function DataExplorerPage() {
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
                   <Input 
                     type="text" 
-                    placeholder="Tìm kiếm dữ liệu..." 
+                    placeholder={t('explorer.search')}
                     className="pl-9"
                     value={searchTerm}
                     onChange={(e) => {
@@ -153,8 +197,17 @@ export default function DataExplorerPage() {
                     }}
                   />
                 </div>
-                <Button variant="outline" className="text-slate-600">
-                  <FileDown className="w-4 h-4 mr-2" /> Export CSV
+                <Button
+                  variant="outline"
+                  className="text-slate-600"
+                  onClick={handleExportCSV}
+                  disabled={exportingCSV || loadingData || tableData.length === 0}
+                >
+                  {exportingCSV ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t('explorer.exporting')}</>
+                  ) : (
+                    <><FileDown className="w-4 h-4 mr-2" /> {t('explorer.exportCSV')}</>
+                  )}
                 </Button>
               </div>
             </CardHeader>
@@ -179,7 +232,7 @@ export default function DataExplorerPage() {
                       ))
                     ) : (
                       <TableHead className="font-bold text-slate-700 uppercase text-xs">
-                        Dữ liệu
+                        {t('explorer.dataCol')}
                       </TableHead>
                     )}
                   </TableRow>
@@ -207,7 +260,7 @@ export default function DataExplorerPage() {
                   ) : (
                     <TableRow>
                       <TableCell colSpan={Math.max(columns.length, 1)} className="h-32 text-center text-slate-500">
-                        Không tìm thấy dữ liệu khớp với "{searchTerm}".
+                        {t('explorer.noData')} "{searchTerm}".
                       </TableCell>
                     </TableRow>
                   )}
@@ -218,22 +271,22 @@ export default function DataExplorerPage() {
             {/* Pagination */}
             <div className="border-t bg-white p-4 flex items-center justify-between">
               <div className="text-sm text-slate-500">
-                Trang <span className="font-bold text-slate-800">{currentPage}</span> / {totalPages}
+                {t('explorer.page')} <span className="font-bold text-slate-800">{currentPage}</span> / {totalPages}
               </div>
               <div className="flex items-center space-x-2">
-                <Button 
-                  variant="outline" size="sm" 
+                <Button
+                  variant="outline" size="sm"
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={currentPage === 1 || loadingData}
                 >
-                  <ChevronLeft className="w-4 h-4 mr-1" /> Prev
+                  <ChevronLeft className="w-4 h-4 mr-1" /> {t('explorer.prev')}
                 </Button>
-                <Button 
-                  variant="outline" size="sm" 
+                <Button
+                  variant="outline" size="sm"
                   onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages || loadingData}
                 >
-                  Next <ChevronRight className="w-4 h-4 ml-1" />
+                  {t('explorer.next')} <ChevronRight className="w-4 h-4 ml-1" />
                 </Button>
               </div>
             </div>
@@ -241,7 +294,7 @@ export default function DataExplorerPage() {
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-slate-400">
             <Database className="w-16 h-16 mb-4 text-slate-200" />
-            <p>Chọn một bảng bên trái để xem dữ liệu</p>
+            <p>{t('explorer.selectTable')}</p>
           </div>
         )}
       </Card>

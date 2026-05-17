@@ -3,8 +3,10 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2, Activity, Network } from "lucide-react";
+import { useLanguage } from '@/lib/i18n';
 
 export default function KongGatewayPage() {
+  const { t } = useLanguage();
   const [isLoading, setIsLoading] = useState(true);
 
   const grafana_url = process.env.NEXT_PUBLIC_GRAFANA_URL; 
@@ -17,7 +19,7 @@ export default function KongGatewayPage() {
           API Gateway Monitoring
         </h1>
         <p className="text-slate-500 mt-1">
-          Giám sát lưu lượng truy cập, độ trễ và tỷ lệ lỗi của Trục tích hợp (Powered by Kong & Grafana).
+          {t('gateway.subtitle')}
         </p>
       </div>
 
@@ -36,7 +38,7 @@ export default function KongGatewayPage() {
           {isLoading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50 z-10">
               <Loader2 className="w-10 h-10 animate-spin text-blue-500 mb-4" />
-              <p className="text-slate-500 font-medium animate-pulse">Đang kết nối đến Prometheus & Grafana...</p>
+              <p className="text-slate-500 font-medium animate-pulse">{t('gateway.connecting')}</p>
             </div>
           )}
 

@@ -10,20 +10,25 @@ import {
 @Injectable()
 export class S3Service implements OnModuleInit {
   private readonly logger = new Logger(S3Service.name);
-  private client: S3Client;
+  private client: S3Client | null = null;
   readonly bucket: string;
   readonly region: string;
 
   constructor(private readonly config: ConfigService) {
-    this.region = this.config.get<string>('AWS_REGION', 'ap-southeast-1');
+    // Dùng || fallback để xử lý cả trường hợp env var rỗng ''
+    this.region = this.config.get<string>('AWS_REGION', '') || 'ap-southeast-1';
     this.bucket = this.config.get<string>('AWS_S3_BUCKET', '');
-    this.client = new S3Client({
-      region: this.region,
-      credentials: {
-        accessKeyId: this.config.get<string>('AWS_ACCESS_KEY_ID', ''),
-        secretAccessKey: this.config.get<string>('AWS_SECRET_ACCESS_KEY', ''),
-      },
-    });
+
+    // Chỉ khởi tạo S3Client khi bucket được cấu hình — tránh crash khi chưa dùng S3
+    if (this.bucket) {
+      this.client = new S3Client({
+        region: this.region,
+        credentials: {
+          accessKeyId: this.config.get<string>('AWS_ACCESS_KEY_ID', ''),
+          secretAccessKey: this.config.get<string>('AWS_SECRET_ACCESS_KEY', ''),
+        },
+      });
+    }
   }
 
   async onModuleInit() {
@@ -34,8 +39,13 @@ export class S3Service implements OnModuleInit {
     this.logger.log(`[S3] Kết nối bucket "${this.bucket}" (${this.region}).`);
   }
 
+  private getClient(): S3Client {
+    if (!this.client) throw new Error('S3 chưa được cấu hình (thiếu AWS_S3_BUCKET).');
+    return this.client;
+  }
+
   async uploadBuffer(key: string, buffer: Buffer, contentType = 'application/json'): Promise<void> {
-    await this.client.send(
+    await this.getClient().send(
       new PutObjectCommand({
         Bucket: this.bucket,
         Key: key,
@@ -47,7 +57,7 @@ export class S3Service implements OnModuleInit {
 
   async exists(key: string): Promise<boolean> {
     try {
-      await this.client.send(new HeadObjectCommand({ Bucket: this.bucket, Key: key }));
+      await this.getClient().send(new HeadObjectCommand({ Bucket: this.bucket, Key: key }));
       return true;
     } catch {
       return false;
@@ -59,7 +69,7 @@ export class S3Service implements OnModuleInit {
     let continuationToken: string | undefined;
 
     do {
-      const res = await this.client.send(
+      const res = await this.getClient().send(
         new ListObjectsV2Command({
           Bucket: this.bucket,
           Prefix: prefix,
@@ -81,7 +91,7 @@ export class S3Service implements OnModuleInit {
     let continuationToken: string | undefined;
 
     do {
-      const res = await this.client.send(
+      const res = await this.getClient().send(
         new ListObjectsV2Command({
           Bucket: this.bucket,
           Prefix: prefix,

@@ -9,8 +9,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Loader2, Lock, User } from 'lucide-react';
 import Link from 'next/link';
+import { useLanguage } from '@/lib/i18n';
 
 export default function LoginPage() {
+  const { lang, setLang, t } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [username, setUsername] = useState('');
@@ -41,7 +43,7 @@ export default function LoginPage() {
       window.location.href = role === 'admin' ? '/' : '/data-explorers';
       
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Lỗi kết nối đến máy chủ');
+      setError(err.response?.data?.message || t('login.errServer'));
     } finally {
       setLoading(false);
     }
@@ -49,16 +51,24 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-900 p-4">
+      {/* Language toggle on login page */}
+      <button
+        onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')}
+        className="fixed top-4 right-4 text-xs text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-full transition-colors font-mono"
+      >
+        {lang === 'vi' ? 'EN' : 'VI'}
+      </button>
+
       <Card className="w-full max-w-md shadow-2xl">
         <CardHeader className="space-y-1 text-center">
           <CardTitle className="text-2xl font-bold tracking-tight">University Integration Hub</CardTitle>
-          <CardDescription>Đăng nhập hệ thống quản trị ETL</CardDescription>
+          <CardDescription>{t('login.subtitle')}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             {sessionExpired && (
               <div className="p-3 text-sm text-amber-700 bg-amber-50 rounded-md border border-amber-200">
-                Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.
+                {t('login.expired')}
               </div>
             )}
 
@@ -85,11 +95,11 @@ export default function LoginPage() {
             </div>
 
             <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={loading}>
-              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Đăng nhập"}
+              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t('login.submit')}
             </Button>
             
             <div className="text-center text-sm text-slate-500 mt-4">
-              Chưa có tài khoản Admin? <Link href="/register" className="text-blue-600 hover:underline">Tạo mới</Link>
+              {t('login.noAccount')} <Link href="/register" className="text-blue-600 hover:underline">{t('login.createNew')}</Link>
             </div>
           </form>
         </CardContent>

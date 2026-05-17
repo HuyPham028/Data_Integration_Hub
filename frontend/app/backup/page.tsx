@@ -17,6 +17,7 @@ import ConfirmDialog from "@/components/modals/ConfirmModal";
 import { toast } from "sonner";
 import Image from "next/image";
 import { formatDate, getS3StatusBadge } from "@/lib/utils";
+import { useLanguage } from "@/lib/i18n";
 
 type SchemaInfo = {
   tableName: string;
@@ -34,6 +35,8 @@ type BackupItem = {
 };
 
 export default function BackupPage() {
+  const { t } = useLanguage();
+
   // UI State
   const [activeTab, setActiveTab] = useState<'manual' | 'scheduled' | 'pre-sync' | 'schema-change'>('manual');
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
@@ -98,13 +101,13 @@ export default function BackupPage() {
       await BackupAPI.triggerBackup(selectedTables);
 
       toast.success(
-        `Đã bắt đầu backup cho ${selectedTables.length} bảng!`
+        `${t('backup.toastStarted')} ${selectedTables.length} ${t('backup.toastTables')}`
       );
 
       setIsModalOpen(false)
       fetchBackups(activeTab);
     } catch (error) {
-      toast.error("Lỗi khi tạo backup.");
+      toast.error(t('backup.toastErrCreate'));
     }
   };
 
@@ -114,9 +117,9 @@ export default function BackupPage() {
 
       window.open(response.url, '_blank');
 
-      toast.success("Đang mở link tải backup...");
+      toast.success(t('backup.toastDownload'));
     } catch (error) {
-      toast.error("Lỗi khi lấy link tải.");
+      toast.error(t('backup.toastErrLink'));
     }
   };
 
@@ -127,10 +130,9 @@ export default function BackupPage() {
       const result = await BackupAPI.cleanupBackups();
 
       toast.success(result.message || 'Cleanup completed');
-
       fetchBackups(activeTab);
     } catch (error) {
-      toast.error('Lỗi khi cleanup backup quá hạn');
+      toast.error(t('backup.toastErrCleanup'));
     } finally {
       setIsCleaningUp(false);
     }
@@ -149,14 +151,14 @@ export default function BackupPage() {
 
       await BackupAPI.restoreBackup(selectedRestoreKey);
 
-      toast.success("Khôi phục dữ liệu thành công!");
+      toast.success(t('backup.toastRestore'));
 
       setIsRestoreOpen(false);
       setSelectedRestoreKey(null);
 
       fetchBackups(activeTab);
     } catch (error) {
-      toast.error("Lỗi khi khôi phục dữ liệu.");
+      toast.error(t('backup.toastErrRestore'));
     } finally {
       setIsRestoring(false);
     }
@@ -168,9 +170,9 @@ export default function BackupPage() {
 
       const result = await BackupAPI.syncToS3(key);
 
-      toast.success(result.message || "Đã sync file lên S3");
+      toast.success(result.message || t('backup.toastS3Done'));
     } catch (error) {
-      toast.error("Lỗi khi sync file lên S3");
+      toast.error(t('backup.toastErrS3'));
     } finally {
       setSyncingKey(null);
     }
@@ -182,9 +184,9 @@ export default function BackupPage() {
 
       const result = await BackupAPI.syncAllToS3();
 
-      toast.success(result.message || "Đã bắt đầu sync toàn bộ lên S3");
+      toast.success(result.message || t('backup.toastS3AllDone'));
     } catch (error) {
-      toast.error("Lỗi khi sync toàn bộ lên S3");
+      toast.error(t('backup.toastErrS3All'));
     } finally {
       setIsSyncingAllS3(false);
     }
@@ -192,7 +194,7 @@ export default function BackupPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold">Quản lý Backup</h1>
+      <h1 className="text-2xl font-bold">{t('backup.title')}</h1>
 
       {/* Toolbar */}
       <div className="flex justify-between items-center">
@@ -241,7 +243,7 @@ export default function BackupPage() {
           >
             <Trash2 size={18} />
             <span>
-              {isCleaningUp ? 'Đang xóa...' : 'Xóa bảng quá hạn'}
+              {isCleaningUp ? t('backup.deleting') : t('backup.deleteExpired')}
             </span>
           </button>
           <button
@@ -251,7 +253,7 @@ export default function BackupPage() {
           >
             <FolderArchive size={18} />
             <span>
-              {isSyncingAllS3 ? 'Đang sync...' : 'Đồng bộ tất cả'}
+              {isSyncingAllS3 ? t('backup.syncing') : t('backup.syncAll')}
             </span>
           </button>
 
@@ -260,7 +262,7 @@ export default function BackupPage() {
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition"
           >
             <Plus size={18} />
-            <span>Thêm backup</span>
+            <span>{t('backup.addBackup')}</span>
           </button>
         </div>
       </div>
@@ -273,15 +275,15 @@ export default function BackupPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Tên bảng (Table Name)</TableHead>
-                <TableHead className="text-right">Hành động</TableHead>
+                <TableHead>{t('backup.colTable')}</TableHead>
+                <TableHead className="text-right">{t('backup.colAction')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={2} className="text-center py-4">Đang tải...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={2} className="text-center py-4">{t('backup.loading')}</TableCell></TableRow>
               ) : uniqueTables.length === 0 ? (
-                <TableRow><TableCell colSpan={2} className="text-center py-4">Không có dữ liệu</TableCell></TableRow>
+                <TableRow><TableCell colSpan={2} className="text-center py-4">{t('backup.noData')}</TableCell></TableRow>
               ) : (
                 uniqueTables.map((tableName) => (
                   <TableRow 
@@ -290,7 +292,7 @@ export default function BackupPage() {
                     onClick={() => setSelectedTable(tableName as string)}
                   >
                     <TableCell className="font-medium">{tableName}</TableCell>
-                    <TableCell className="text-right text-blue-600">Xem lịch sử</TableCell>
+                    <TableCell className="text-right text-blue-600">{t('backup.viewHistory')}</TableCell>
                   </TableRow>
                 ))
               )}
@@ -306,20 +308,20 @@ export default function BackupPage() {
                 onClick={() => setSelectedTable(null)}
                 className="flex items-center gap-1 text-sm text-gray-600 hover:text-black"
               >
-                <ArrowLeft size={16} /> Quay lại
+                <ArrowLeft size={16} /> {t('backup.back')}
               </button>
-              <h2 className="font-semibold text-lg">Lịch sử backup: <span className="text-blue-600">{selectedTable}</span></h2>
+              <h2 className="font-semibold text-lg">{t('backup.historyTitle')} <span className="text-blue-600">{selectedTable}</span></h2>
             </div>
             
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Tên File Backup</TableHead>
-                  <TableHead>Lần cập nhật cuối</TableHead>
-                  <TableHead>Lần S3 cập nhật cuối</TableHead>
-                  <TableHead>Trạng thái S3</TableHead>
-                  <TableHead>Thời gian hết hạn</TableHead>
-                  <TableHead className="text-right">Hành động</TableHead>
+                  <TableHead>{t('backup.colFile')}</TableHead>
+                  <TableHead>{t('backup.colUpdated')}</TableHead>
+                  <TableHead>{t('backup.colS3Updated')}</TableHead>
+                  <TableHead>{t('backup.colS3Status')}</TableHead>
+                  <TableHead>{t('backup.colExpiry')}</TableHead>
+                  <TableHead className="text-right">{t('backup.colAction')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -349,7 +351,7 @@ export default function BackupPage() {
                         <button
                           onClick={() => handleSyncToS3(backup.key)}
                           className="text-orange-500 hover:text-orange-700 disabled:opacity-50"
-                          title="Upload lên S3"
+                          title={t('backup.tooltipUpload')}
                           disabled={syncingKey === backup.key}
                         >
                           <CloudUpload size={18} className={`inline ${syncingKey === backup.key ? 'animate-pulse' : ''}`} />
@@ -357,14 +359,14 @@ export default function BackupPage() {
                         <button 
                           onClick={() => handleDownload(backup.key)}
                           className="text-blue-600 hover:text-blue-800"
-                          title="Tải xuống"
+                          title={t('backup.tooltipDownload')}
                         >
                           <Download size={18} className="inline" />
                         </button>
                         <button 
                           onClick={() => handleRestoreClick(backup.key)}
                           className="text-orange-500 hover:text-orange-700"
-                          title="Khôi phục"
+                          title={t('backup.tooltipRestore')}
                         >
                           <RefreshCcw size={18} className="inline" />
                         </button>
@@ -383,19 +385,19 @@ export default function BackupPage() {
         onClose={() => setIsModalOpen(false)}
         schemas={availableSchemas}
         onStartSync={handleTriggerBackup}
-        title="Chọn bảng để backup"
-        subtitle="Chỉ hiển thị các bảng stable để tạo manual backup"
-        searchPlaceholder="Tìm bảng cần backup..."
-        startButtonLabel="Bắt đầu Backup"
+        title={t('backup.selectTitle')}
+        subtitle={t('backup.selectSubtitle')}
+        searchPlaceholder={t('backup.searchPlaceholder')}
+        startButtonLabel={t('backup.startBtn')}
       />
 
       <ConfirmDialog
         open={isRestoreOpen}
         onOpenChange={setIsRestoreOpen}
-        title="Khôi phục bản sao lưu?"
-        description="Bạn có chắc chắn muốn khôi phục bản sao lưu này? Dữ liệu hiện tại sẽ bị ghi đè."
-        confirmText="Khôi phục"
-        cancelText="Hủy"
+        title={t('backup.restoreTitle')}
+        description={t('backup.restoreDesc')}
+        confirmText={t('backup.restoreBtn')}
+        cancelText={t('backup.cancelBtn')}
         destructive
         loading={isRestoring}
         onConfirm={handleConfirmRestore}

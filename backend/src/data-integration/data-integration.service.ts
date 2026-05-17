@@ -7,7 +7,6 @@ import { SyncEngineService } from 'src/modules/sync-engine/sync-engine.service';
 import { BackupService } from 'src/modules/backup/backup.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { EventLogService } from 'src/common/event-log/event-log.service';
-import { MemoryProfiler } from 'src/utils/memory-profiler';
 import { NotificationService } from 'src/common/notification/notification.service';
 import { SourceConfigService } from 'src/common/source-config/source-config.service';
 import { inferDataTypeFromBatch } from 'src/utils/string.util';
@@ -34,13 +33,20 @@ type TableSyncSuccessResult = {
   skipped?: number;
 };
 
+type TableSyncWarningResult = {
+  table: string;
+  status: 'warning';
+  totalRecordsSynced: number;
+  orphanCount: number;
+};
+
 type TableSyncFailedResult = {
   table: string;
   status: 'failed';
   error: string;
 };
 
-type TableSyncResult = TableSyncSuccessResult | TableSyncFailedResult;
+type TableSyncResult = TableSyncSuccessResult | TableSyncWarningResult | TableSyncFailedResult;
 
 @Injectable()
 export class DataIntegrationService {
@@ -163,17 +169,12 @@ export class DataIntegrationService {
     schema: any,
     baseUrl: string,
     token: string,
-  ): Promise<{ synced: number; skipped: number }> {
+  ): Promise<{ synced: number; skipped: number; orphanCount: number }> {
     const strategy: string = schema.syncStrategy || 'upsert';
     const primaryKey: string = schema.primaryKey?.[0];
     const lastSyncTime: Date | null = schema.lastSyncTime
       ? new Date(schema.lastSyncTime)
       : null;
-    // TESTCASE
-    const profiler = new MemoryProfiler();
-    profiler.start(300);
-
-    // try {
     if (!primaryKey && strategy !== 'overwrite') {
       throw new Error(
         `No primary key configured for table ${schema.tableName}.`,
@@ -206,10 +207,11 @@ export class DataIntegrationService {
 
     // Thu thập source IDs để detect orphans (chỉ cho upsert/incremental)
     const sourceIds = new Set<unknown>();
+    let detectedOrphanCount = 0;
 
     do {
       const separator = schema.dataFromApi.includes('?') ? '&' : '?';
-      const tokenParam = token ? `&accessToken=${token}` : '';
+      const tokenParam = token ? `&accessToken=${encodeURIComponent(token)}` : '';
       const updatedAfterParam =
         strategy === 'incremental' && lastSyncTime
           ? `&updatedAfter=${encodeURIComponent(lastSyncTime.toISOString())}`
@@ -380,6 +382,7 @@ export class DataIntegrationService {
         primaryKey,
         sourceIds,
       );
+      detectedOrphanCount = orphanIds.length;
       if (orphanIds.length > 0) {
         this.broadcastLog(
           `[ORPHAN DETECTED] Bảng "${schema.tableName}": ${orphanIds.length} records tồn tại ở destination nhưng không có trong source. IDs: [${orphanIds.slice(0, 20).join(', ')}${orphanIds.length > 20 ? `, ...và ${orphanIds.length - 20} records khác` : ''}]`,
@@ -401,13 +404,7 @@ export class DataIntegrationService {
     // Cập nhật lastSyncTime sau khi sync thành công
     await this.schemaRegistry.updateLastSyncTime(schema.tableName, new Date());
 
-    return { synced: totalSynced, skipped: totalSkipped };
-    // } finally {
-    //   const mem = profiler.stop();
-    //   this.broadcastLog(
-    //     `[MEMORY] ${schema.tableName}: peak=${mem.peakMB}MB, base=${mem.baseMB}MB, delta=${mem.deltaRSS}MB`,
-    //   );
-    // }
+    return { synced: totalSynced, skipped: totalSkipped, orphanCount: detectedOrphanCount };
   }
 
   // ---------------------------------------------------------------------------
@@ -421,7 +418,9 @@ export class DataIntegrationService {
     durationMs: number,
   ): Promise<void> {
     const failed = syncResults.filter((r): r is TableSyncFailedResult => r.status === 'failed');
-    const succeeded = syncResults.filter((r): r is TableSyncSuccessResult => r.status === 'success');
+    const succeeded = syncResults.filter(
+      (r): r is TableSyncSuccessResult | TableSyncWarningResult => r.status === 'success' || r.status === 'warning',
+    );
     const totalSynced = succeeded.reduce((sum, r) => sum + r.totalRecordsSynced, 0);
 
     if (status === 'done') {
@@ -439,6 +438,17 @@ export class DataIntegrationService {
         ),
         durationMs,
       );
+    }
+
+    // Gửi email thông báo đến từng user có quyền trên các bảng vừa sync thành công
+    if (succeeded.length > 0) {
+      this.notificationService
+        .notifyAffectedUsers(
+          succeeded.map((r) => ({ table: r.table, totalRecordsSynced: r.totalRecordsSynced })),
+        )
+        .catch((err) =>
+          this.logger.error(`[NOTIFICATION] notifyAffectedUsers thất bại: ${err.message}`),
+        );
     }
   }
 
@@ -512,20 +522,33 @@ export class DataIntegrationService {
         const { baseUrl, token } = await this.resolveSourceCredentials(schema.dataFrom);
 
         try {
-          const { synced, skipped } = await this.syncOneTable(
+          const { synced, skipped, orphanCount } = await this.syncOneTable(
             schema,
             baseUrl,
             token,
           );
-          syncResults.push({
-            table: schema.tableName,
-            status: 'success',
-            totalRecordsSynced: synced,
-            skipped,
-          });
-          this.broadcastLog(
-            `[DONE] ${schema.tableName}: synced=${synced}, skipped(unchanged)=${skipped}.`,
-          );
+          if (orphanCount > 0) {
+            syncResults.push({
+              table: schema.tableName,
+              status: 'warning',
+              totalRecordsSynced: synced,
+              orphanCount,
+            });
+            this.broadcastLog(
+              `[DONE WITH WARNINGS] ${schema.tableName}: synced=${synced}, orphans=${orphanCount}.`,
+              'WARN',
+            );
+          } else {
+            syncResults.push({
+              table: schema.tableName,
+              status: 'success',
+              totalRecordsSynced: synced,
+              skipped,
+            });
+            this.broadcastLog(
+              `[DONE] ${schema.tableName}: synced=${synced}, skipped(unchanged)=${skipped}.`,
+            );
+          }
         } catch (error: any) {
           this.broadcastLog(
             `[ERROR] ${schema.tableName}: ${error.message}`,
@@ -540,18 +563,15 @@ export class DataIntegrationService {
       }
 
       const successRecords = syncResults
-        .filter((r): r is TableSyncSuccessResult => r.status === 'success')
+        .filter((r): r is TableSyncSuccessResult | TableSyncWarningResult => r.status === 'success' || r.status === 'warning')
         .reduce((sum, r) => sum + r.totalRecordsSynced, 0);
-      const failedCount = syncResults.filter(
-        (r) => r.status === 'failed',
-      ).length;
-      const successCount = syncResults.filter(
-        (r) => r.status === 'success',
-      ).length;
+      const failedCount = syncResults.filter((r) => r.status === 'failed').length;
+      const successCount = syncResults.filter((r) => r.status === 'success').length;
+      const warningCount = syncResults.filter((r) => r.status === 'warning').length;
       const status =
         failedCount === 0
-          ? 'done'
-          : successCount > 0
+          ? warningCount > 0 ? 'done_with_warnings' : 'done'
+          : successCount + warningCount > 0
             ? 'partial_success'
             : 'failed';
 
@@ -562,10 +582,12 @@ export class DataIntegrationService {
           tableResults: syncResults,
           tables: {
             success: successCount,
+            warning: warningCount,
             failed: failedCount,
             skipped: skippedSchemas.length,
           },
           success: successRecords,
+          warning: warningCount,
           failed: failedCount,
         },
         syncResults
@@ -702,20 +724,33 @@ export class DataIntegrationService {
         const { baseUrl, token } = await this.resolveSourceCredentials(schema.dataFrom);
 
         try {
-          const { synced, skipped } = await this.syncOneTable(
+          const { synced, skipped, orphanCount } = await this.syncOneTable(
             schema,
             baseUrl,
             token,
           );
-          syncResults.push({
-            table: schema.tableName,
-            status: 'success',
-            totalRecordsSynced: synced,
-            skipped,
-          });
-          this.broadcastLog(
-            `[DONE] ${schema.tableName}: synced=${synced}, skipped(unchanged)=${skipped}.`,
-          );
+          if (orphanCount > 0) {
+            syncResults.push({
+              table: schema.tableName,
+              status: 'warning',
+              totalRecordsSynced: synced,
+              orphanCount,
+            });
+            this.broadcastLog(
+              `[DONE WITH WARNINGS] ${schema.tableName}: synced=${synced}, orphans=${orphanCount}.`,
+              'WARN',
+            );
+          } else {
+            syncResults.push({
+              table: schema.tableName,
+              status: 'success',
+              totalRecordsSynced: synced,
+              skipped,
+            });
+            this.broadcastLog(
+              `[DONE] ${schema.tableName}: synced=${synced}, skipped(unchanged)=${skipped}.`,
+            );
+          }
         } catch (error: any) {
           this.broadcastLog(
             `[ERROR] ${schema.tableName}: ${error.message}`,
@@ -730,18 +765,15 @@ export class DataIntegrationService {
       }
 
       const successRecords = syncResults
-        .filter((r): r is TableSyncSuccessResult => r.status === 'success')
+        .filter((r): r is TableSyncSuccessResult | TableSyncWarningResult => r.status === 'success' || r.status === 'warning')
         .reduce((sum, r) => sum + r.totalRecordsSynced, 0);
-      const failedCount = syncResults.filter(
-        (r) => r.status === 'failed',
-      ).length;
-      const successCount = syncResults.filter(
-        (r) => r.status === 'success',
-      ).length;
+      const failedCount = syncResults.filter((r) => r.status === 'failed').length;
+      const successCount = syncResults.filter((r) => r.status === 'success').length;
+      const warningCount = syncResults.filter((r) => r.status === 'warning').length;
       const status =
         failedCount === 0
-          ? 'done'
-          : successCount > 0
+          ? warningCount > 0 ? 'done_with_warnings' : 'done'
+          : successCount + warningCount > 0
             ? 'partial_success'
             : 'failed';
 
@@ -755,10 +787,12 @@ export class DataIntegrationService {
             matched: schemasToSync.length,
             missing: missingTables.length,
             success: successCount,
+            warning: warningCount,
             failed: failedCount,
             skipped: 0,
           },
           success: successRecords,
+          warning: warningCount,
           failed: failedCount,
         },
         [
@@ -821,8 +855,6 @@ export class DataIntegrationService {
   > {
     const allSchemas = await this.schemaRegistry.getAllSchema();
     const schemaMap = new Map(allSchemas.map((s) => [s.tableName, s]));
-    const baseUrl = this.configService.get<string>('SOURCE_API_BASE_URL') ?? '';
-    const token = this.configService.get<string>('SOURCE_API_TOKEN', '');
     const results: Array<{
       tableName: string;
       primaryKey: string;
@@ -856,13 +888,14 @@ export class DataIntegrationService {
       }
 
       try {
+        const { baseUrl, token } = await this.resolveSourceCredentials(schema.dataFrom);
         const sourceIds = new Set<unknown>();
         let currentPage = 1;
         let totalPages = 1;
 
         do {
           const separator = schema.dataFromApi.includes('?') ? '&' : '?';
-          const url = `${baseUrl}${schema.dataFromApi}${separator}page=${currentPage}&limit=${this.BATCH_LIMIT}${token ? `&accessToken=${token}` : ''}`;
+          const url = `${baseUrl}${schema.dataFromApi}${separator}page=${currentPage}&limit=${this.BATCH_LIMIT}${token ? `&accessToken=${encodeURIComponent(token)}` : ''}`;
           const response = await this.withRetry(
             () =>
               firstValueFrom(

@@ -10,6 +10,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
+import { useLanguage } from '@/lib/i18n';
 
 type EditState = {
   userId: number;
@@ -20,6 +21,7 @@ type EditState = {
 };
 
 export default function AccessControlPage() {
+  const { t } = useLanguage();
   const [users, setUsers] = useState<UserPermissionSummary[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -121,10 +123,10 @@ export default function AccessControlPage() {
             <table className="w-full text-sm border">
               <thead className="bg-slate-100">
                 <tr>
-                  <th className="p-2 border text-left">User</th>
-                  <th className="p-2 border text-left">Role</th>
-                  <th className="p-2 border text-left">Read</th>
-                  <th className="p-2 border text-left">Write</th>
+                  <th className="p-2 border text-left">{t('ac.colUser')}</th>
+                  <th className="p-2 border text-left">{t('ac.colRole')}</th>
+                  <th className="p-2 border text-left">{t('ac.colRead')}</th>
+                  <th className="p-2 border text-left">{t('ac.colWrite')}</th>
                   <th className="p-2 border"></th>
                 </tr>
               </thead>
@@ -145,7 +147,7 @@ export default function AccessControlPage() {
 
                     <td className="p-2 border">
                       <Button size="sm" onClick={() => openEdit(u)}>
-                        Edit
+                        {t('ac.edit')}
                       </Button>
                     </td>
                   </tr>
@@ -160,13 +162,13 @@ export default function AccessControlPage() {
       {editing && (
         <Card className="fixed inset-y-0 right-0 z-50 w-80 bg-white shadow-xl border-l p-4 overflow-y-auto">
           <CardHeader>
-            <CardTitle>Edit: {editing.username}</CardTitle>
+            <CardTitle>{t('ac.editTitle')} {editing.username}</CardTitle>
           </CardHeader>
 
           <CardContent className="space-y-4">
             {/* ROLE */}
             <div>
-              <label className="text-sm font-medium">Role</label>
+              <label className="text-sm font-medium">{t('ac.labelRole')}</label>
               <select
                 className="w-full border p-2 rounded"
                 value={editing.role}
@@ -186,9 +188,7 @@ export default function AccessControlPage() {
 
             {/* READ SCOPES */}
             <div>
-              <label className="text-sm font-medium">
-                Read Scopes (1 per line)
-              </label>
+              <label className="text-sm font-medium">{t('ac.labelRead')}</label>
               <textarea
                 className="w-full border p-2 rounded font-mono text-xs h-24"
                 value={editing.readScopes}
@@ -202,9 +202,7 @@ export default function AccessControlPage() {
             {/* WRITE SCOPES */}
             {editing.role === 'writer' && (
               <div>
-                <label className="text-sm font-medium">
-                  Write Scopes (1 per line)
-                </label>
+                <label className="text-sm font-medium">{t('ac.labelWrite')}</label>
                 <textarea
                   className="w-full border p-2 rounded font-mono text-xs h-24"
                   value={editing.writeScopes}
@@ -218,11 +216,11 @@ export default function AccessControlPage() {
             {/* ACTIONS */}
             <div className="flex gap-2">
               <Button onClick={handleSave} disabled={saving}>
-                {saving ? 'Saving...' : 'Save'}
+                {saving ? t('ac.saving') : t('ac.save')}
               </Button>
 
               <Button variant="outline" onClick={closeEdit}>
-                Cancel
+                {t('ac.cancel')}
               </Button>
             </div>
           </CardContent>
