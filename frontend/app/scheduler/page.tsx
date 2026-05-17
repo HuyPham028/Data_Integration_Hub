@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { JobAPI } from '@/lib/api-client';
+import { JobAPI, IntegrationAPI } from '@/lib/api-client';
+import JobModal from '@/components/modals/JobModal';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch"; // Shadcn Switch component
@@ -11,11 +12,18 @@ import { Clock, Play, Edit, CalendarDays } from "lucide-react";
 export default function SchedulerPage() {
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [schemas, setSchemas] = useState<any[]>([]);
+  const [editingJob, setEditingJob] = useState<any>(null);
 
   const fetchJobs = async () => {
     try {
-      const data = await JobAPI.getJobs();
-      setJobs(data);
+      const [jobsData, schemasData] = await Promise.all([
+        JobAPI.getJobs(),
+        IntegrationAPI.getSchemas()
+      ]);
+      setJobs(jobsData);
+      setSchemas(schemasData);
     } catch (error) {
       console.error(error);
     } finally {
@@ -31,7 +39,6 @@ export default function SchedulerPage() {
     fetchJobs(); // Cập nhật lại UI
   };
 
-  // Chạy thủ công
   const handleRunNow = async (id: string) => {
     try {
       await JobAPI.triggerJob(id);
@@ -40,6 +47,25 @@ export default function SchedulerPage() {
     } catch (e) {
       alert("Lỗi khi chạy job");
     }
+  };
+
+  const handleEdit = (job: any) => {
+    setEditingJob(job);
+    setIsModalOpen(true);
+  };
+
+  const handleAddNew = () => {
+    setEditingJob(null);
+    setIsModalOpen(true);
+  };
+
+  const handleSaveJob = async (jobData: any) => {
+    if (editingJob) {
+      await JobAPI.updateJob(editingJob._id, jobData);
+    } else {
+      await JobAPI.createJob(jobData);
+    }
+    fetchJobs();
   };
 
   const formatDate = (date: string) => date ? new Date(date).toLocaleString('vi-VN') : 'Chưa từng chạy';
@@ -51,7 +77,7 @@ export default function SchedulerPage() {
           <h1 className="text-3xl font-bold tracking-tight">Automation Scheduler</h1>
           <p className="text-slate-500">Quản lý các tiến trình đồng bộ dữ liệu tự động (Cron Jobs).</p>
         </div>
-        <Button className="bg-blue-600">Thêm Job Mới</Button>
+        <Button className="bg-blue-600" onClick={handleAddNew}>Thêm Job Mới</Button>
       </div>
 
       <Card>
@@ -99,7 +125,7 @@ export default function SchedulerPage() {
                     <Button variant="outline" size="sm" onClick={() => handleRunNow(job._id)}>
                       <Play className="w-4 h-4 mr-1 text-green-600" /> Run Now
                     </Button>
-                    <Button variant="ghost" size="sm">
+                    <Button variant="ghost" size="sm" onClick={() => handleEdit(job)}>
                       <Edit className="w-4 h-4 text-blue-600" />
                     </Button>
                   </TableCell>
@@ -112,6 +138,14 @@ export default function SchedulerPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <JobModal 
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        schemas={schemas}
+        onSave={handleSaveJob}
+        initialData={editingJob}
+      />
     </div>
   );
 }

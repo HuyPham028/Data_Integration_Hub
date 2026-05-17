@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, BadRequestException } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -10,7 +10,8 @@ import { NotificationService } from 'src/common/notification/notification.servic
 type SyncJobDto = {
   _id: unknown;
   jobName: string;
-  jobType: string;
+  jobType: 'FULL_SYNC' | 'CUSTOM_SYNC';
+  targetTables?: string[];
   cronExpression: string;
   isActive: boolean;
   lastRunAt?: Date;
@@ -54,14 +55,44 @@ export class JobSchedulerService implements OnModuleInit {
     if (!job.isActive) return;
 
     // new cronjob 
-    const cronTask = new CronJob(job.cronExpression, async () => {
-      this.logger.log(`[CRON TRIGGERED] Executing job: ${job.jobName}`);
-      await this.executeJobLogic(job);
-    });
+    try {
+      const cronExpr = this.normalizeCronExpression(job);
+      const cronTask = new CronJob(cronExpr, async () => {
+        this.logger.log(`[CRON TRIGGERED] Executing job: ${job.jobName}`);
+        await this.executeJobLogic(job);
+      });
 
-    this.schedulerRegistry.addCronJob(job.jobName, cronTask);
-    cronTask.start();
-    this.logger.log(`Scheduled Job [${job.jobName}] at (${job.cronExpression})`);
+      this.schedulerRegistry.addCronJob(job.jobName, cronTask);
+      cronTask.start();
+      this.logger.log(`Scheduled Job [${job.jobName}] at (${job.cronExpression})`);
+    } catch (error) {
+      this.logger.error(`Failed to register cron job [${job.jobName}]: Invalid cron expression (${job.cronExpression})`);
+    }
+  }
+
+  // Normalize legacy cron expressions that have only 4 fields (missing day-of-week or similar).
+  // If normalization succeeds we persist the corrected expression back to the DB asynchronously.
+  private normalizeCronExpression(job: any): string {
+    const expr = (job?.cronExpression || '').trim();
+    const parts = expr.split(/\s+/);
+
+    if (parts.length === 4) {
+      const fixed = `${expr} *`;
+      try {
+        new CronTime(fixed);
+        // Persist the fix but don't block scheduling on DB write.
+        this.jobModel.findByIdAndUpdate(job._id, { cronExpression: fixed }).catch((err) =>
+          this.logger.warn(`Failed to persist normalized cron for [${job.jobName}]: ${err}`),
+        );
+        this.logger.warn(`Normalized cron expression for [${job.jobName}] from '${expr}' to '${fixed}'`);
+        return fixed;
+      } catch (e) {
+        this.logger.warn(`Normalization produced invalid cron for [${job.jobName}]: '${fixed}'`);
+        return expr;
+      }
+    }
+
+    return expr;
   }
 
   private getNextRunAt(cronExpression: string): Date | null {
@@ -109,7 +140,11 @@ export class JobSchedulerService implements OnModuleInit {
     try {
       if (job.jobType === 'FULL_SYNC') {
         await this.dataIntegrationService.runFullIntegrationPipeline();
-      }
+      } else if (job.jobType === 'CUSTOM_SYNC' && job.targetTables && job.targetTables.length > 0) {
+      await this.dataIntegrationService.runCustomIntegrationPipeline(job.targetTables);
+    } else {
+      this.logger.warn(`Job [${job.jobName}] is CUSTOM_SYNC but has no targetTables. Skipped.`);
+    }
 
       const durationMs = Date.now() - startedAt;
       await this.jobModel.findByIdAndUpdate(job._id, { lastRunAt: new Date() });
@@ -138,6 +173,14 @@ export class JobSchedulerService implements OnModuleInit {
   }
 
   async createJob(data: Partial<SyncJob>) {
+    if (data.cronExpression) {
+      try {
+        new CronTime(data.cronExpression);
+      } catch (e) {
+        throw new BadRequestException('Invalid cron expression');
+      }
+    }
+
     try {
       const newJob = await this.jobModel.create(data);
       this.registerCronJob(newJob);
@@ -162,6 +205,14 @@ export class JobSchedulerService implements OnModuleInit {
   }
 
   async updateJob(id: string, updateData: Partial<SyncJob>) {
+    if (updateData.cronExpression) {
+      try {
+        new CronTime(updateData.cronExpression);
+      } catch (e) {
+        throw new BadRequestException('Invalid cron expression');
+      }
+    }
+
     const updatedJob = await this.jobModel.findByIdAndUpdate(id, updateData, { new: true });
     // Refresh lại lịch chạy trong bộ nhớ
     this.registerCronJob(updatedJob); 

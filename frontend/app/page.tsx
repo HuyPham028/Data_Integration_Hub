@@ -4,10 +4,8 @@ import { useState, useEffect, useRef } from 'react';
 import { IntegrationAPI, JobAPI } from '@/lib/api-client';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { RefreshCw, PlayCircle, Clock, CalendarDays, Activity, CheckCircle2, XCircle, Gauge } from "lucide-react";
+import { RefreshCw, PlayCircle, Activity } from "lucide-react";
 import { LogLine, Terminal } from '@/components/dashboard/terminal';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
@@ -54,11 +52,6 @@ export default function DashboardPage() {
   const [recentRuns, setRecentRuns] = useState<EventLog[]>([]);
   const [chartData, setChartData] = useState<Array<{ name: string; success: number; failed: number }>>([]);
   const [draftCron, setDraftCron] = useState<Record<string, string>>({});
-  const [newJob, setNewJob] = useState({
-    jobName: 'hourly-full-sync',
-    cronExpression: '0 * * * *',
-    description: 'Hourly full sync',
-  });
   
   const API_URL = process.env.NEXT_PUBLIC_KONG_URL;
   const terminalEndRef = useRef<HTMLDivElement>(null);
@@ -144,46 +137,6 @@ export default function DashboardPage() {
     }
   };
 
-  const handleToggleJob = async (id: string, currentStatus: boolean) => {
-    await JobAPI.toggleJob(id, !currentStatus);
-    fetchDashboardData();
-  };
-
-  const handleUpdateCron = async (job: ScheduledJob) => {
-    const nextCronExpression = (draftCron[job._id] || '').trim();
-    if (!nextCronExpression) {
-      return;
-    }
-
-    await JobAPI.updateJob(job._id, {
-      cronExpression: nextCronExpression,
-    });
-    fetchDashboardData();
-  };
-
-  const handleCreateJob = async () => {
-    const jobName = newJob.jobName.trim();
-    const cronExpression = newJob.cronExpression.trim();
-    if (!jobName || !cronExpression) {
-      return;
-    }
-
-    await JobAPI.createJob({
-      jobName,
-      jobType: 'FULL_SYNC',
-      cronExpression,
-      isActive: true,
-      description: newJob.description.trim() || 'Custom full sync job',
-    });
-
-    setNewJob({
-      jobName: `full-sync-${Date.now().toString().slice(-5)}`,
-      cronExpression: '0 * * * *',
-      description: 'Hourly full sync',
-    });
-    fetchDashboardData();
-  };
-
   const formatDateTime = (value?: string | null) => {
     if (!value) {
       return 'N/A';
@@ -212,119 +165,19 @@ export default function DashboardPage() {
   return (
     <div className="h-full min-h-0 flex flex-col gap-4">
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 shrink-0">
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 xl:col-span-1">
           <Card className="border-slate-200 shadow-sm">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-slate-800 flex items-center text-lg">
-                <PlayCircle className="mr-2 h-5 w-5 text-blue-600" /> Manual Trigger
-              </CardTitle>
+            <CardHeader>
+              <CardTitle className="text-slate-800 flex items-center text-lg"><PlayCircle className="mr-2 h-5 w-5 text-blue-600" /> Manual Run</CardTitle>
+              <CardDescription>Kích hoạt đồng bộ ngay lập tức</CardDescription>
             </CardHeader>
-            <CardContent>
-              <Button
-                onClick={() => handleTriggerSync()}
-                disabled={isSyncing}
-                className="bg-blue-600 hover:bg-blue-700 text-white w-full h-10 font-semibold shadow-md"
-              >
-                <RefreshCw className={`mr-2 h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                {isSyncing ? 'SYSTEM IS SYNCING...' : 'RUN FULL SYNC NOW'}
+            <CardContent className="space-y-4">
+              <Button onClick={() => handleTriggerSync()} disabled={isSyncing} className="bg-slate-900 hover:bg-slate-800 text-white w-full h-12 font-bold shadow-md">
+                <RefreshCw className={`mr-2 h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} /> FULL SYNC NOW
               </Button>
-
-              <Button
-                variant="outline"
-                onClick={() => setIsModalOpen(true)}
-                disabled={isSyncing}
-                className="bg-blue-500 hover:bg-blue-600 text-white w-full h-10 font-semibold"
-              >
-                <PlayCircle className="mr-2 h-4 w-4" />
-                RUN CUSTOM SYNC
+              <Button variant="outline" onClick={() => setIsModalOpen(true)} disabled={isSyncing} className="w-full h-12 border-slate-300 text-slate-700 font-semibold">
+                CUSTOM SYNC (CHỌN BẢNG)
               </Button>
-            </CardContent>
-          </Card>
-
-          <Card className="border-slate-200 shadow-sm">
-            <CardHeader className="pb-3 border-b">
-              <CardTitle className="text-slate-800 text-base">Create Scheduled Job</CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 space-y-3">
-              <Input
-                value={newJob.jobName}
-                onChange={(e) => setNewJob(prev => ({ ...prev, jobName: e.target.value }))}
-                placeholder="Job name"
-              />
-              <Input
-                value={newJob.cronExpression}
-                onChange={(e) => setNewJob(prev => ({ ...prev, cronExpression: e.target.value }))}
-                placeholder="Cron expression (e.g. 0 * * * *)"
-              />
-              <Input
-                value={newJob.description}
-                onChange={(e) => setNewJob(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Description"
-              />
-              <Button onClick={handleCreateJob} className="w-full bg-slate-900 hover:bg-slate-800 text-white">
-                Add Job
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card className="flex-1 border-slate-200 shadow-sm">
-            <CardHeader className="pb-3 border-b">
-              <div className="flex justify-between items-center">
-                <CardTitle className="text-slate-800 flex items-center text-lg">
-                  <Clock className="mr-2 h-5 w-5 text-slate-600" /> Scheduled Jobs
-                </CardTitle>
-                <Badge variant="outline" className="bg-slate-50">{scheduledJobs.length} Jobs</Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="divide-y max-h-55 overflow-y-auto">
-                {scheduledJobs.length === 0 ? (
-                  <div className="p-4 text-sm text-center text-slate-500 italic">No scheduled jobs configured.</div>
-                ) : (
-                  scheduledJobs.map(job => (
-                    <div key={job._id} className="p-4 space-y-3 hover:bg-slate-50 transition-colors">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="font-semibold text-sm text-slate-800">{job.jobName}</div>
-                        <div className="flex items-center gap-3">
-                          <Switch 
-                            checked={job.isActive} 
-                            onCheckedChange={() => handleToggleJob(job._id, job.isActive)} 
-                          />
-                          <Button 
-                            variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:bg-blue-100"
-                            onClick={() => handleTriggerSync(job._id)}
-                            title="Run this job now"
-                          >
-                            <PlayCircle className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2">
-                        <Input
-                          value={draftCron[job._id] || ''}
-                          onChange={(e) => setDraftCron(prev => ({ ...prev, [job._id]: e.target.value }))}
-                          className="font-mono"
-                          placeholder="Cron expression"
-                        />
-                        <Button
-                          variant="outline"
-                          onClick={() => handleUpdateCron(job)}
-                        >
-                          Save Interval
-                        </Button>
-                      </div>
-
-                      <div className="text-xs text-slate-500 font-mono flex flex-wrap gap-x-4 gap-y-1">
-                        <div className="flex items-center">
-                          <CalendarDays className="h-3 w-3 mr-1" /> next: {formatDateTime(job.nextRunAt || null)}
-                        </div>
-                        <div>last: {formatDateTime(job.lastRunAt)}</div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
             </CardContent>
           </Card>
         </div>
@@ -332,36 +185,22 @@ export default function DashboardPage() {
         <div className="xl:col-span-2 flex flex-col gap-4">
           <Card className="border-slate-200 shadow-sm flex flex-col">
             <CardHeader className="pb-0">
-              <div className="flex justify-between items-center">
-                <div>
-                  <CardTitle className="text-slate-800 flex items-center text-lg">
-                    <Activity className="mr-2 h-5 w-5 text-green-600" /> Execution Metrics (Last 7 runs)
-                  </CardTitle>
-                  <CardDescription>Records synchronized successfully vs failed across recent runs.</CardDescription>
-                </div>
-              </div>
+              <CardTitle className="text-slate-800 flex items-center text-lg"><Activity className="mr-2 h-5 w-5 text-green-600" /> Execution Metrics</CardTitle>
             </CardHeader>
             <CardContent className="flex-1 pt-6 pb-4">
-              {chartData.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-slate-400 italic">No historical data available</div>
-              ) : (
-                <div className="h-60 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
-                      <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
-                      <Tooltip
-                        cursor={{ fill: '#f1f5f9' }}
-                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                      />
-                      <Legend iconType="circle" wrapperStyle={{ paddingTop: '10px' }} />
-                      <Bar dataKey="success" name="Success" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={50} />
-                      <Bar dataKey="failed" name="Failed" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={50} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
+              <div className="h-60 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} />
+                    <YAxis axisLine={false} tickLine={false} />
+                    <Tooltip cursor={{ fill: '#f1f5f9' }} />
+                    <Legend iconType="circle" wrapperStyle={{ paddingTop: '10px' }} />
+                    <Bar dataKey="success" name="Success" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={50} />
+                    <Bar dataKey="failed" name="Failed" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={50} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </CardContent>
           </Card>
 
