@@ -428,6 +428,17 @@ export class DataIntegrationService {
         durationMs,
       );
     }
+
+    // Gửi email thông báo đến từng user có quyền trên các bảng vừa sync thành công
+    if (succeeded.length > 0) {
+      this.notificationService
+        .notifyAffectedUsers(
+          succeeded.map((r) => ({ table: r.table, totalRecordsSynced: r.totalRecordsSynced })),
+        )
+        .catch((err) =>
+          this.logger.error(`[NOTIFICATION] notifyAffectedUsers thất bại: ${err.message}`),
+        );
+    }
   }
 
   // ---------------------------------------------------------------------------
