@@ -37,6 +37,7 @@ services:
           - /backup
           - /api/master-data
           - /tables
+          - /source-configs
         strip_path: false
 
 plugins:

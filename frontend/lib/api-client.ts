@@ -222,3 +222,35 @@ export const AccessControlAPI = {
     return (await apiClient.post(`/users/${userId}/permissions`, roleSettings)).data;
   },
 };
+
+export const SourceConfigAPI = {
+  getAll: async () => {
+    try {
+      const response = await apiClient.get('/source-configs');
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch source configs:', error);
+      return [];
+    }
+  },
+
+  getById: async (id: string) => {
+    try {
+      const response = await apiClient.get(`/source-configs/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch source config:', error);
+      return null;
+    }
+  },
+
+  update: async (id: string, data: any) => {
+    try {
+      const response = await apiClient.put(`/source-configs/${id}`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to update source config:', error);
+      throw error;
+    }
+  },
+};

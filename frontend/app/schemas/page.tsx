@@ -184,6 +184,7 @@ export default function SchemaRegistryPage() {
                   <TableHead>Nguồn</TableHead>
                   <TableHead>Số Trường</TableHead>
                   <TableHead>Trạng thái</TableHead>
+                  <TableHead>Chiến thuật đồng bộ</TableHead>
                   <TableHead className="text-right pr-6">Action</TableHead>
                 </TableRow>
               </TableHeader>
@@ -204,6 +205,7 @@ export default function SchemaRegistryPage() {
                       {schema.status === 'new' && <Badge className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50"><FileJson className="w-3 h-3 mr-1"/> New Model</Badge>}
                       {schema.status === 'changed' && <Badge className="bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-50"><AlertTriangle className="w-3 h-3 mr-1"/> Schema Drift</Badge>}
                     </TableCell>
+                    <TableCell>{schema.syncStrategy}</TableCell>
                     <TableCell className="text-right pr-6">
                       {schema.status !== 'stable' ? (
                         <Button 

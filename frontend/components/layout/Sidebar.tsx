@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Database, Activity, Network, LogOut, Clock, Shield, DatabaseBackup } from 'lucide-react';
+import { LayoutDashboard, Database, Activity, Network, LogOut, Clock, Shield, DatabaseBackup, ServerCog } from 'lucide-react';
 import { clearAuthSession } from '@/lib/auth-session';
 
 type SidebarProps = {
@@ -16,6 +16,7 @@ const navItems = [
   { name: 'Schema Registry', href: '/schemas', icon: Database },
   { name: 'Sync History', href: '/sync-logs', icon: Activity },
   { name: 'Backup', href: '/backup', icon: DatabaseBackup },
+  { name: 'Source Config', href: '/source_config', icon: ServerCog },
   { name: 'API Gateway (Kong)', href: '/gateway', icon: Network },
 ];
 
