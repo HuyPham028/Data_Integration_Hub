@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { Search, X, CheckSquare, Square } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useLanguage } from '@/lib/i18n';
 
 interface SchemaInfo {
   tableName: string;
@@ -19,6 +20,7 @@ interface TableSelectProps {
 }
 
 const TableSelect: React.FC<TableSelectProps> = ({ isOpen, onClose, schemas, onStartSync }) => {
+  const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTables, setSelectedTables] = useState<string[]>([]);
 
@@ -60,8 +62,8 @@ const TableSelect: React.FC<TableSelectProps> = ({ isOpen, onClose, schemas, onS
         
         <div className="flex justify-between items-center p-4 border-b bg-slate-50">
           <div>
-            <h2 className="text-lg font-bold text-slate-800">Select Tables to Sync</h2>
-            <p className="text-xs text-slate-500">Chỉ hiển thị các bảng đã chuẩn hóa (stable)</p>
+            <h2 className="text-lg font-bold text-slate-800">{t('modal.selectSync')}</h2>
+            <p className="text-xs text-slate-500">{t('modal.onlyStable')}</p>
           </div>
           <button onClick={onClose} className="p-1 rounded-md text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition-colors">
             <X className="w-5 h-5" />
@@ -73,7 +75,7 @@ const TableSelect: React.FC<TableSelectProps> = ({ isOpen, onClose, schemas, onS
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input 
               type="text"
-              placeholder="Tìm kiếm tên bảng (VD: tcns_can_bo)..." 
+              placeholder={t('modal.searchTable')}
               className="pl-9 bg-slate-50 focus-visible:ring-blue-500"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -85,9 +87,9 @@ const TableSelect: React.FC<TableSelectProps> = ({ isOpen, onClose, schemas, onS
               className="flex items-center text-blue-600 hover:text-blue-800 font-medium"
             >
               {selectedTables.length === filteredSchemas.length && filteredSchemas.length > 0 ? (
-                <><CheckSquare className="w-4 h-4 mr-1" /> Deselect All</>
+                <><CheckSquare className="w-4 h-4 mr-1" /> {t('modal.deselectAll')}</>
               ) : (
-                <><Square className="w-4 h-4 mr-1" /> Select All</>
+                <><Square className="w-4 h-4 mr-1" /> {t('modal.selectAll')}</>
               )}
             </button>
             <span className="text-slate-500">{selectedTables.length} / {stableSchemas.length} selected</span>
@@ -97,7 +99,7 @@ const TableSelect: React.FC<TableSelectProps> = ({ isOpen, onClose, schemas, onS
         {/* Danh sách bảng (Scrollable) */}
         <div className="flex-1 overflow-y-auto p-2 bg-slate-50/50">
           {filteredSchemas.length === 0 ? (
-            <div className="text-center py-8 text-slate-400 text-sm">Không tìm thấy bảng nào phù hợp.</div>
+            <div className="text-center py-8 text-slate-400 text-sm">{t('modal.noTable')}</div>
           ) : (
             <ul className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
               {filteredSchemas.map((schema) => (
@@ -124,13 +126,13 @@ const TableSelect: React.FC<TableSelectProps> = ({ isOpen, onClose, schemas, onS
 
         {/* Footer */}
         <div className="p-4 border-t bg-slate-50 flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose}>Huỷ</Button>
-          <Button 
-            className="bg-blue-600 hover:bg-blue-700 text-white" 
+          <Button variant="outline" onClick={onClose}>{t('modal.cancel')}</Button>
+          <Button
+            className="bg-blue-600 hover:bg-blue-700 text-white"
             disabled={selectedTables.length === 0}
             onClick={handleStart}
           >
-            Bắt đầu Sync ({selectedTables.length})
+            {t('modal.startSync')} ({selectedTables.length})
           </Button>
         </div>
 

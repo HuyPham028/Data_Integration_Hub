@@ -161,7 +161,7 @@ export const ReaderAPI = {
 
       const res = await apiClient.get(`/api/master-data/${tableId}?${query}`);
       const response = res.data;
-      
+
       // Response trả về từ service findAll của bạn có dạng: { data: [...], meta: { totalPages: ... } }
       const rawData = response.data || [];
       const meta = response.meta || { totalPages: 1 };
@@ -179,7 +179,35 @@ export const ReaderAPI = {
       console.error(`Lỗi tải dữ liệu bảng ${tableId}:`, error);
       return { columns: [], data: [], metadata: { totalPages: 1 } };
     }
-  }
+  },
+
+  exportAllTableData: async (tableId: string, search: string) => {
+    const PAGE_SIZE = 5000;
+    const allData: Record<string, unknown>[] = [];
+    let currentPage = 1;
+    let totalPages = 1;
+
+    do {
+      const query = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: PAGE_SIZE.toString(),
+        ...(search ? { search } : {}),
+      });
+      const res = await apiClient.get(`/api/master-data/${tableId}?${query}`);
+      const body = res.data;
+      const pageData: Record<string, unknown>[] = body?.data || [];
+
+      allData.push(...pageData);
+
+      if (currentPage === 1) {
+        totalPages = body?.meta?.totalPages ?? 1;
+      }
+      currentPage++;
+    } while (currentPage <= totalPages);
+
+    const columns = allData.length > 0 ? Object.keys(allData[0]) : [];
+    return { columns, data: allData };
+  },
 };
 
 export type RoleType = 'admin' | 'reader' | 'writer' | 'user';

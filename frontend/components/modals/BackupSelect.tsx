@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { Search, X, CheckSquare, Square } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useLanguage } from '@/lib/i18n';
 
 interface SchemaInfo {
   tableName: string;
@@ -32,6 +33,7 @@ const BackupSelect: React.FC<TableSelectProps> = ({
   searchPlaceholder = 'Tìm kiếm tên bảng (VD: tcns_can_bo)...',
   startButtonLabel = 'Bắt đầu Sync',
 }) => {
+  const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTables, setSelectedTables] = useState<string[]>([]);
 
@@ -98,9 +100,9 @@ const BackupSelect: React.FC<TableSelectProps> = ({
               className="flex items-center text-blue-600 hover:text-blue-800 font-medium"
             >
               {selectedTables.length === filteredSchemas.length && filteredSchemas.length > 0 ? (
-                <><CheckSquare className="w-4 h-4 mr-1" /> Deselect All</>
+                <><CheckSquare className="w-4 h-4 mr-1" /> {t('modal.deselectAll')}</>
               ) : (
-                <><Square className="w-4 h-4 mr-1" /> Select All</>
+                <><Square className="w-4 h-4 mr-1" /> {t('modal.selectAll')}</>
               )}
             </button>
             <span className="text-slate-500">{selectedTables.length} / {stableSchemas.length} selected</span>
@@ -110,7 +112,7 @@ const BackupSelect: React.FC<TableSelectProps> = ({
         {/* Danh sách bảng (Scrollable) */}
         <div className="flex-1 overflow-y-auto p-2 bg-slate-50/50">
           {filteredSchemas.length === 0 ? (
-            <div className="text-center py-8 text-slate-400 text-sm">Không tìm thấy bảng nào phù hợp.</div>
+            <div className="text-center py-8 text-slate-400 text-sm">{t('modal.noTable')}</div>
           ) : (
             <ul className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
               {filteredSchemas.map((schema) => (
@@ -137,7 +139,7 @@ const BackupSelect: React.FC<TableSelectProps> = ({
 
         {/* Footer */}
         <div className="p-4 border-t bg-slate-50 flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose}>Huỷ</Button>
+          <Button variant="outline" onClick={onClose}>{t('modal.cancel')}</Button>
           <Button 
             className="bg-blue-600 hover:bg-blue-700 text-white" 
             disabled={selectedTables.length === 0}

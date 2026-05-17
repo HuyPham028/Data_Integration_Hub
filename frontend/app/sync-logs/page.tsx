@@ -7,12 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { 
-  Loader2, Activity, Clock, ServerCrash, CheckCircle2, 
-  PlayCircle, ChevronDown, ChevronRight, FileText, Database 
+import {
+  Loader2, Activity, Clock, ServerCrash, CheckCircle2,
+  PlayCircle, ChevronDown, ChevronRight, FileText, Database
 } from "lucide-react";
+import { useLanguage } from '@/lib/i18n';
 
 export default function SyncLogsPage() {
+  const { t } = useLanguage();
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -62,13 +64,13 @@ export default function SyncLogsPage() {
     switch (status) {
       case 'done':
       case 'success':
-        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100"><CheckCircle2 className="w-3 h-3 mr-1"/> Thành công</Badge>;
+        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100"><CheckCircle2 className="w-3 h-3 mr-1"/> {t('logs.statusDone')}</Badge>;
       case 'running':
-        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 animate-pulse"><PlayCircle className="w-3 h-3 mr-1"/> Đang chạy</Badge>;
+        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 animate-pulse"><PlayCircle className="w-3 h-3 mr-1"/> {t('logs.statusRun')}</Badge>;
       case 'partial_success':
-        return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100"><Activity className="w-3 h-3 mr-1"/> Lỗi một phần</Badge>;
+        return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100"><Activity className="w-3 h-3 mr-1"/> {t('logs.statusPartial')}</Badge>;
       case 'failed':
-        return <Badge variant="destructive"><ServerCrash className="w-3 h-3 mr-1"/> Thất bại</Badge>;
+        return <Badge variant="destructive"><ServerCrash className="w-3 h-3 mr-1"/> {t('logs.statusFailed')}</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -78,17 +80,17 @@ export default function SyncLogsPage() {
     <div className="space-y-6 max-w-7xl mx-auto">
       <div className="flex justify-between items-end">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Lịch sử Đồng bộ (Sync Logs)</h1>
-          <p className="text-slate-500 mt-1">Quản lý lịch sử các tiến trình ETL và chi tiết từng bảng dữ liệu.</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t('logs.title')}</h1>
+          <p className="text-slate-500 mt-1">{t('logs.subtitle')}</p>
         </div>
         <Button variant="outline" onClick={fetchLogs} className="text-blue-600 border-blue-200 hover:bg-blue-50">
-          <Activity className="w-4 h-4 mr-2" /> Làm mới dữ liệu
+          <Activity className="w-4 h-4 mr-2" /> {t('logs.refresh')}
         </Button>
       </div>
 
       <Card className="shadow-sm border-slate-200">
         <CardHeader className="bg-slate-50/50 border-b border-slate-100">
-          <CardTitle>Danh sách Tiến trình Cron Job</CardTitle>
+          <CardTitle>{t('logs.listTitle')}</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           {loading ? (
@@ -98,12 +100,12 @@ export default function SyncLogsPage() {
               <TableHeader>
                 <TableRow className="bg-slate-50">
                   <TableHead className="w-[50px]"></TableHead> {/* Cột cho Chevron */}
-                  <TableHead>Tên Tiến trình (Job)</TableHead>
-                  <TableHead>Bắt đầu lúc</TableHead>
-                  <TableHead>Thời lượng</TableHead>
-                  <TableHead>Trạng thái</TableHead>
-                  <TableHead>Tổng Record</TableHead>
-                  <TableHead className="text-right">Hành động</TableHead>
+                  <TableHead>{t('logs.colJob')}</TableHead>
+                  <TableHead>{t('logs.colStart')}</TableHead>
+                  <TableHead>{t('logs.colDuration')}</TableHead>
+                  <TableHead>{t('logs.colStatus')}</TableHead>
+                  <TableHead>{t('logs.colRecords')}</TableHead>
+                  <TableHead className="text-right">{t('logs.colAction')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -138,7 +140,7 @@ export default function SyncLogsPage() {
                         <TableCell className="text-sm">
                           <div className="flex gap-2">
                             <span className="text-green-700 font-medium">{metrics.success || 0} OK</span>
-                            {metrics.failed > 0 && <span className="text-red-600 font-medium border-l pl-2">{metrics.failed} Lỗi</span>}
+                            {metrics.failed > 0 && <span className="text-red-600 font-medium border-l pl-2">{metrics.failed} {t('logs.errLabel')}</span>}
                           </div>
                         </TableCell>
                         <TableCell className="text-right">
@@ -151,7 +153,7 @@ export default function SyncLogsPage() {
                             }}
                             className="text-blue-600 hover:text-blue-800 hover:bg-blue-100"
                           >
-                            <FileText className="w-4 h-4 mr-1" /> Log Thô
+                            <FileText className="w-4 h-4 mr-1" /> {t('logs.rawLog')}
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -163,7 +165,7 @@ export default function SyncLogsPage() {
                             <div className="px-14 py-4">
                               <h4 className="text-sm font-bold text-slate-700 mb-3 flex items-center">
                                 <Database className="w-4 h-4 mr-2 text-slate-500" />
-                                Chi tiết đồng bộ theo Bảng (Tables)
+                                {t('logs.tableDetail')}
                               </h4>
                               
                               {tableResults.length > 0 ? (
@@ -171,10 +173,10 @@ export default function SyncLogsPage() {
                                   <Table>
                                     <TableHeader className="bg-slate-100/50">
                                       <TableRow>
-                                        <TableHead className="h-8 text-xs font-semibold">Tên Bảng</TableHead>
-                                        <TableHead className="h-8 text-xs font-semibold w-[150px]">Trạng thái</TableHead>
-                                        <TableHead className="h-8 text-xs font-semibold w-[150px]">Record đã lưu</TableHead>
-                                        <TableHead className="h-8 text-xs font-semibold">Ghi chú (Lỗi)</TableHead>
+                                        <TableHead className="h-8 text-xs font-semibold">{t('logs.colTName')}</TableHead>
+                                        <TableHead className="h-8 text-xs font-semibold w-[150px]">{t('logs.colTStatus')}</TableHead>
+                                        <TableHead className="h-8 text-xs font-semibold w-[150px]">{t('logs.colTRecords')}</TableHead>
+                                        <TableHead className="h-8 text-xs font-semibold">{t('logs.colTError')}</TableHead>
                                       </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -197,7 +199,7 @@ export default function SyncLogsPage() {
                                 </div>
                               ) : (
                                 <div className="text-sm text-slate-500 italic p-3 bg-white border border-slate-200 rounded-md">
-                                  Tiến trình không có dữ liệu bảng nào (Có thể bị Skip do schema chưa an toàn hoặc không có data mới).
+                                  {t('logs.noTableData')}
                                 </div>
                               )}
                             </div>
@@ -211,7 +213,7 @@ export default function SyncLogsPage() {
                 {logs.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-12 text-slate-500">
-                      Chưa có lịch sử đồng bộ nào.
+                      {t('logs.noHistory')}
                     </TableCell>
                   </TableRow>
                 )}
@@ -232,15 +234,15 @@ export default function SyncLogsPage() {
           
           <div className="mt-4 space-y-4">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm bg-slate-50 p-4 rounded-lg border">
-              <div><span className="text-slate-500 block text-xs">Tag:</span> <b>{selectedLog?.tag}</b></div>
-              <div><span className="text-slate-500 block text-xs">Trạng thái:</span> <div className="mt-1">{renderStatusBadge(selectedLog?.status)}</div></div>
-              <div><span className="text-slate-500 block text-xs">Bắt đầu:</span> <div className="font-medium">{formatDate(selectedLog?.details?.startTime)}</div></div>
-              <div><span className="text-slate-500 block text-xs">Kết thúc:</span> <div className="font-medium">{formatDate(selectedLog?.details?.endTime)}</div></div>
+              <div><span className="text-slate-500 block text-xs">{t('logs.rawTag')}</span> <b>{selectedLog?.tag}</b></div>
+              <div><span className="text-slate-500 block text-xs">{t('logs.rawStatus')}</span> <div className="mt-1">{renderStatusBadge(selectedLog?.status)}</div></div>
+              <div><span className="text-slate-500 block text-xs">{t('logs.rawStart')}</span> <div className="font-medium">{formatDate(selectedLog?.details?.startTime)}</div></div>
+              <div><span className="text-slate-500 block text-xs">{t('logs.rawEnd')}</span> <div className="font-medium">{formatDate(selectedLog?.details?.endTime)}</div></div>
             </div>
 
             {selectedLog?.details?.errors && selectedLog.details.errors.length > 0 && (
               <div className="mt-4">
-                <h4 className="font-bold text-red-600 mb-2 flex items-center"><ServerCrash className="w-4 h-4 mr-1"/> Lỗi Hệ thống (System Errors)</h4>
+                <h4 className="font-bold text-red-600 mb-2 flex items-center"><ServerCrash className="w-4 h-4 mr-1"/> {t('logs.sysErrors')}</h4>
                 <div className="bg-red-50 border border-red-100 rounded-lg p-3 max-h-64 overflow-y-auto">
                   <ul className="space-y-2 text-sm text-red-800 font-mono">
                     {selectedLog.details.errors.map((err: any, idx: number) => (

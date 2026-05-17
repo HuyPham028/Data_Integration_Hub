@@ -14,6 +14,7 @@ import {
 } from 'recharts';
 import TableSelect from '@/components/modals/TableSelect';
 import { getAccessToken } from '@/lib/auth-session';
+import { useLanguage } from '@/lib/i18n';
 
 type ScheduledJob = {
   _id: string;
@@ -48,6 +49,7 @@ interface IncomingLogLine {
 }
 
 export default function DashboardPage() {
+  const { t } = useLanguage();
   const [isSyncing, setIsSyncing] = useState(false);
   const [logs, setLogs] = useState<LogLine[]>([]);
   const [scheduledJobs, setScheduledJobs] = useState<ScheduledJob[]>([]);
@@ -216,7 +218,7 @@ export default function DashboardPage() {
           <Card className="border-slate-200 shadow-sm">
             <CardHeader className="pb-3">
               <CardTitle className="text-slate-800 flex items-center text-lg">
-                <PlayCircle className="mr-2 h-5 w-5 text-blue-600" /> Manual Trigger
+                <PlayCircle className="mr-2 h-5 w-5 text-blue-600" /> {t('dash.manualTrigger')}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -226,7 +228,7 @@ export default function DashboardPage() {
                 className="bg-blue-600 hover:bg-blue-700 text-white w-full h-10 font-semibold shadow-md"
               >
                 <RefreshCw className={`mr-2 h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                {isSyncing ? 'SYSTEM IS SYNCING...' : 'RUN FULL SYNC NOW'}
+                {isSyncing ? t('dash.syncing') : t('dash.runFull')}
               </Button>
 
               <Button
@@ -236,33 +238,33 @@ export default function DashboardPage() {
                 className="bg-blue-500 hover:bg-blue-600 text-white w-full h-10 font-semibold"
               >
                 <PlayCircle className="mr-2 h-4 w-4" />
-                RUN CUSTOM SYNC
+                {t('dash.runCustom')}
               </Button>
             </CardContent>
           </Card>
 
           <Card className="border-slate-200 shadow-sm">
             <CardHeader className="pb-3 border-b">
-              <CardTitle className="text-slate-800 text-base">Create Scheduled Job</CardTitle>
+              <CardTitle className="text-slate-800 text-base">{t('dash.createJob')}</CardTitle>
             </CardHeader>
             <CardContent className="p-4 space-y-3">
               <Input
                 value={newJob.jobName}
                 onChange={(e) => setNewJob(prev => ({ ...prev, jobName: e.target.value }))}
-                placeholder="Job name"
+                placeholder={t('dash.jobName')}
               />
               <Input
                 value={newJob.cronExpression}
                 onChange={(e) => setNewJob(prev => ({ ...prev, cronExpression: e.target.value }))}
-                placeholder="Cron expression (e.g. 0 * * * *)"
+                placeholder={t('dash.cronPlaceholder')}
               />
               <Input
                 value={newJob.description}
                 onChange={(e) => setNewJob(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Description"
+                placeholder={t('dash.description')}
               />
               <Button onClick={handleCreateJob} className="w-full bg-slate-900 hover:bg-slate-800 text-white">
-                Add Job
+                {t('dash.addJob')}
               </Button>
             </CardContent>
           </Card>
@@ -271,7 +273,7 @@ export default function DashboardPage() {
             <CardHeader className="pb-3 border-b">
               <div className="flex justify-between items-center">
                 <CardTitle className="text-slate-800 flex items-center text-lg">
-                  <Clock className="mr-2 h-5 w-5 text-slate-600" /> Scheduled Jobs
+                  <Clock className="mr-2 h-5 w-5 text-slate-600" /> {t('dash.scheduledJobs')}
                 </CardTitle>
                 <Badge variant="outline" className="bg-slate-50">{scheduledJobs.length} Jobs</Badge>
               </div>
@@ -279,7 +281,7 @@ export default function DashboardPage() {
             <CardContent className="p-0">
               <div className="divide-y max-h-55 overflow-y-auto">
                 {scheduledJobs.length === 0 ? (
-                  <div className="p-4 text-sm text-center text-slate-500 italic">No scheduled jobs configured.</div>
+                  <div className="p-4 text-sm text-center text-slate-500 italic">{t('dash.noJobs')}</div>
                 ) : (
                   scheduledJobs.map(job => (
                     <div key={job._id} className="p-4 space-y-3 hover:bg-slate-50 transition-colors">
@@ -311,7 +313,7 @@ export default function DashboardPage() {
                           variant="outline"
                           onClick={() => handleUpdateCron(job)}
                         >
-                          Save Interval
+                          {t('dash.saveInterval')}
                         </Button>
                       </div>
 
@@ -335,15 +337,15 @@ export default function DashboardPage() {
               <div className="flex justify-between items-center">
                 <div>
                   <CardTitle className="text-slate-800 flex items-center text-lg">
-                    <Activity className="mr-2 h-5 w-5 text-green-600" /> Execution Metrics (Last 7 runs)
+                    <Activity className="mr-2 h-5 w-5 text-green-600" /> {t('dash.metrics')}
                   </CardTitle>
-                  <CardDescription>Records synchronized successfully vs failed across recent runs.</CardDescription>
+                  <CardDescription>{t('dash.metricsDesc')}</CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="flex-1 pt-6 pb-4">
               {chartData.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-slate-400 italic">No historical data available</div>
+                <div className="h-full flex items-center justify-center text-slate-400 italic">{t('dash.noHistorical')}</div>
               ) : (
                 <div className="h-60 w-full">
                   <ResponsiveContainer width="100%" height="100%">
@@ -356,8 +358,8 @@ export default function DashboardPage() {
                         contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                       />
                       <Legend iconType="circle" wrapperStyle={{ paddingTop: '10px' }} />
-                      <Bar dataKey="success" name="Success" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={50} />
-                      <Bar dataKey="failed" name="Failed" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={50} />
+                      <Bar dataKey="success" name={t('dash.success')} fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={50} />
+                      <Bar dataKey="failed" name={t('dash.failed')} fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={50} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -367,13 +369,13 @@ export default function DashboardPage() {
 
           <Card className="border-slate-200 shadow-sm">
             <CardHeader className="pb-3 border-b">
-              <CardTitle className="text-slate-800 text-lg">Recently Run Jobs</CardTitle>
-              <CardDescription>Latest executions and their outcomes.</CardDescription>
+              <CardTitle className="text-slate-800 text-lg">{t('dash.recentJobs')}</CardTitle>
+              <CardDescription>{t('dash.recentDesc')}</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
               <div className="divide-y max-h-62.5 overflow-y-auto">
                 {recentRuns.length === 0 ? (
-                  <div className="p-4 text-sm text-center text-slate-500 italic">No run history available.</div>
+                  <div className="p-4 text-sm text-center text-slate-500 italic">{t('dash.noHistory')}</div>
                 ) : (
                   recentRuns.map((run) => (
                     <div key={run._id} className="p-4 flex items-center justify-between gap-4">

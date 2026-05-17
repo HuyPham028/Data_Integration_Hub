@@ -7,7 +7,6 @@ import { SyncEngineService } from 'src/modules/sync-engine/sync-engine.service';
 import { BackupService } from 'src/modules/backup/backup.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { EventLogService } from 'src/common/event-log/event-log.service';
-import { MemoryProfiler } from 'src/utils/memory-profiler';
 import { NotificationService } from 'src/common/notification/notification.service';
 import { SourceConfigService } from 'src/common/source-config/source-config.service';
 import { inferDataTypeFromBatch } from 'src/utils/string.util';
@@ -169,11 +168,6 @@ export class DataIntegrationService {
     const lastSyncTime: Date | null = schema.lastSyncTime
       ? new Date(schema.lastSyncTime)
       : null;
-    // TESTCASE
-    const profiler = new MemoryProfiler();
-    profiler.start(300);
-
-    // try {
     if (!primaryKey && strategy !== 'overwrite') {
       throw new Error(
         `No primary key configured for table ${schema.tableName}.`,
@@ -209,7 +203,7 @@ export class DataIntegrationService {
 
     do {
       const separator = schema.dataFromApi.includes('?') ? '&' : '?';
-      const tokenParam = token ? `&accessToken=${token}` : '';
+      const tokenParam = token ? `&accessToken=${encodeURIComponent(token)}` : '';
       const updatedAfterParam =
         strategy === 'incremental' && lastSyncTime
           ? `&updatedAfter=${encodeURIComponent(lastSyncTime.toISOString())}`
@@ -402,12 +396,6 @@ export class DataIntegrationService {
     await this.schemaRegistry.updateLastSyncTime(schema.tableName, new Date());
 
     return { synced: totalSynced, skipped: totalSkipped };
-    // } finally {
-    //   const mem = profiler.stop();
-    //   this.broadcastLog(
-    //     `[MEMORY] ${schema.tableName}: peak=${mem.peakMB}MB, base=${mem.baseMB}MB, delta=${mem.deltaRSS}MB`,
-    //   );
-    // }
   }
 
   // ---------------------------------------------------------------------------
@@ -821,8 +809,6 @@ export class DataIntegrationService {
   > {
     const allSchemas = await this.schemaRegistry.getAllSchema();
     const schemaMap = new Map(allSchemas.map((s) => [s.tableName, s]));
-    const baseUrl = this.configService.get<string>('SOURCE_API_BASE_URL') ?? '';
-    const token = this.configService.get<string>('SOURCE_API_TOKEN', '');
     const results: Array<{
       tableName: string;
       primaryKey: string;
@@ -856,13 +842,14 @@ export class DataIntegrationService {
       }
 
       try {
+        const { baseUrl, token } = await this.resolveSourceCredentials(schema.dataFrom);
         const sourceIds = new Set<unknown>();
         let currentPage = 1;
         let totalPages = 1;
 
         do {
           const separator = schema.dataFromApi.includes('?') ? '&' : '?';
-          const url = `${baseUrl}${schema.dataFromApi}${separator}page=${currentPage}&limit=${this.BATCH_LIMIT}${token ? `&accessToken=${token}` : ''}`;
+          const url = `${baseUrl}${schema.dataFromApi}${separator}page=${currentPage}&limit=${this.BATCH_LIMIT}${token ? `&accessToken=${encodeURIComponent(token)}` : ''}`;
           const response = await this.withRetry(
             () =>
               firstValueFrom(

@@ -266,7 +266,7 @@ export class SyncEngineService {
       await this.prisma.$transaction(async (tx) => {
         await tx[modelName].deleteMany({});
         await tx[modelName].createMany({ data: normalizedRecords, skipDuplicates: true });
-      });
+      }, { timeout: 30000 });
 
       await this.eventLogService.finishJobLog(log._id as unknown as string, 'done', {
         totalDeleted: 'all',

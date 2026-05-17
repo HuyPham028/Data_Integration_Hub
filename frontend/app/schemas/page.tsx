@@ -12,6 +12,7 @@ import {
   Copy, Check, ArrowRight, FileJson
 } from "lucide-react";
 import ConfirmDialog from '@/components/modals/ConfirmModal';
+import { useLanguage } from '@/lib/i18n';
 
 // --- CÁC HÀM LOGIC XỬ LÝ DIFF & PRISMA GENERATOR ---
 
@@ -80,6 +81,7 @@ const generatePrismaModel = (tableName: string, fields: any[]) => {
 // --- COMPONENT CHÍNH ---
 
 export default function SchemaRegistryPage() {
+  const { t } = useLanguage();
   const [schemas, setSchemas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -164,8 +166,8 @@ export default function SchemaRegistryPage() {
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-10">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Data Governance: Schema Review</h1>
-        <p className="text-slate-500 mt-1">Phát hiện và đối soát sự thay đổi cấu trúc dữ liệu từ nguồn.</p>
+        <h1 className="text-3xl font-bold tracking-tight">{t('schema.title')}</h1>
+        <p className="text-slate-500 mt-1">{t('schema.subtitle')}</p>
       </div>
 
       {/* Bảng danh sách Schema */}
@@ -180,11 +182,11 @@ export default function SchemaRegistryPage() {
             <Table>
               <TableHeader className="bg-slate-50">
                 <TableRow>
-                  <TableHead className="pl-6">Tên Bảng (Entity)</TableHead>
-                  <TableHead>Nguồn</TableHead>
-                  <TableHead>Số Trường</TableHead>
-                  <TableHead>Trạng thái</TableHead>
-                  <TableHead className="text-right pr-6">Action</TableHead>
+                  <TableHead className="pl-6">{t('schema.colTable')}</TableHead>
+                  <TableHead>{t('schema.colSource')}</TableHead>
+                  <TableHead>{t('schema.colFields')}</TableHead>
+                  <TableHead>{t('schema.colStatus')}</TableHead>
+                  <TableHead className="text-right pr-6">{t('schema.colStatus')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -211,10 +213,10 @@ export default function SchemaRegistryPage() {
                           className="bg-slate-900 hover:bg-slate-800 text-white shadow-sm"
                           onClick={() => setSelectedSchema(schema)}
                         >
-                          Review Diff <ArrowRight className="w-4 h-4 ml-1" />
+                          {t('schema.reviewDiff')} <ArrowRight className="w-4 h-4 ml-1" />
                         </Button>
                       ) : (
-                        <span className="text-xs font-medium text-slate-400">Synced</span>
+                        <span className="text-xs font-medium text-slate-400">{t('schema.synced')}</span>
                       )}
                     </TableCell>
                   </TableRow>
@@ -244,7 +246,7 @@ export default function SchemaRegistryPage() {
                 Schema Diff: <span className="font-mono text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">{selectedSchema?.tableName}</span>
               </DialogTitle>
               <DialogDescription className="mt-2 text-slate-500">
-                Đối chiếu thay đổi giữa API hệ thống nguồn và Prisma Schema hiện tại.
+                {t('schema.diffDesc')}
               </DialogDescription>
               
               {/* Summary Bar */}
@@ -253,7 +255,7 @@ export default function SchemaRegistryPage() {
                 {diffData.stats.removed > 0 && <Badge className="bg-rose-100 text-rose-800 hover:bg-rose-100 border-0">-{diffData.stats.removed} Removed</Badge>}
                 {diffData.stats.changed > 0 && <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 border-0">~{diffData.stats.changed} Changed</Badge>}
                 {diffData.stats.added === 0 && diffData.stats.removed === 0 && diffData.stats.changed === 0 && (
-                   <Badge className="bg-slate-100 text-slate-600 border-0">New Initialization</Badge>
+                   <Badge className="bg-slate-100 text-slate-600 border-0">{t('schema.newInit')}</Badge>
                 )}
               </div>
             </div>
@@ -265,7 +267,7 @@ export default function SchemaRegistryPage() {
               onClick={() => copyToClipboard(generatePrismaModel(selectedSchema?.tableName, selectedSchema?.details))}
             >
               {isCopied ? <Check className="w-4 h-4 mr-2 text-emerald-600" /> : <Copy className="w-4 h-4 mr-2" />}
-              {isCopied ? 'Copied Model!' : 'Copy Prisma Code'}
+              {isCopied ? t('schema.copiedModel') : t('schema.copyPrisma')}
             </Button>
           </div>
 
@@ -277,8 +279,8 @@ export default function SchemaRegistryPage() {
               <div className="mb-4 p-4 bg-rose-50 border border-rose-200 rounded-lg flex items-start gap-3 text-rose-800">
                 <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
                 <div>
-                  <h4 className="font-semibold text-sm">Cảnh báo Breaking Change!</h4>
-                  <p className="text-xs mt-1 opacity-90">Có trường dữ liệu bị xóa hoặc thay đổi kiểu type. Việc đồng bộ có thể làm mất dữ liệu cũ trong PostgreSQL. Hãy kiểm tra kỹ Prisma migration.</p>
+                  <h4 className="font-semibold text-sm">{t('schema.breakWarn')}</h4>
+                  <p className="text-xs mt-1 opacity-90">{t('schema.breakDesc')}</p>
                 </div>
               </div>
             )}
@@ -286,8 +288,8 @@ export default function SchemaRegistryPage() {
             {/* Side-by-side Diff Table */}
             <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
               <div className="grid grid-cols-2 text-xs font-bold uppercase tracking-wider text-slate-500 bg-slate-100 border-b border-slate-200">
-                <div className="p-3 pl-4 border-r border-slate-200 flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-400"></div> Cấu trúc mới (API)</div>
-                <div className="p-3 pl-4 flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-slate-400"></div> Cấu trúc cũ (DB)</div>
+                <div className="p-3 pl-4 border-r border-slate-200 flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-400"></div> {t('schema.newStruct')}</div>
+                <div className="p-3 pl-4 flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-slate-400"></div> {t('schema.oldStruct')}</div>
               </div>
 
               <div className="divide-y divide-slate-100 text-sm">
@@ -305,7 +307,7 @@ export default function SchemaRegistryPage() {
                           <span className="text-slate-500 text-xs bg-white px-2 py-1 rounded-md border border-slate-100">{row.new.type} {row.new.length ? `(${row.new.length})` : ''}</span>
                         </>
                       ) : (
-                        <span className="text-slate-300 italic">-- removed --</span>
+                        <span className="text-slate-300 italic">{t('schema.removed')}</span>
                       )}
                     </div>
 
@@ -320,7 +322,7 @@ export default function SchemaRegistryPage() {
                           <span className="text-slate-400 text-xs">{row.old.type} {row.old.length ? `(${row.old.length})` : ''}</span>
                         </>
                       ) : (
-                        <span className="text-slate-300 italic">-- not existed --</span>
+                        <span className="text-slate-300 italic">{t('schema.notExisted')}</span>
                       )}
                     </div>
 
@@ -342,7 +344,7 @@ export default function SchemaRegistryPage() {
                 onChange={(e) => setConfirmPrismaUpdated(e.target.checked)}
               />
               <label htmlFor="confirm-sync" className="text-sm text-slate-700 font-medium cursor-pointer">
-                Tôi xác nhận đã cập nhật file <code className="text-pink-600 bg-pink-50 px-1 rounded">schema.prisma</code> và code đã được Deploy lên Server thành công.
+                {t('schema.confirmLabel')} <code className="text-pink-600 bg-pink-50 px-1 rounded">schema.prisma</code> {t('schema.confirmLabel2')}
               </label>
             </div>
 
@@ -356,7 +358,7 @@ export default function SchemaRegistryPage() {
                 className="text-rose-600 border-rose-200 hover:bg-rose-50"
               >
                 {isRejecting ? <Loader2 className="animate-spin w-4 h-4 mr-2" /> : null}
-                Từ chối thay đổi (Revert)
+                {t('schema.reject')}
               </Button>
 
               <Button
@@ -366,7 +368,7 @@ export default function SchemaRegistryPage() {
                 className={`${confirmPrismaUpdated ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-slate-200 text-slate-400'} font-semibold shadow-sm px-6 transition-colors`}
               >
                 {isResolving ? <Loader2 className="animate-spin w-5 h-5 mr-2" /> : <CheckCircle className="w-5 h-5 mr-2" />}
-                Đồng ý thay đổi (Resolve)
+                {t('schema.resolve')}
               </Button>
             </div>
           </div>
@@ -376,13 +378,10 @@ export default function SchemaRegistryPage() {
       <ConfirmDialog
         open={isOpen}
         onOpenChange={setIsOpen}
-        title="Từ chối thay đổi?"
-        description="
-          Hệ thống sẽ khôi phục cấu trúc cũ và bỏ qua
-          sự thay đổi này của API trong tương lai.
-        "
-        confirmText="Từ chối"
-        cancelText="Hủy"
+        title={t('schema.confirmReject')}
+        description={t('schema.confirmRejectDesc')}
+        confirmText={t('schema.rejectBtn')}
+        cancelText={t('schema.cancelBtn')}
         destructive
         loading={isRejecting}
         onConfirm={handleReject}
