@@ -98,9 +98,9 @@ export default function LoginPage() {
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t('login.submit')}
             </Button>
             
-            <div className="text-center text-sm text-slate-500 mt-4">
+            {/* <div className="text-center text-sm text-slate-500 mt-4">
               {t('login.noAccount')} <Link href="/register" className="text-blue-600 hover:underline">{t('login.createNew')}</Link>
-            </div>
+            </div> */}
           </form>
         </CardContent>
       </Card>

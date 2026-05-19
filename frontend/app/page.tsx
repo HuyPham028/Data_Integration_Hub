@@ -4,8 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { IntegrationAPI, JobAPI } from '@/lib/api-client';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { RefreshCw, PlayCircle, Activity } from "lucide-react";
+import { RefreshCw, PlayCircle, Activity, Database, CheckCircle2, AlertTriangle, Clock } from "lucide-react";
 import { LogLine, Terminal } from '@/components/dashboard/terminal';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
@@ -28,7 +27,7 @@ type ScheduledJob = {
 type EventLog = {
   _id: string;
   title: string;
-  status: 'running' | 'done' | 'failed' | 'partial_success';
+  status: 'running' | 'done' | 'done_with_warnings' | 'failed' | 'partial_success';
   createdAt: string;
   details?: {
     durationMs?: number;
@@ -51,7 +50,8 @@ export default function DashboardPage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [logs, setLogs] = useState<LogLine[]>([]);
   const [scheduledJobs, setScheduledJobs] = useState<ScheduledJob[]>([]);
-  const [recentRuns, setRecentRuns] = useState<EventLog[]>([]);
+  // Changed from recentRuns to allRuns to calculate accurate stats
+  const [allRuns, setAllRuns] = useState<EventLog[]>([]); 
   const [chartData, setChartData] = useState<Array<{ name: string; success: number; failed: number }>>([]);
   const [draftCron, setDraftCron] = useState<Record<string, string>>({});
   
@@ -96,8 +96,9 @@ export default function DashboardPage() {
       }
       setDraftCron(nextDraft);
 
-      const logsData = await IntegrationAPI.getLogs();
-      setRecentRuns(logsData.slice(0, 8));
+      // Store ALL fetched logs for accurate statistics
+      const logsData: EventLog[] = await IntegrationAPI.getLogs();
+      setAllRuns(logsData);
 
       const formattedChartData = logsData.slice(0, 20).reverse().map((log: EventLog) => {
         const date = new Date(log.createdAt);
@@ -145,35 +146,28 @@ export default function DashboardPage() {
   };
 
   const formatDateTime = (value?: string | null) => {
-    if (!value) {
-      return 'N/A';
-    }
-
+    if (!value) return 'N/A';
     const date = new Date(value);
-    if (Number.isNaN(date.getTime())) {
-      return 'N/A';
-    }
-
+    if (Number.isNaN(date.getTime())) return 'N/A';
     return date.toLocaleString('vi-VN');
   };
 
-  const statusBadgeClass = (status: EventLog['status']) => {
-    if (status === 'done') return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-    if (status === 'failed') return 'bg-red-50 text-red-700 border-red-200';
-    if (status === 'partial_success') return 'bg-amber-50 text-amber-700 border-amber-200';
-    return 'bg-slate-100 text-slate-700 border-slate-200';
-  };
+  // --- STATS CALCULATIONS ---
 
-  const totalRuns = recentRuns.length;
-  const successfulRuns = recentRuns.filter((run) => run.status === 'done').length;
-  const failedRuns = recentRuns.filter((run) => run.status === 'failed').length;
-  const successRate = totalRuns > 0 ? Math.round((successfulRuns / totalRuns) * 100) : 0;
+  const totalRuns = allRuns.length;
+  
+  // Job Completion Rate: Consider 'done', 'done_with_warnings', and 'partial_success' as completed jobs
+  const completedRuns = allRuns.filter((run) => run.status !== 'failed' && run.status !== 'running').length;
+  const failedRuns = allRuns.filter((run) => run.status === 'failed').length;
+  const completionRate = totalRuns > 0 ? Math.round((completedRuns / totalRuns) * 100) : 0;
 
-  // Additional useful stats
+  // Total Records Synced (A much better vanity metric for ETL)
+  const totalRecordsSynced = allRuns.reduce((sum, run) => sum + Number(run.details?.metrics?.success || 0), 0);
+
   const activeJobsCount = scheduledJobs.filter((j) => j.isActive).length;
 
   const avgDurationMs = (() => {
-    const durations = recentRuns
+    const durations = allRuns
       .map((r) => r.details?.durationMs)
       .filter((d): d is number => typeof d === 'number' && !Number.isNaN(d));
     if (durations.length === 0) return 0;
@@ -189,12 +183,6 @@ export default function DashboardPage() {
     return `${m}m ${sec}s`;
   };
 
-  const lastRunAt = (() => {
-    if (!recentRuns.length) return 'N/A';
-    const latest = recentRuns.reduce((best, cur) => (new Date(cur.createdAt) > new Date(best.createdAt) ? cur : best), recentRuns[0]);
-    return formatDateTime(latest.createdAt);
-  })();
-
   const nextRunAt = (() => {
     const nexts = scheduledJobs
       .map((j) => j.nextRunAt)
@@ -202,7 +190,12 @@ export default function DashboardPage() {
       .map((s) => new Date(s));
     if (!nexts.length) return 'N/A';
     const earliest = new Date(Math.min(...nexts.map((d) => d.getTime())));
-    return formatDateTime(earliest.toISOString());
+    
+    const now = new Date();
+    if (earliest.toDateString() === now.toDateString()) {
+      return earliest.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    }
+    return earliest.toLocaleString('vi-VN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
   })();
 
   return (
@@ -211,88 +204,98 @@ export default function DashboardPage() {
         {/* LEFT PANEL */}
         <div className="xl:col-span-5 flex flex-col gap-4">
           <Card className="border-slate-200 shadow-sm">
-            <CardHeader>
+            <CardHeader className="pb-3">
               <CardTitle className="text-slate-800 flex items-center text-lg">
-                <PlayCircle className="mr-2 h-5 w-5 text-blue-600" /> {t('dash.manualTrigger')}
+                <PlayCircle className="mr-2 h-5 w-5 text-blue-600" /> {t('dash.manualTrigger') || 'Manual Sync'}
               </CardTitle>
               <CardDescription>
                 Kích hoạt đồng bộ ngay lập tức
               </CardDescription>
             </CardHeader>
 
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3">
               <Button
                 onClick={() => handleTriggerSync()}
                 disabled={isSyncing}
-                className="bg-slate-900 hover:bg-slate-800 text-white w-full h-12 font-bold shadow-md"
+                className="bg-slate-900 hover:bg-slate-800 text-white w-full h-11 font-bold shadow-md"
               >
                 <RefreshCw className={`mr-2 h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                {isSyncing ? t('dash.syncing') : t('dash.runFull')}
+                {isSyncing ? t('dash.syncing') || 'Syncing...' : t('dash.runFull') || 'Run Full Sync'}
               </Button>
 
               <Button
                 variant="outline"
                 onClick={() => setIsModalOpen(true)}
                 disabled={isSyncing}
-                className="w-full h-12 border-slate-300 text-slate-700 font-semibold"
+                className="w-full h-11 border-slate-300 text-slate-700 font-semibold"
               >
-                <PlayCircle className="mr-2 h-4 w-4" />
-                {t('dash.runCustom')}
+                <Database className="mr-2 h-4 w-4" />
+                {t('dash.runCustom') || 'Sync Specific Tables'}
               </Button>
             </CardContent>
           </Card>
 
-          {/* Optional lightweight stats */}
-          <div className="grid grid-cols-3 gap-4">
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-2xl font-bold">{totalRuns}</div>
-                <div className="text-sm text-slate-500">Runs</div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-2xl font-bold text-emerald-600">
-                  {successRate}%
+          {/* ETL Stats Grid */}
+          <div className="grid grid-cols-3 gap-3">
+            <Card className="border-slate-200 shadow-sm">
+              <CardContent className="p-4 flex flex-col justify-center">
+                <div className="flex items-center text-sm text-slate-500 mb-1">
+                  <Database className="h-4 w-4 mr-1 text-blue-500" /> Records
                 </div>
-                <div className="text-sm text-slate-500">Success</div>
+                <div className="text-2xl font-bold text-slate-800">
+                  {new Intl.NumberFormat('vi-VN').format(totalRecordsSynced)}
+                </div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardContent className="p-4">
+            <Card className="border-slate-200 shadow-sm">
+              <CardContent className="p-4 flex flex-col justify-center">
+                <div className="flex items-center text-sm text-slate-500 mb-1">
+                  <CheckCircle2 className="h-4 w-4 mr-1 text-emerald-500" /> Job Success
+                </div>
+                <div className="text-2xl font-bold text-emerald-600">
+                  {completionRate}%
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-slate-200 shadow-sm">
+              <CardContent className="p-4 flex flex-col justify-center">
+                <div className="flex items-center text-sm text-slate-500 mb-1">
+                  <AlertTriangle className="h-4 w-4 mr-1 text-red-400" /> Failed Jobs
+                </div>
                 <div className="text-2xl font-bold text-red-500">
                   {failedRuns}
                 </div>
-                <div className="text-sm text-slate-500">Failed</div>
               </CardContent>
             </Card>
           </div>
           
-          <div className="grid grid-cols-3 gap-4 mt-1">
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-2xl font-bold">{activeJobsCount}</div>
-                <div className="text-sm text-slate-500">Active Jobs</div>
+          <div className="grid grid-cols-3 gap-3">
+            <Card className="border-slate-200 shadow-sm">
+              <CardContent className="p-4 flex flex-col justify-center">
+                <div className="text-sm text-slate-500 mb-1">Active Jobs</div>
+                <div className="text-2xl font-bold text-slate-800">{activeJobsCount}</div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardContent className="p-4">
+            <Card className="border-slate-200 shadow-sm">
+              <CardContent className="p-4 flex flex-col justify-center">
+                <div className="text-sm text-slate-500 mb-1">Avg Duration</div>
                 <div className="text-2xl font-bold text-slate-800">
                   {formatDuration(avgDurationMs)}
                 </div>
-                <div className="text-sm text-slate-500">Avg Duration</div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-2xl font-bold text-slate-700">
+            <Card className="border-slate-200 shadow-sm">
+              <CardContent className="p-4 flex flex-col justify-center">
+                <div className="flex items-center text-sm text-slate-500 mb-1">
+                  <Clock className="h-4 w-4 mr-1 text-amber-500" /> Next Run
+                </div>
+                <div className="text-lg font-bold text-slate-800 truncate" title={nextRunAt}>
                   {nextRunAt}
                 </div>
-                <div className="text-sm text-slate-500">Next Run</div>
               </CardContent>
             </Card>
           </div>
@@ -300,23 +303,23 @@ export default function DashboardPage() {
 
         {/* RIGHT PANEL */}
         <div className="xl:col-span-7">
-          <Card className="border-slate-200 shadow-sm h-full">
-            <CardHeader>
+          <Card className="border-slate-200 shadow-sm h-full flex flex-col">
+            <CardHeader className="pb-2">
               <CardTitle className="text-slate-800 flex items-center text-lg">
-                <Activity className="mr-2 h-5 w-5 text-green-600" />
-                Execution Metrics
+                <Activity className="mr-2 h-5 w-5 text-emerald-600" />
+                Data Volume Processed (Last 20 Runs)
               </CardTitle>
 
               <CardDescription>
-                Successful vs failed synchronization runs
+                Records successfully synced vs failed per run
               </CardDescription>
             </CardHeader>
 
-            <CardContent className="h-90 mt-3">
+            <CardContent className="flex-1 min-h-[200px] mt-2">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={chartData}
-                  margin={{ top: 5, right: 20, left: 0, bottom: 30 }}
+                  margin={{ top: 5, right: 20, left: 0, bottom: 20 }}
                 >
                   <CartesianGrid
                     strokeDasharray="3 3"
@@ -330,27 +333,37 @@ export default function DashboardPage() {
                     tickLine={false}
                     angle={-15}
                     textAnchor="end"
-                    height={60}
+                    height={40}
+                    tick={{ fontSize: 11, fill: '#64748b' }}
                   />
 
-                  <YAxis axisLine={false} tickLine={false} />
+                  <YAxis 
+                    axisLine={false} 
+                    tickLine={false}
+                    tick={{ fontSize: 12, fill: '#64748b' }}
+                    tickFormatter={(val) => new Intl.NumberFormat('en-US', { notation: 'compact' }).format(val)}
+                  />
 
-                  <Tooltip cursor={{ fill: '#f1f5f9' }} />
+                  <Tooltip 
+                    cursor={{ fill: '#f1f5f9' }}
+                    contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                  />
 
-                  <Legend />
+                  <Legend wrapperStyle={{ paddingTop: '10px' }}/>
 
                   <Bar
                     dataKey="success"
-                    name="Success"
+                    name="Records Synced"
                     fill="#10b981"
                     radius={[4, 4, 0, 0]}
                   />
 
                   <Bar
                     dataKey="failed"
-                    name="Failed"
+                    name="Records Failed"
                     fill="#ef4444"
                     radius={[4, 4, 0, 0]}
+                    minPointSize={4}
                   />
                 </BarChart>
               </ResponsiveContainer>
@@ -359,8 +372,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="mt-auto shrink-0">
-        <Terminal logs={logs} terminalEndRef={terminalEndRef} heightClassName="h-[34vh] md:h-[38vh]" />
+      <div className="mt-auto shrink-0 border border-slate-200 rounded-lg overflow-hidden shadow-sm">
+        <Terminal logs={logs} terminalEndRef={terminalEndRef} heightClassName="h-[32vh] md:h-[36vh]" />
       </div>
 
       <TableSelect 

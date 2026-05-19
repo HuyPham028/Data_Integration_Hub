@@ -15,6 +15,7 @@ const translations = {
   'nav.dataMgmt':       { vi: 'Data Management',      en: 'Data Management' },
   'nav.gateway':        { vi: 'API Gateway (Kong)',   en: 'API Gateway (Kong)' },
   'nav.logout':         { vi: 'Đăng xuất',            en: 'Log out' },
+  'nav.sourceConfig':   { vi: 'Source Config',        en: 'Source Config' },
 
   // ── LOGIN ─────────────────────────────────────────────────────────────────
   'login.subtitle':     { vi: 'Đăng nhập hệ thống quản trị ETL', en: 'Sign in to ETL Admin System' },

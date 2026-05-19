@@ -25,6 +25,18 @@ export class MasterDataService {
     return this.prisma[modelName];
   }
 
+  private getModelFields(tableName: string): string[] {
+    try {
+      const camel = snakeToCamel(tableName);
+      const pascal = camel.charAt(0).toUpperCase() + camel.slice(1);
+      const modelMeta = (this.prisma as any)._dmmf?.modelMap?.[pascal];
+      if (!modelMeta) return [];
+      return modelMeta.fields.map((f: any) => f.name);
+    } catch (e) {
+      return [];
+    }
+  }
+
   async findAll(
     tableName: string,
     page: number = 1,
@@ -34,14 +46,19 @@ export class MasterDataService {
     const model = this.getModel(tableName);
     const skip = (Number(page) - 1) * Number(limit);
 
-    const whereCondition = search
-      ? {
-          OR: [
-            { ma: { contains: search, mode: 'insensitive' } },
-            { ten: { contains: search, mode: 'insensitive' } },
-          ],
-        }
-      : {};
+    const modelFields = this.getModelFields(tableName);
+
+    const orConditions: any[] = [];
+    if (search) {
+      if (modelFields.includes('ma')) {
+        orConditions.push({ ma: { contains: search, mode: 'insensitive' } });
+      }
+      if (modelFields.includes('ten')) {
+        orConditions.push({ ten: { contains: search, mode: 'insensitive' } });
+      }
+    }
+
+    const whereCondition = orConditions.length > 0 ? { OR: orConditions } : {};
 
     const [total, data] = await Promise.all([
       model.count({ where: whereCondition }),
@@ -49,7 +66,13 @@ export class MasterDataService {
         where: whereCondition,
         skip,
         take: Number(limit),
-        orderBy: { ma: 'asc' },
+        ...(modelFields.includes('ma')
+          ? { orderBy: { ma: 'asc' } }
+          : modelFields.includes('id')
+          ? { orderBy: { id: 'asc' } }
+          : modelFields.includes('createdAt')
+          ? { orderBy: { createdAt: 'desc' } }
+          : {}),
       }),
     ]);
 
