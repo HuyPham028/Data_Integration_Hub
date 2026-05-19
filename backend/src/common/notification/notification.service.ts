@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import * as nodemailer from 'nodemailer';
 import { PrismaService } from 'src/prisma/prisma.service';
 
@@ -13,6 +14,7 @@ export class NotificationService {
   constructor(
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
+    private readonly eventEmitter: EventEmitter2,
   ) {
     const user = this.config.get<string>('SMTP_USER');
     const pass = this.config.get<string>('SMTP_PASSWORD');
@@ -113,6 +115,11 @@ export class NotificationService {
         to,
         subject: `[THÀNH CÔNG] Job "${jobName}" hoàn thành lúc ${now}`,
         html,
+      });
+
+      this.eventEmitter.emit('sync.job.completed', {
+        jobName: jobName,
+        message: summary
       });
     } catch (err) {
       this.logger.error(`[NOTIFICATION] Gửi email thất bại: ${err.message}`);

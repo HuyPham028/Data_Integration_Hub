@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { Header } from "@/components/layout/Header";
 import {
   clearAuthSession,
   getCurrentUserRole,
@@ -68,7 +69,10 @@ export function AppWrapper({ children }: AppWrapperProps) {
   return (
     <div className="flex h-screen overflow-hidden">
       {!isAuthPage && !hideSidebar && isAuth && <Sidebar isAdmin={isAdmin} />}
-      <main className="flex-1 overflow-y-auto p-8 pb-0 text-slate-900">{children}</main>
+      <div className="flex flex-1 flex-col overflow-hidden">
+        {!isAuthPage && isAuth && <Header />}
+        <main className="flex-1 overflow-y-auto p-8 pb-0 text-slate-900">{children}</main>
+      </div>
     </div>
   );
 }
