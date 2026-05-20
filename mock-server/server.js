@@ -1064,6 +1064,284 @@ const happyPathDatasets = {
   ],
 };
 
+const schemaDefinitions = {
+  dm_gioi_tinh: {
+    tableName: "dm_gioi_tinh",
+    primaryKeys: ["id"],
+    items: [
+      { field: "id", type: "int", required: true },
+      { field: "ma", type: "varchar", required: true, length: 5 },
+      { field: "ten", type: "varchar", required: true, length: 20 },
+      { field: "active", type: "bit", required: false },
+    ],
+  },
+  dm_chuc_danh_khoa_hoc: {
+    tableName: "dm_chuc_danh_khoa_hoc",
+    primaryKeys: ["ma"],
+    items: [
+      { field: "ma", type: "varchar", required: true, length: 5 },
+      { field: "ten", type: "varchar", required: true, length: 50 },
+      { field: "active", type: "bit", required: false },
+    ],
+  },
+  dm_dt_chung_chi_ngoai_ngu: {
+    tableName: "dm_dt_chung_chi_ngoai_ngu",
+    primaryKeys: ["ma"],
+    items: [
+      { field: "ma", type: "varchar", required: true, length: 20 },
+      { field: "ten", type: "varchar", required: true, length: 100 },
+      { field: "ngoaiNgu", type: "varchar", required: true, length: 5 },
+      { field: "active", type: "bit", required: false },
+    ],
+  },
+  dm_dt_doi_tuong_anqp: {
+    tableName: "dm_dt_doi_tuong_anqp",
+    primaryKeys: ["ma"],
+    items: [
+      { field: "ma", type: "varchar", required: true, length: 5 },
+      { field: "ten", type: "varchar", required: true, length: 200 },
+      { field: "active", type: "bit", required: false },
+    ],
+  },
+  dm_nhom_luong: {
+    tableName: "dm_nhom_luong",
+    primaryKeys: ["nhomLuong"],
+    items: [
+      { field: "nhomLuong", type: "varchar", required: true, length: 10 },
+      { field: "maBacLuong", type: "int", required: true },
+      { field: "tenBacLuong", type: "varchar", required: true, length: 10 },
+      { field: "heSoLuong", type: "decimal", required: true, precision: 10, scale: 2 },
+    ],
+  },
+  dm_trinh_do_pho_thong: {
+    tableName: "dm_trinh_do_pho_thong",
+    primaryKeys: ["ma"],
+    items: [
+      { field: "ma", type: "varchar", required: true, length: 5 },
+      { field: "ten", type: "varchar", required: true, length: 50 },
+      { field: "active", type: "bit", required: false },
+    ],
+  },
+  dm_vi_tri_viec_lam: {
+    tableName: "dm_vi_tri_viec_lam",
+    primaryKeys: ["ma"],
+    items: [
+      { field: "ma", type: "varchar", required: true, length: 20 },
+      { field: "ten", type: "varchar", required: true, length: 100 },
+      { field: "loaiVtvl", type: "varchar", required: false, length: 20 },
+      { field: "active", type: "bit", required: false },
+    ],
+  },
+  dm_doi_tuong_chinh_sach: {
+    tableName: "dm_doi_tuong_chinh_sach",
+    primaryKeys: ["ma"],
+    items: [
+      { field: "ma", type: "varchar", required: true, length: 5 },
+      { field: "ten", type: "varchar", required: true, length: 100 },
+      { field: "active", type: "bit", required: false },
+    ],
+  },
+  dm_dt_chung_chi_tin_hoc: {
+    tableName: "dm_dt_chung_chi_tin_hoc",
+    primaryKeys: ["ma"],
+    items: [
+      { field: "ma", type: "varchar", required: true, length: 5 },
+      { field: "ten", type: "varchar", required: true, length: 50 },
+      { field: "active", type: "bit", required: false },
+    ],
+  },
+  dm_dt_hinh_thuc_cm: {
+    tableName: "dm_dt_hinh_thuc_cm",
+    primaryKeys: ["ma"],
+    items: [
+      { field: "ma", type: "varchar", required: true, length: 5 },
+      { field: "ten", type: "varchar", required: true, length: 50 },
+      { field: "active", type: "bit", required: false },
+    ],
+  },
+  dm_dt_van_bang_llct: {
+    tableName: "dm_dt_van_bang_llct",
+    primaryKeys: ["ma"],
+    items: [
+      { field: "ma", type: "varchar", required: true, length: 5 },
+      { field: "ten", type: "varchar", required: true, length: 100 },
+      { field: "active", type: "bit", required: false },
+    ],
+  },
+  dm_ngach_cdnn: {
+    tableName: "dm_ngach_cdnn",
+    primaryKeys: ["ma"],
+    items: [
+      { field: "ma", type: "varchar", required: true, length: 20 },
+      { field: "ten", type: "varchar", required: true, length: 100 },
+      { field: "active", type: "bit", required: false },
+    ],
+  },
+  dm_noi_cap_cccd: {
+    tableName: "dm_noi_cap_cccd",
+    primaryKeys: ["ma"],
+    items: [
+      { field: "ma", type: "varchar", required: true, length: 10 },
+      { field: "ten", type: "varchar", required: true, length: 100 },
+      { field: "active", type: "bit", required: false },
+    ],
+  },
+  dm_xep_loai_chuyen_mon: {
+    tableName: "dm_xep_loai_chuyen_mon",
+    primaryKeys: ["ma"],
+    items: [
+      { field: "ma", type: "varchar", required: true, length: 50 },
+      { field: "ten", type: "varchar", required: true, length: 500 },
+      { field: "active", type: "bit", required: false },
+    ],
+  },
+  dm_dt_ngoai_ngu: {
+    tableName: "dm_dt_ngoai_ngu",
+    primaryKeys: ["ma"],
+    items: [
+      { field: "ma", type: "varchar", required: true, length: 5 },
+      { field: "ten", type: "varchar", required: true, length: 50 },
+      { field: "active", type: "bit", required: false },
+    ],
+  },
+  dm_loai_chuc_vu: {
+    tableName: "dm_loai_chuc_vu",
+    primaryKeys: ["ma"],
+    items: [
+      { field: "ma", type: "varchar", required: true, length: 5 },
+      { field: "ten", type: "varchar", required: true, length: 70 },
+      { field: "active", type: "bit", required: false },
+    ],
+  },
+  dm_loai_phu_cap: {
+    tableName: "dm_loai_phu_cap",
+    primaryKeys: ["ma"],
+    items: [
+      { field: "ma", type: "varchar", required: true, length: 10 },
+      { field: "ten", type: "varchar", required: true, length: 100 },
+      { field: "active", type: "bit", required: false },
+    ],
+  },
+  dm_ngan_hang: {
+    tableName: "dm_ngan_hang",
+    primaryKeys: ["ma"],
+    items: [
+      { field: "ma", type: "varchar", required: true, length: 20 },
+      { field: "ten", type: "varchar", required: true, length: 200 },
+      { field: "active", type: "bit", required: false },
+      { field: "diachi", type: "varchar", required: false, length: 200 },
+    ],
+  },
+  dm_chuyen_nganh_bgd: {
+    tableName: "dm_chuyen_nganh_bgd",
+    primaryKeys: ["ma"],
+    items: [
+      { field: "ma", type: "varchar", required: true, length: 20 },
+      { field: "ten", type: "varchar", required: true, length: 200 },
+      { field: "active", type: "bit", required: false },
+    ],
+  },
+  dm_danh_hieu_nha_nuoc: {
+    tableName: "dm_danh_hieu_nha_nuoc",
+    primaryKeys: ["ma"],
+    items: [
+      { field: "ma", type: "varchar", required: true, length: 5 },
+      { field: "ten", type: "varchar", required: true, length: 200 },
+      { field: "active", type: "bit", required: false },
+    ],
+  },
+  dm_dt_chung_chi_bdnv: {
+    tableName: "dm_dt_chung_chi_bdnv",
+    primaryKeys: ["ma"],
+    items: [
+      { field: "ma", type: "varchar", required: true, length: 5 },
+      { field: "ten", type: "varchar", required: true, length: 100 },
+      { field: "active", type: "bit", required: false },
+    ],
+  },
+  dm_dt_hinh_thuc_llct: {
+    tableName: "dm_dt_hinh_thuc_llct",
+    primaryKeys: ["ma"],
+    items: [
+      { field: "ma", type: "varchar", required: true, length: 5 },
+      { field: "ten", type: "varchar", required: true, length: 50 },
+      { field: "active", type: "bit", required: false },
+    ],
+  },
+  dm_gioi_tinh_2: {
+    tableName: "dm_gioi_tinh_2",
+    primaryKeys: ["ma"],
+    items: [
+      { field: "ma", type: "varchar", required: true, length: 5 },
+      { field: "ten", type: "varchar", required: true, length: 20 },
+      { field: "active", type: "bit", required: false },
+    ],
+  },
+  nh_van_bang: {
+    tableName: "nh_van_bang",
+    primaryKeys: ["id"],
+    items: [
+      { field: "id", type: "int", required: true },
+      { field: "maNguoiHoc", type: "varchar", required: true, length: 20 },
+      { field: "cccdSo", type: "varchar", required: true, length: 20 },
+      { field: "maCtdt", type: "varchar", required: true, length: 50 },
+      { field: "maNganh", type: "varchar", required: true, length: 50 },
+      { field: "tnSoQd", type: "varchar", required: true, length: 50 },
+      { field: "tnNgayQd", type: "datetime", required: true },
+      { field: "tnXepLoai", type: "varchar", required: true, length: 50 },
+      { field: "vbNgayCap", type: "datetime", required: true },
+      { field: "vbSoHieu", type: "varchar", required: true, length: 50 },
+      { field: "vbSoVaoSoGoc", type: "varchar", required: true, length: 50 },
+      { field: "nhDaoTaoId", type: "int", required: false },
+    ],
+  },
+  tcns_can_bo: {
+    tableName: "tcns_can_bo",
+    primaryKeys: ["shcc"],
+    items: [
+      { field: "shcc", type: "varchar", required: true, length: 20 },
+      { field: "ho", type: "nvarchar", required: true, length: 100 },
+      { field: "ten", type: "nvarchar", required: true, length: 100 },
+      { field: "ngaySinh", type: "datetime", required: true },
+      { field: "gioiTinh", type: "varchar", required: true, length: 5 },
+      { field: "maNhanVien", type: "varchar", required: true, length: 20 },
+      { field: "email", type: "varchar", required: true, length: 200 },
+      { field: "sdt", type: "varchar", required: false, length: 20 },
+    ],
+  },
+  nguoi_hoc: {
+    tableName: "nguoi_hoc",
+    primaryKeys: ["id"],
+    items: [
+      { field: "id", type: "int", required: true },
+      { field: "ho", type: "nvarchar", required: true, length: 255 },
+      { field: "ten", type: "nvarchar", required: true, length: 255 },
+      { field: "hinhThePath", type: "nvarchar", required: false, length: 1000 },
+      { field: "ngaySinh", type: "datetime", required: false },
+      { field: "soDienThoai", type: "varchar", required: false, length: 50 },
+      { field: "gioiTinh", type: "varchar", required: false, length: 5 },
+      { field: "quocTich", type: "varchar", required: false, length: 50 },
+      { field: "tonGiao", type: "varchar", required: false, length: 50 },
+      { field: "danToc", type: "varchar", required: false, length: 50 },
+    ],
+  },
+};
+
+app.get("/:tableName/schema", (req, res) => {
+  const { tableName } = req.params;
+  const schema = schemaDefinitions[tableName];
+
+  if (!schema) {
+    return res.status(404).json({
+      success: false,
+      message: `Schema cho bảng "${tableName}" không tồn tại trên mock server.`,
+    });
+  }
+
+  console.log(`[SCHEMA] GET /${tableName}/schema`);
+  res.json(schema);
+});
+
 app.get("/:tableName", (req, res) => {
   const { tableName } = req.params;
   const page = parseInt(req.query.page) || 1;
