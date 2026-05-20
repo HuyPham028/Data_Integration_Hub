@@ -28,7 +28,7 @@ export function Header() {
   // 1. Connect to Real-time Backend via Server-Sent Events (SSE)
   useEffect(() => {
     // Note: Adjust the URL to match your actual backend API URL
-    const eventSource = new EventSource(`${process.env.NEXT_PUBLIC_API_URL}/notifications/stream`);
+    const eventSource = new EventSource(`${process.env.NEXT_PUBLIC_KONG_URL}/notifications/stream`);
 
     eventSource.onmessage = (event) => {
       const newNotification = JSON.parse(event.data);

@@ -90,6 +90,7 @@ model DmNganHang {
   ma        String   @unique @db.VarChar(20)
   ten       String   @db.VarChar(200)
   active    Boolean  @default(true)
+  diachi String?
   createdAt DateTime @default(now()) @db.Timestamp(6)
   updatedAt DateTime @updatedAt @db.Timestamp(6)
 
