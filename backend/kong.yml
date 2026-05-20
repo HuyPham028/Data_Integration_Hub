@@ -38,6 +38,7 @@ services:
           - /api/master-data
           - /tables
           - /source-configs
+          - /notifications
         strip_path: false
 
 plugins:
