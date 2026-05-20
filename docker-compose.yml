@@ -192,7 +192,7 @@ services:
       context: ./frontend
       args:
         NEXT_PUBLIC_KONG_URL: ${NEXT_PUBLIC_KONG_URL}
-    image: ${DOCKER_USERNAME:-local}/hub-frontend:latest
+    # image: ${DOCKER_USERNAME:-local}/hub-frontend:latest
     container_name: hub-frontend
     restart: always
     ports:
