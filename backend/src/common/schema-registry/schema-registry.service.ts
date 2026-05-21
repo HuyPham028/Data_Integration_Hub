@@ -132,7 +132,7 @@ export class SchemaRegistryService {
               fieldsCount: incoming.fieldsCount,
               status: 'changed', // Cảnh báo cho Admin
               oldDetails: currentDetails,
-              primaryKey: incoming.primaryKey || existing.primaryKey
+              // primaryKey: incoming.primaryKey || existing.primaryKey
             },
           },
         );

@@ -12,20 +12,20 @@ import { SourceConfigService } from 'src/common/source-config/source-config.serv
 import { inferDataTypeFromBatch } from 'src/utils/string.util';
 import { generateSchemaHash } from 'src/utils/schema.util';
 
-interface GatewaySchemaDetail {
-  field: string;
-  type: string;
-  required: boolean;
-  length: number;
-  precision: number;
-  scale: number;
-}
+// interface GatewaySchemaDetail {
+//   field: string;
+//   type: string;
+//   required: boolean;
+//   length: number;
+//   precision: number;
+//   scale: number;
+// }
 
-interface GatewaySchemaResponse {
-  tableName: string;
-  primaryKeys: string[];
-  items: GatewaySchemaDetail[];
-}
+// interface GatewaySchemaResponse {
+//   tableName: string;
+//   primaryKeys: string[];
+//   items: GatewaySchemaDetail[];
+// }
 
 interface SourceApiMetadata {
   tableName?: string;
@@ -88,72 +88,72 @@ export class DataIntegrationService {
   // ---------------------------------------------------------------------------
 
   // Lấy Schema từ API của Gateway
-  private async fetchSourceSchemaDefinition(
-    baseUrl: string,
-    dataFromApi: string, // VD: /v1/nguoi_hoc hoặc /v1/nguoi_hoc?page=1
-    token: string
-  ): Promise<GatewaySchemaResponse> {
-    try {
-      // Cắt bỏ query params (nếu có) để lấy base path: /v1/nguoi_hoc -> /v1/nguoi_hoc/schema
-      const basePath = dataFromApi.split('?')[0];
-      const schemaEndpoint = `${basePath}/schema`; 
-      const url = `${baseUrl}${schemaEndpoint}${token ? `?accessToken=${token}` : ''}`;
+  // private async fetchSourceSchemaDefinition(
+  //   baseUrl: string,
+  //   dataFromApi: string, // VD: /v1/nguoi_hoc hoặc /v1/nguoi_hoc?page=1
+  //   token: string
+  // ): Promise<GatewaySchemaResponse> {
+  //   try {
+  //     // Cắt bỏ query params (nếu có) để lấy base path: /v1/nguoi_hoc -> /v1/nguoi_hoc/schema
+  //     const basePath = dataFromApi.split('?')[0];
+  //     const schemaEndpoint = `${basePath}/schema`; 
+  //     const url = `${baseUrl}${schemaEndpoint}${token ? `?accessToken=${token}` : ''}`;
 
-      this.logger.log(`[DEBUG] Schema URL: ${url}`);
+  //     this.logger.log(`[DEBUG] Schema URL: ${url}`);
 
-      this.broadcastLog(`[PRE-FLIGHT] Lấy schema từ nguồn: ${schemaEndpoint}...`);
+  //     this.broadcastLog(`[PRE-FLIGHT] Lấy schema từ nguồn: ${schemaEndpoint}...`);
 
-      const response = await this.withRetry(
-        () => firstValueFrom(this.httpService.request({
-          method: 'GET',
-          url: url,
-          timeout: 10000,
-        })),
-        `fetch schema for ${basePath}`
-      );
+  //     const response = await this.withRetry(
+  //       () => firstValueFrom(this.httpService.request({
+  //         method: 'GET',
+  //         url: url,
+  //         timeout: 10000,
+  //       })),
+  //       `fetch schema for ${basePath}`
+  //     );
 
-      return response.data as GatewaySchemaResponse;
-    } catch (error) {
-      this.broadcastLog(`[PRE-FLIGHT FAILED] Không thể lấy schema từ ${dataFromApi}: ${error.message}`, 'ERROR');
-      throw new Error(`Mất kết nối với Gateway Schema API. Dừng đồng bộ.`);
-    }
-  }
+  //     return response.data as GatewaySchemaResponse;
+  //   } catch (error) {
+  //     this.broadcastLog(`[PRE-FLIGHT FAILED] Không thể lấy schema từ ${dataFromApi}: ${error.message}`, 'ERROR');
+  //     throw new Error(`Mất kết nối với Gateway Schema API. Dừng đồng bộ.`);
+  //   }
+  // }
 
-  // Adapter: So sánh Schema nguồn với Schema Registry hiện tại
-  private async validateSchemaContract(schema: any, sourceSchemaDto: GatewaySchemaResponse) {
-    const currentRegistryHash = schema.hashValue;
+  // // Adapter: So sánh Schema nguồn với Schema Registry hiện tại
+  // private async validateSchemaContract(schema: any, sourceSchemaDto: GatewaySchemaResponse) {
+  //   const currentRegistryHash = schema.hashValue;
     
-    // Đóng vai trò là Adapter: Map dữ liệu từ chuẩn của Gateway sang chuẩn của DB mình
-    const incomingDetails = sourceSchemaDto.items.map(item => ({
-      name: item.field,       // Gateway dùng 'field', mình dùng 'name'
-      type: item.type,        // Chuẩn hóa datatype
-      required: item.required,
-      length: item.length,
-      precision: item.precision,
-      scale: item.scale
-    }));
+  //   // Đóng vai trò là Adapter: Map dữ liệu từ chuẩn của Gateway sang chuẩn của DB mình
+  //   const incomingDetails = sourceSchemaDto.items.map(item => ({
+  //     name: item.field,       // Gateway dùng 'field', mình dùng 'name'
+  //     type: item.type,        // Chuẩn hóa datatype
+  //     required: item.required,
+  //     length: item.length,
+  //     precision: item.precision,
+  //     scale: item.scale
+  //   }));
 
-    // Băm lại cấu trúc mới để so sánh
-    const incomingSourceHash = generateSchemaHash(incomingDetails);
+  //   // Băm lại cấu trúc mới để so sánh
+  //   const incomingSourceHash = generateSchemaHash(incomingDetails);
 
-    if (currentRegistryHash !== incomingSourceHash) {
-      this.broadcastLog(`[SCHEMA DRIFT FATAL] Cấu trúc bảng ${schema.tableName} đã thay đổi từ nguồn!`, 'ERROR');
+  //   if (currentRegistryHash !== incomingSourceHash) {
+  //     this.broadcastLog(`[SCHEMA DRIFT FATAL] Cấu trúc bảng ${schema.tableName} đã thay đổi từ nguồn!`, 'ERROR');
       
-      // Cập nhật Registry để UI hiện cảnh báo cho Admin
-      await this.schemaRegistry.detectSchemaChanges([{
-        tableName: schema.tableName,
-        details: incomingDetails, // Lưu schema chuẩn hóa vào DB
-        fieldsCount: incomingDetails.length,
-        hashValue: incomingSourceHash,
-        primaryKey: sourceSchemaDto.primaryKeys
-      }]);
+  //     // Cập nhật Registry để UI hiện cảnh báo cho Admin
+  //     await this.schemaRegistry.detectSchemaChanges([{
+  //       tableName: schema.tableName,
+  //       details: incomingDetails, // Lưu schema chuẩn hóa vào DB
+  //       fieldsCount: incomingDetails.length,
+  //       hashValue: incomingSourceHash,
+  //       primaryKey: sourceSchemaDto.primaryKeys
+  //     }]);
 
-      return false; // Sai lệch schema -> Trả về false
-    }
+  //     return false; // Sai lệch schema -> Trả về false
+  //   }
 
-    this.broadcastLog(`[SCHEMA OK] Cấu trúc bảng ${schema.tableName} khớp với nguồn.`);
-    return true; // Khớp schema -> Trả về true
-  }
+  //   this.broadcastLog(`[SCHEMA OK] Cấu trúc bảng ${schema.tableName} khớp với nguồn.`);
+  //   return true; // Khớp schema -> Trả về true
+  // }
 
   private async resolveSourceCredentials(
     dataFrom: string,
@@ -254,17 +254,17 @@ export class DataIntegrationService {
     baseUrl: string,
     token: string,
   ): Promise<{ synced: number; skipped: number; orphanCount: number }> {
-    const sourceSchemaDto = await this.fetchSourceSchemaDefinition(baseUrl, schema.dataFromApi, token);
+    // const sourceSchemaDto = await this.fetchSourceSchemaDefinition(baseUrl, schema.dataFromApi, token);
     
-    // Dùng Adapter map sang chuẩn mình và kiểm tra
-    const isSchemaValid = await this.validateSchemaContract(schema, sourceSchemaDto);
+    // // Dùng Adapter map sang chuẩn mình và kiểm tra
+    // const isSchemaValid = await this.validateSchemaContract(schema, sourceSchemaDto);
 
-    if (!isSchemaValid) {
-      // NẾU CÓ SỰ THAY ĐỔI -> KHÔNG ĐỒNG BỘ -> YÊU CẦU HỆ THỐNG TRỤC HIỆU CHỈNH
-      throw new Error(
-        `[SYNC BLOCKED] Phát hiện thay đổi cấu trúc bảng ${schema.tableName} từ Data Source. Đã dừng đồng bộ. Hệ thống trục cần được hiệu chỉnh (Prisma Update) trước khi tiếp tục.`
-      );
-    }
+    // if (!isSchemaValid) {
+    //   // NẾU CÓ SỰ THAY ĐỔI -> KHÔNG ĐỒNG BỘ -> YÊU CẦU HỆ THỐNG TRỤC HIỆU CHỈNH
+    //   throw new Error(
+    //     `[SYNC BLOCKED] Phát hiện thay đổi cấu trúc bảng ${schema.tableName} từ Data Source. Đã dừng đồng bộ. Hệ thống trục cần được hiệu chỉnh (Prisma Update) trước khi tiếp tục.`
+    //   );
+    // }
     // -----------------------------------------------------------------------
 
     const strategy: string = schema.syncStrategy || 'upsert';
@@ -351,43 +351,43 @@ export class DataIntegrationService {
 
       // [Guard] Schema Contract — kiểm tra payload không có field lạ so với schema.details
       // createdAt/updatedAt là system timestamps của Prisma, luôn được bỏ qua
-      // if (schema.details?.length > 0 && rawDataArray.length > 0) {
-      //   const SYSTEM_FIELDS = new Set(['createdAt', 'updatedAt']);
-      //   const definedFields = new Set<string>(
-      //     schema.details.map((d: any) => d.name),
-      //   );
-      //   const unknownFields = new Set<string>();
-      //   for (const record of rawDataArray) {
-      //     for (const key of Object.keys(record)) {
-      //       if (!definedFields.has(key) && !SYSTEM_FIELDS.has(key)) {
-      //         unknownFields.add(key);
-      //       }
-      //     }
-      //   }
-      //   if (unknownFields.size > 0) {
-      //     this.broadcastLog(`[SCHEMA DRIFT] Phát hiện trường mới: [${[...unknownFields].join(', ')}]. Đang cập nhật Schema Registry...`, 'WARN');
+      if (schema.details?.length > 0 && rawDataArray.length > 0) {
+        const SYSTEM_FIELDS = new Set(['createdAt', 'updatedAt']);
+        const definedFields = new Set<string>(
+          schema.details.map((d: any) => d.name),
+        );
+        const unknownFields = new Set<string>();
+        for (const record of rawDataArray) {
+          for (const key of Object.keys(record)) {
+            if (!definedFields.has(key) && !SYSTEM_FIELDS.has(key)) {
+              unknownFields.add(key);
+            }
+          }
+        }
+        if (unknownFields.size > 0) {
+          this.broadcastLog(`[SCHEMA DRIFT] Phát hiện trường mới: [${[...unknownFields].join(', ')}]. Đang cập nhật Schema Registry...`, 'WARN');
 
-      //     const newDetails = [...schema.details];
+          const newDetails = [...schema.details];
           
-      //     for (const newField of unknownFields) {
-      //       newDetails.push({
-      //         name: newField,
-      //         type: inferDataTypeFromBatch(rawDataArray, newField),
-      //         length: null
-      //       });
-      //     }
+          for (const newField of unknownFields) {
+            newDetails.push({
+              name: newField,
+              type: inferDataTypeFromBatch(rawDataArray, newField),
+              length: null
+            });
+          }
 
-      //     await this.schemaRegistry.detectSchemaChanges([{
-      //       tableName: schema.tableName,
-      //       details: newDetails,
-      //       fieldsCount: newDetails.length
-      //     }]);
+          await this.schemaRegistry.detectSchemaChanges([{
+            tableName: schema.tableName,
+            details: newDetails,
+            fieldsCount: newDetails.length
+          }]);
 
-      //     throw new Error(
-      //       `[SCHEMA CONTRACT VIOLATION] Payload có field chưa định nghĩa trong metadata: [${[...unknownFields].join(', ')}]. Bỏ qua sync toàn bộ bảng.`,
-      //     );
-      //   }
-      // }
+          throw new Error(
+            `[SCHEMA CONTRACT VIOLATION] Payload có field chưa định nghĩa trong metadata: [${[...unknownFields].join(', ')}]. Bỏ qua sync toàn bộ bảng.`,
+          );
+        }
+      }
 
       // [Guard] Page Mismatch
       if (meta.currentPage && meta.currentPage !== currentPage) {
