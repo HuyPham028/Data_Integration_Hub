@@ -5,7 +5,7 @@ Dự án được quản lý thông qua Git - Github
 
 \hyperlink{https://github.com/HuyPham028/Data\_Integration\_Hub}{https://github.com/HuyPham028/Data\_Integration\_Hub}
 
-\begin{figure}
+\begin{figure}[!htp]
     \centering
     \includegraphics[width=1\linewidth]{graphics/Github.png}
     \caption{Repo Github}
@@ -28,118 +28,170 @@ tác thủ công.
 \subsubsection{Kiến trúc pipeline}
 
 Pipeline CI/CD được triển khai qua \textbf{GitHub Actions},
-kích hoạt mỗi khi có commit được push lên nhánh \texttt{master}.
-Pipeline gồm hai job chạy tuần tự:
+kích hoạt mỗi khi có commit được push hoặc pull request lên nhánh \texttt{master}.
+File workflow \texttt{.github/workflows/ci.yml} định nghĩa \textbf{năm job} với cấu trúc song song:
 
 \begin{enumerate}
-  \item \textbf{Build \& Push}: Build Docker image cho backend (NestJS)
-        và frontend (Next.js), đẩy lên Docker Hub với tag \texttt{latest}.
-  \item \textbf{Deploy}: SSH vào EC2 (Amazon Linux~2023, t3.medium),
-        pull image mới và khởi động lại container bằng Docker~Compose.
+  \item \textbf{build-backend}: \texttt{npm ci} $\to$ \texttt{prisma generate} $\to$ \texttt{npm run build}
+  \item \textbf{build-frontend}: \texttt{npm ci} $\to$ \texttt{next build}
+  \item \textbf{unit-test}: \texttt{npm ci} $\to$ \texttt{prisma generate} $\to$ \texttt{npm test} (41 Jest test case)
+  \item \textbf{docker-compose-test}: Khởi động toàn bộ stack, kiểm tra Kong Gateway health. Chờ \textit{cả ba} job trên hoàn thành.
+  \item \textbf{docker-push}: Push image lên Docker Hub. Chỉ chạy khi push trực tiếp vào \texttt{master} (không kích hoạt với pull request).
 \end{enumerate}
+
+Ba job đầu (\textit{build-backend}, \textit{build-frontend}, \textit{unit-test}) chạy \textbf{song song}, giúp rút ngắn tổng thời gian pipeline. \textit{docker-compose-test} chỉ khởi động sau khi cả ba đều thành công --- đảm bảo Docker image chỉ được push khi code đã vượt qua kiểm thử đơn vị.
 
 \begin{figure}[H]
 \centering
 \begin{tikzpicture}[
-  node distance=1.6cm,
   box/.style={rectangle, rounded corners=4pt,
-              draw=blue!55, fill=blue!8,
-              minimum width=2.6cm, minimum height=0.8cm,
-              font=\small\bfseries, align=center, text=blue!80},
-  arr/.style={-{Stealth[length=5pt,width=4pt]}, thick, black!55}
+              draw=blue!60, fill=blue!8,
+              minimum width=3.2cm, minimum height=0.9cm,
+              font=\small\bfseries, align=center, text=blue!85},
+  tbox/.style={rectangle, rounded corners=4pt,
+               draw=green!60!black, fill=green!10,
+               minimum width=3.2cm, minimum height=0.9cm,
+               font=\small\bfseries, align=center, text=green!50!black},
+  fbox/.style={rectangle, rounded corners=4pt,
+               draw=red!65, fill=red!8,
+               minimum width=3.0cm, minimum height=0.9cm,
+               font=\small\bfseries, align=center, text=red!75},
+  gate/.style={diamond, draw=orange!70!black, fill=orange!10,
+               minimum width=1.2cm, minimum height=0.7cm,
+               font=\small\bfseries, align=center, text=orange!85!black,
+               aspect=2.8},
+  arr/.style={-{Stealth[length=5pt,width=4pt]}, thick, black!50},
+  farr/.style={-{Stealth[length=5pt,width=4pt]}, thick, red!65}
 ]
-  \node[box] (push)   {git push\\master};
-  \node[box, right=1cm of push]  (trig)   {GitHub\\Actions};
-  \node[box, right=1cm of trig]  (build)  {Build\\Docker Image};
-  \node[box, right=1cm of build] (hub)    {Push\\Docker Hub};
-  \node[box, right=1cm of hub]   (deploy) {SSH Deploy\\EC2};
+  % Row 0: trigger
+  \node[box] (push) at (0, 0)    {git push / PR\\master};
+  \node[box] (trig) at (0, -1.6) {GitHub Actions};
 
+  % Row 1: three parallel jobs
+  \node[box]  (bback)  at (-4.2, -3.6) {build-backend\\npm build};
+  \node[box]  (bfront) at (0,    -3.6) {build-frontend\\next build};
+  \node[tbox] (utest)  at (4.2,  -3.6) {unit-test\\41 Jest tests};
+
+  % Row 2: gate diamond
+  \node[gate] (gd) at (0, -5.5) {all pass?};
+
+  % Fail branch (left)
+  \node[fbox] (fail) at (-4.2, -5.5) {pipeline dừng\\deploy bị huỷ};
+
+  % Row 3: integration test
+  \node[box] (dct) at (0, -7.2) {docker-compose-test\\Kong health check};
+
+  % Row 4: push (master only)
+  \node[box] (dpush) at (0, -8.8) {docker-push\\Docker Hub (master only)};
+
+  % Trigger arrows
   \draw[arr] (push)  -- (trig);
-  \draw[arr] (trig)  -- (build);
-  \draw[arr] (build) -- (hub);
-  \draw[arr] (hub)   -- (deploy);
+  \draw[arr] (trig)  -- (bback);
+  \draw[arr] (trig)  -- (bfront);
+  \draw[arr] (trig)  -- (utest);
+
+  % Converge to gate
+  \draw[arr] (bback)  -- (gd);
+  \draw[arr] (bfront) -- (gd);
+  \draw[arr] (utest)  -- (gd);
+
+  % Gate branches
+  \draw[farr] (gd) -- node[midway, above, font=\footnotesize, text=red!70] {Không} (fail);
+  \draw[arr]  (gd) -- node[midway, right, font=\footnotesize, text=green!55!black] {Có} (dct);
+
+  % Continue
+  \draw[arr] (dct) -- (dpush);
 \end{tikzpicture}
-\caption{Luồng CI/CD từ push code đến deploy EC2}
+\caption{Cấu trúc pipeline CI/CD}
 \label{fig:cicd_pipeline}
 \end{figure}
 
 \subsubsection{File workflow GitHub Actions}
 
-File workflow được đặt tại \texttt{.github/workflows/deploy.yml} trong
-repository. Toàn bộ thông tin nhạy cảm (địa chỉ EC2, khóa SSH, thông tin
-Docker Hub) được lưu trong \textbf{GitHub Secrets} thay vì hard-code.
+File workflow được đặt tại \texttt{.github/workflows/ci.yml} trong repository.
+Dưới đây là phần cốt lõi của file, tập trung vào job \texttt{unit-test} mới được thêm
+và ràng buộc \texttt{needs} của \texttt{docker-compose-test}:
 
 \begin{lstlisting}[language=yaml,
-                   caption={.github/workflows/deploy.yml},
+                   caption={Trích .github/workflows/ci.yml (phần unit-test và docker-compose-test)},
                    label={lst:cicd-workflow}]
-name: Build and Deploy to EC2
-
-on:
-  push:
-    branches: [ master ]
-
 env:
-  IMAGE_BACKEND:  ${{ secrets.DOCKER_USERNAME }}/hub-backend
-  IMAGE_FRONTEND: ${{ secrets.DOCKER_USERNAME }}/hub-frontend
+  NODE_VERSION: "20"
 
 jobs:
-  # Job 1: Build Docker images va push len Docker Hub
-  build:
-    name: Build & Push Docker Images
+  build-backend:       # chay song song
     runs-on: ubuntu-latest
-
+    defaults:
+      run:
+        working-directory: ./backend
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
-
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npm run build
 
-      - name: Build & push Backend image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend
-          push: true
-          tags: ${{ env.IMAGE_BACKEND }}:latest
-
-      - name: Build & push Frontend image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./frontend
-          push: true
-          tags: ${{ env.IMAGE_FRONTEND }}:latest
-          build-args: |
-            NEXT_PUBLIC_KONG_URL=${{ secrets.NEXT_PUBLIC_KONG_URL }}
-
-  # Job 2: SSH vao EC2, pull image moi va restart container
-  deploy:
-    name: Deploy to EC2
+  build-frontend:      # chay song song
     runs-on: ubuntu-latest
-    needs: build
-
+    defaults:
+      run:
+        working-directory: ./frontend
     steps:
-      - name: SSH and deploy
-        uses: appleboy/ssh-action@v1.0.3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          host:     ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USERNAME }}
-          key:      ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            cd ~/Data_Integration_Hub
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run build
 
-            # Pull image moi tu Docker Hub
-            docker compose pull backend frontend
+  unit-test:           # chay song song - 41 Jest test cases
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npx prisma generate
+      - name: Run unit tests (41 tests)
+        run: npm test
 
-            # Restart chi hai service thay doi
-            docker compose up -d --no-build backend frontend
+  # Doi ca 3 job tren thanh cong moi chay
+  docker-compose-test:
+    runs-on: ubuntu-latest
+    needs: [build-backend, build-frontend, unit-test]
+    steps:
+      - uses: actions/checkout@v4
+      - run: cp .env.example .env
+      - run: docker compose build
+      - run: docker compose up -d
+      - run: sleep 20
+      - name: Test Kong Gateway
+        run: curl --fail http://localhost:8001 || exit 1
+      - if: always()
+        run: docker compose down -v
 
-            # Xoa image cu de tiet kiem disk
-            docker image prune -f
-
-            echo "Deploy hoan thanh: $(date)"
+  docker-push:         # chi chay khi push thang vao master
+    runs-on: ubuntu-latest
+    needs: docker-compose-test
+    if: github.ref == 'refs/heads/master'
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "${{ secrets.DOCKER_PASSWORD }}" |
+               docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+      - run: docker compose build
+      - run: docker compose push
 \end{lstlisting}
 
 \subsubsection{Cấu hình GitHub Secrets}
@@ -209,10 +261,12 @@ trên 3 file, bao phủ các logic nghiệp vụ quan trọng nhất:
 \end{table}
 
 Toàn bộ test được chạy bằng lệnh \texttt{npm test} và pass 100\%.
-Bước tiếp theo là tích hợp bộ test này vào pipeline GitHub Actions:
-thêm job \texttt{test} chạy \textbf{trước} job \texttt{build}, đảm bảo
-mọi commit lên \texttt{master} đều phải vượt qua kiểm thử tự động trước
-khi Docker image được build và deploy lên production.
+Bộ test này đã được tích hợp vào pipeline CI/CD thông qua job \texttt{unit-test}
+trong \texttt{ci.yml}. Job chạy \textbf{song song} với \textit{build-backend}
+và \textit{build-frontend} --- không làm tăng tổng thời gian pipeline vì ba job
+cùng xuất phát. \textit{docker-compose-test} chỉ được phép chạy sau khi cả ba
+job hoàn thành, đảm bảo mọi commit lên \texttt{master} đều vượt qua kiểm thử
+đơn vị trước khi Docker image được push lên Docker Hub.
 
 \subsection{Đánh giá}
 
@@ -225,8 +279,9 @@ khi Docker image được build và deploy lên production.
   \item \textbf{Rollback dễ dàng}: Docker Hub lưu các image theo tag.
         Rollback bằng cách chỉnh tag trong \texttt{docker-compose.yml}
         và chạy lại \texttt{docker compose up -d}.
-  \item \textbf{Nền tảng kiểm thử sẵn sàng}: Bộ 41 unit test đã được
-        xây dựng và pass 100\%, sẵn sàng tích hợp vào pipeline.
+  \item \textbf{Kiểm thử tự động tích hợp}: Bộ 41 unit test được tích hợp thành
+        job \texttt{unit-test} trong CI pipeline, chạy song song với hai job build
+        và chặn \texttt{docker-push} nếu có test thất bại.
 \end{itemize}
 
 
@@ -311,7 +366,7 @@ Kong (~400 MB), NestJS (~200 MB), Next.js (~300 MB), Prometheus và Grafana
     \centering
     \includegraphics[width=1\linewidth]{graphics/EC2.png}
     \caption{Máy chủ EC2 trên AWS}
-    \label{fig:dashboard-ui}
+    \label{fig:ec2-instance}
 \end{figure}
 
 \subsubsection{Security Group}

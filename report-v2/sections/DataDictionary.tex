@@ -1,0 +1,206 @@
+\newpage
+\section{Cơ sở dữ liệu và từ điển dữ liệu theo quy chuẩn Bộ Giáo dục và Đào tạo}
+
+\subsection{Bối cảnh và sự cần thiết của chuẩn hóa dữ liệu}
+
+Một trong những thách thức căn bản khi xây dựng trục tích hợp dữ liệu cho trường đại học là câu hỏi: \textit{Schema của cơ sở dữ liệu đích được định nghĩa theo tiêu chuẩn nào?} Nếu mỗi trường đại học tự đặt tên bảng, tên trường và kiểu dữ liệu theo ý riêng, dữ liệu sẽ không thể chia sẻ hay so sánh giữa các đơn vị, và việc báo cáo lên cơ quan chủ quản sẽ đòi hỏi chuyển đổi thủ công tốn kém.
+
+Để giải quyết vấn đề này, Bộ Giáo dục và Đào tạo (BGDĐT) đã ban hành hai văn bản pháp quy tạo nền tảng pháp lý và kỹ thuật cho hệ thống cơ sở dữ liệu ngành giáo dục trên toàn quốc. Đây chính là căn cứ để nhóm xây dựng cấu trúc bảng, tên trường và kiểu dữ liệu trong đồ án.
+
+\subsection{Khung pháp lý: Thông tư 42/2021/TT-BGDĐT}
+
+Ngày 30 tháng 12 năm 2021, Bộ Giáo dục và Đào tạo ban hành \textbf{Thông tư số 42/2021/TT-BGDĐT} — \textit{Quy định về cơ sở dữ liệu giáo dục và đào tạo}, có hiệu lực từ ngày 14/02/2022. Đây là văn bản pháp quy cao nhất quy định toàn bộ khung pháp lý cho hệ thống cơ sở dữ liệu quốc gia về giáo dục và đào tạo.
+
+Thông tư này xác định phạm vi áp dụng bao gồm toàn bộ các cơ sở giáo dục trong hệ thống từ mầm non đến đại học, quy định trách nhiệm cung cấp, cập nhật và chia sẻ dữ liệu của từng đơn vị. Đặc biệt, văn bản nêu rõ:
+
+\begin{quote}
+\textit{Việc báo cáo dữ liệu trên cơ sở dữ liệu giáo dục và đào tạo được thực hiện qua tài khoản đã được cung cấp hoặc qua \textbf{trục tích hợp dữ liệu} theo hướng dẫn của Bộ Giáo dục và Đào tạo.}
+\end{quote}
+
+Điều này xác lập cơ sở pháp lý trực tiếp cho bài toán \textit{trục tích hợp dữ liệu} mà đồ án giải quyết: các trường đại học phải có cơ chế đồng bộ dữ liệu nội bộ lên hệ thống quốc gia thông qua một trục tích hợp chuẩn hóa.
+
+\subsection{Quy chuẩn kỹ thuật: Quyết định 4998/QĐ-BGDĐT}
+
+Ngày 31 tháng 12 năm 2021, Bộ Giáo dục và Đào tạo tiếp tục ban hành \textbf{Quyết định số 4998/QĐ-BGDĐT} — \textit{Quy định kỹ thuật về dữ liệu của cơ sở dữ liệu giáo dục và đào tạo}. Đây là văn bản kỹ thuật triển khai thực hiện Thông tư 42, thay thế hai quyết định trước đó (Quyết định 1904/QĐ-BGDĐT năm 2019 và Quyết định 501/QĐ-BGDĐT năm 2020).
+
+Quyết định 4998 quy định cụ thể:
+
+\begin{itemize}
+    \item \textbf{Cấu trúc bảng dữ liệu} cho từng nhóm đối tượng quản lý: cơ sở giáo dục, cán bộ nhân sự, người học, chương trình đào tạo, cơ sở vật chất và tài chính.
+    \item \textbf{Quy ước đặt tên trường}: sử dụng chữ in hoa, phân cách bằng dấu gạch dưới (ví dụ: \texttt{HO\_TEN}, \texttt{NGAY\_SINH}, \texttt{MA\_GIOI\_TINH}).
+    \item \textbf{Kiểu dữ liệu chuẩn}: Chuỗi ký tự, Số nguyên, Số thập phân, Đúng/Sai, Ngày tháng.
+    \item \textbf{137 bảng danh mục dùng chung} (\texttt{DM\_*}): là các bảng tra cứu mã chuẩn được dùng xuyên suốt toàn hệ thống thông qua khóa ngoại.
+\end{itemize}
+
+Các quy chuẩn kỹ thuật được tham chiếu trong Quyết định 4998 gồm:
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.4}
+\begin{tabularx}{\textwidth}{|l|X|}
+\hline
+\textbf{Quy chuẩn} & \textbf{Nội dung áp dụng} \\
+\hline
+QCVN 102:2016/BTTTT & Chuẩn định dạng ngày tháng trong trao đổi dữ liệu \\
+\hline
+QCVN 109:2017/BTTTT & Chuẩn dữ liệu về tên người, giới tính, tình trạng hôn nhân \\
+\hline
+TCVN 7217-3:2013 & Mã quốc gia và vùng lãnh thổ quốc tế (ISO 3166) \\
+\hline
+\end{tabularx}
+\caption{Các tiêu chuẩn kỹ thuật được tham chiếu trong Quyết định 4998/QĐ-BGDĐT}
+\label{tab:standards}
+\end{table}
+
+\subsection{Cấu trúc từ điển dữ liệu theo Quyết định 4998}
+
+\subsubsection{Nhóm bảng danh mục dùng chung (DM\_*)}
+
+Quyết định 4998 định nghĩa \textbf{137 bảng danh mục dùng chung}, ký hiệu bằng tiền tố \texttt{DM\_}, đóng vai trò là bộ từ điển tra cứu mã chuẩn cho toàn hệ thống. Đây là các bảng tham chiếu tĩnh (lookup tables) được mọi hệ thống trong ngành sử dụng thống nhất, tránh mâu thuẫn khi tích hợp.
+
+Bảng~\ref{tab:dm-groups} liệt kê các nhóm bảng danh mục chính:
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.4}
+\begin{tabularx}{\textwidth}{|l|X|l|}
+\hline
+\textbf{Nhóm} & \textbf{Nội dung} & \textbf{Ví dụ} \\
+\hline
+Địa lý & Quốc gia, tỉnh/thành, huyện, xã, vùng miền & \texttt{DM\_TINH}, \texttt{DM\_HUYEN} \\
+\hline
+Nhân khẩu học & Dân tộc, tôn giáo, giới tính, hôn nhân & \texttt{DM\_GIOI\_TINH}, \texttt{DM\_DAN\_TOC} \\
+\hline
+Cơ cấu đào tạo & Cấp học, ngành, môn học, hình thức đào tạo & \texttt{DM\_NGANH}, \texttt{DM\_CAP\_HOC} \\
+\hline
+Nhân sự & Chức vụ, ngạch CC, hình thức hợp đồng, vị trí việc làm & \texttt{DM\_NGACH\_CC}, \texttt{DM\_CHUC\_VU} \\
+\hline
+Trình độ & Trình độ CM, học hàm, học vị, ngoại ngữ, tin học & \texttt{DM\_HOC\_HAM}, \texttt{DM\_TRINH\_DO} \\
+\hline
+Lương & Bậc lương, hệ số & \texttt{DM\_BAC\_LUONG} \\
+\hline
+Người học & Trạng thái học sinh, đối tượng chính sách, xếp loại & \texttt{DM\_TRANG\_THAI\_HOC\_SINH} \\
+\hline
+Khen thưởng & Hình thức khen thưởng, danh hiệu & \texttt{DM\_DANH\_HIEU}, \texttt{DM\_KHEN\_THUONG} \\
+\hline
+\end{tabularx}
+\caption{Các nhóm bảng danh mục dùng chung theo Quyết định 4998/QĐ-BGDĐT}
+\label{tab:dm-groups}
+\end{table}
+
+\subsubsection{Nhóm bảng nghiệp vụ chính}
+
+Ngoài các bảng danh mục, Quyết định 4998 định nghĩa các nhóm bảng nghiệp vụ chứa dữ liệu thực thể của từng đối tượng quản lý trong hệ thống giáo dục đại học. Mỗi nhóm bảng bao gồm các trường định danh và tham chiếu khóa ngoại đến bảng \texttt{DM\_*} tương ứng.
+
+Ví dụ, nhóm bảng nhân sự (\textbf{Cán bộ}) định nghĩa các trường cơ bản:
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.4}
+\begin{tabularx}{\textwidth}{|l|l|r|X|}
+\hline
+\textbf{Ký hiệu trường} & \textbf{Kiểu dữ liệu} & \textbf{Độ dài} & \textbf{Mô tả} \\
+\hline
+\texttt{HO\_TEN} & Chuỗi ký tự & 200 & Họ và tên đầy đủ \\
+\hline
+\texttt{NGAY\_SINH} & Ngày tháng & — & Ngày sinh (QCVN 102) \\
+\hline
+\texttt{MA\_GIOI\_TINH} & Chuỗi ký tự & 2 & Mã giới tính → \texttt{DM\_GIOI\_TINH} \\
+\hline
+\texttt{SO\_CMTND} & Chuỗi ký tự & 20 & Số CCCD/CMND \\
+\hline
+\texttt{MA\_NGACH} & Chuỗi ký tự & 10 & Ngạch công chức → \texttt{DM\_NGACH\_CC} \\
+\hline
+\texttt{MA\_CHUC\_VU} & Chuỗi ký tự & 10 & Mã chức vụ → \texttt{DM\_CHUC\_VU} \\
+\hline
+\texttt{MA\_VI\_TRI\_VIEC\_LAM} & Chuỗi ký tự & 20 & Vị trí việc làm → \texttt{DM\_VI\_TRI\_VIEC\_LAM} \\
+\hline
+\texttt{HE\_SO\_LUONG} & Số thập phân & 10,2 & Hệ số lương \\
+\hline
+\texttt{MA\_BAC\_LUONG} & Số nguyên & — & Bậc lương → \texttt{DM\_BAC\_LUONG} \\
+\hline
+\end{tabularx}
+\caption{Một số trường định nghĩa trong nhóm bảng Cán bộ theo Quyết định 4998}
+\label{tab:canbo-fields}
+\end{table}
+
+Nhóm bảng người học (\textbf{Người học}) có cấu trúc tương tự, với các trường định danh cơ bản (\texttt{HO\_TEN}, \texttt{NGAY\_SINH}, \texttt{MA\_GIOI\_TINH}) và các trường nghiệp vụ đặc thù như trạng thái học tập, đối tượng chính sách, kết quả học tập và văn bằng chứng chỉ.
+
+\subsection{Ánh xạ từ chuẩn Bộ GD\&ĐT sang schema đồ án}
+
+Trong đồ án, nhóm áp dụng Quyết định 4998 làm căn cứ chính để định nghĩa cấu trúc bảng trong PostgreSQL. Tuy nhiên, vì đây là hệ thống nội bộ của trường (chưa phải hệ thống quốc gia), nhóm có một số điều chỉnh về quy ước đặt tên cho phù hợp với thực tế triển khai:
+
+\begin{itemize}
+    \item \textbf{Tiền tố bảng}: sử dụng chuẩn phân nhóm theo chức năng — \texttt{dm\_} (danh mục), \texttt{tcns\_} (tổ chức nhân sự), \texttt{nh\_} (người học), giữ nguyên ngữ nghĩa với chuẩn quốc gia.
+    \item \textbf{Tên trường}: chuyển sang camelCase theo quy ước NestJS/Prisma (ví dụ: \texttt{MA\_GIOI\_TINH} → \texttt{maGioiTinh}), giá trị và ngữ nghĩa không thay đổi.
+    \item \textbf{Kiểu dữ liệu}: ánh xạ trực tiếp từ chuẩn Bộ GD\&ĐT sang kiểu Prisma/PostgreSQL (Chuỗi ký tự → \texttt{VarChar(n)}, Số nguyên → \texttt{Int}, Số thập phân → \texttt{Decimal(p,s)}, Ngày tháng → \texttt{DateTime}).
+\end{itemize}
+
+Bảng~\ref{tab:schema-mapping} trình bày ánh xạ cụ thể giữa tên bảng trong chuẩn quốc gia và tên bảng thực tế trong schema đồ án:
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.4}
+\begin{tabularx}{\textwidth}{|l|l|X|}
+\hline
+\textbf{Nhóm bảng (QĐ 4998)} & \textbf{Bảng trong đồ án} & \textbf{Nội dung} \\
+\hline
+\texttt{DM\_GIOI\_TINH} & \texttt{dm\_gioi\_tinh} & Danh mục giới tính \\
+\hline
+\texttt{DM\_CHUC\_DANH\_GIANG\_VIEN} & \texttt{dm\_chuc\_danh\_khoa\_hoc} & Chức danh khoa học \\
+\hline
+\texttt{DM\_NGOAI\_NGU} & \texttt{dm\_dt\_ngoai\_ngu} & Danh mục ngoại ngữ \\
+\hline
+\texttt{DM\_LOAI\_CCHI\_NNGU} & \texttt{dm\_dt\_chung\_chi\_ngoai\_ngu} & Chứng chỉ ngoại ngữ \\
+\hline
+\texttt{DM\_TRINH\_DO\_TIN\_HOC} & \texttt{dm\_dt\_chung\_chi\_tin\_hoc} & Chứng chỉ tin học \\
+\hline
+\texttt{DM\_NGACH\_CC} & \texttt{dm\_ngach\_cdnn} & Ngạch chức danh nghề nghiệp \\
+\hline
+\texttt{DM\_VI\_TRI\_VIEC\_LAM} & \texttt{dm\_vi\_tri\_viec\_lam} & Vị trí việc làm \\
+\hline
+\texttt{DM\_TRINH\_DO\_LLCT} & \texttt{dm\_dt\_van\_bang\_llct} & Văn bằng lý luận chính trị \\
+\hline
+\texttt{DM\_BAC\_LUONG} & \texttt{dm\_nhom\_luong} & Nhóm bậc lương \\
+\hline
+\texttt{DM\_HINH\_THUC\_DAO\_TAO} & \texttt{dm\_dt\_hinh\_thuc\_cm} & Hình thức đào tạo chuyên môn \\
+\hline
+\texttt{DM\_DANH\_HIEU} & \texttt{dm\_danh\_hieu\_nha\_nuoc} & Danh hiệu Nhà nước \\
+\hline
+\texttt{DM\_CHUC\_VU} & \texttt{dm\_loai\_chuc\_vu} & Loại chức vụ \\
+\hline
+Nhóm Cán bộ (Cán bộ — GVC) & \texttt{tcns\_can\_bo} & Hồ sơ cán bộ, viên chức \\
+\hline
+Nhóm Người học (HSSV) & \texttt{nguoi\_hoc} & Hồ sơ người học \\
+\hline
+Nhóm Văn bằng & \texttt{nh\_van\_bang} & Văn bằng tốt nghiệp \\
+\hline
+\end{tabularx}
+\caption{Ánh xạ giữa tên bảng chuẩn quốc gia (QĐ 4998) và schema trong đồ án}
+\label{tab:schema-mapping}
+\end{table}
+
+\subsection{Schema Registry — hiện thực hóa từ điển dữ liệu}
+
+Trong đồ án, \textbf{Schema Registry} trên MongoDB chính là nơi lưu trữ và vận hành từ điển dữ liệu theo tinh thần của Quyết định 4998. Mỗi bản ghi trong Schema Registry tương ứng với một bảng trong PostgreSQL và chứa đầy đủ thông tin kỹ thuật:
+
+\begin{itemize}
+    \item \textbf{Tên bảng} (\texttt{tableName}): ánh xạ với tên bảng danh mục trong QĐ 4998.
+    \item \textbf{Khóa chính} (\texttt{primaryKey}): theo định nghĩa định danh duy nhất trong từ điển dữ liệu.
+    \item \textbf{Chi tiết trường} (\texttt{details}): danh sách tên trường, kiểu dữ liệu, độ dài — kế thừa trực tiếp từ đặc tả trong QĐ 4998.
+    \item \textbf{Hash schema} (\texttt{schemaHash}): dùng để phát hiện thay đổi cấu trúc so với phiên bản trước — cơ chế kiểm soát schema drift.
+    \item \textbf{Trạng thái} (\texttt{status}): cho phép phê duyệt thay đổi schema trước khi áp dụng vào pipeline đồng bộ.
+\end{itemize}
+
+Cơ chế này đảm bảo pipeline ETL luôn validate dữ liệu đầu vào theo đúng đặc tả từ điển dữ liệu quốc gia, và mọi thay đổi cấu trúc từ hệ thống nguồn đều phải được phê duyệt có kiểm soát — tránh nguy cơ dữ liệu sai kiểu hoặc thiếu trường quan trọng được âm thầm ghi vào cơ sở dữ liệu đích.
+
+\subsection{Tóm tắt}
+
+Cấu trúc cơ sở dữ liệu trong đồ án được xây dựng dựa trên hai văn bản pháp quy của Bộ Giáo dục và Đào tạo:
+
+\begin{enumerate}
+    \item \textbf{Thông tư 42/2021/TT-BGDĐT}: xác lập khung pháp lý và nghĩa vụ cung cấp dữ liệu thông qua trục tích hợp.
+    \item \textbf{Quyết định 4998/QĐ-BGDĐT}: cung cấp đặc tả kỹ thuật chi tiết về tên bảng, tên trường, kiểu dữ liệu và 137 bảng danh mục dùng chung.
+\end{enumerate}
+
+Cách tiếp cận này đảm bảo rằng dữ liệu được đồng bộ và lưu trữ trong hệ thống của đồ án không chỉ đúng về mặt kỹ thuật mà còn tuân thủ quy chuẩn quốc gia, tạo nền tảng để kết nối với hệ thống HEMIS (Higher Education Management Information System) của Bộ GD\&ĐT trong tương lai.

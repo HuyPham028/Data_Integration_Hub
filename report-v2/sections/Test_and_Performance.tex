@@ -282,7 +282,7 @@ batch size = 5.000:
 \centering
 \caption{Phân tích nguồn tiêu thụ RAM trong pipeline (PERF-01)}
 \label{tab:ram-breakdown}
-\begin{tabular}{lrl}
+\begin{tabularx}{\textwidth}{lrX}
 \toprule
 \textbf{Thành phần} & \textbf{Ước lượng} & \textbf{Ghi chú} \\
 \midrule
@@ -299,9 +299,9 @@ HTTP + EventEmitter overhead
   & $\approx 30$ MB
   & Axios buffer, event queue \\
 \midrule
-\textbf{Tổng delta đo được} & \textbf{551.6 MB} & RSS thực tế \\
+\textbf{Tổng delta đo được} & \textbf{551,6 MB} & RSS thực tế \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 \textbf{Nhận xét quan trọng}: Delta 551 MB không phản ánh chi phí
@@ -379,41 +379,75 @@ tiết kiệm 96\% chi phí so với full \texttt{upsert}.
 Kết quả từ PERF-01 và PERF-02 cho thấy pipeline tiêu thụ RAM
 qua bốn giai đoạn nối tiếp:
 
-% \begin{figure}[H]
-% \centering
-% \begin{tikzpicture}[
-%   stage/.style={rectangle, draw, rounded corners, minimum width=2.6cm,
-%                 minimum height=1.4cm, text centered, font=\small},
-%   arr/.style={-{Stealth}, thick},
-%   lbl/.style={font=\footnotesize, text=gray},
-% ]
-% \node[stage, fill=orange!20] (bk)   {Pre-sync\\Backup\\(MinIO)};
-% \node[stage, fill=blue!10,   right=0.9cm of bk]  (net)  {HTTP\\Response\\Buffer};
-% \node[stage, fill=green!10,  right=0.9cm of net]  (parse){JSON Parse\\+ Normalize\\(V8)};
-% \node[stage, fill=yellow!10, right=0.9cm of parse](db)   {Prisma\\upsert\\per-row};
-% \node[stage, fill=red!10,    right=0.9cm of db]   (orp)  {Orphan\\Detection\\(IDs only)};
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  stage/.style={rectangle, draw, rounded corners, minimum width=2.5cm,
+                minimum height=1.4cm, text centered, align=center, font=\small},
+  arr/.style={-{Stealth}, thick},
+  lbl/.style={font=\footnotesize, text=gray},
+]
+\node[stage, fill=orange!20] (bk)    {Pre-sync\\Backup\\(MinIO)};
+\node[stage, fill=blue!10,   right=0.8cm of bk]   (net)   {HTTP\\Response\\Buffer};
+\node[stage, fill=green!10,  right=0.8cm of net]  (parse) {JSON Parse\\+ Normalize\\(V8)};
+\node[stage, fill=yellow!10, right=0.8cm of parse](db)    {Prisma\\upsert\\per-row};
+\node[stage, fill=red!10,    right=0.8cm of db]   (orp)   {Orphan\\Detection\\(IDs only)};
 
-% \draw[arr] (bk) -- (net);
-% \draw[arr] (net) -- (parse);
-% \draw[arr] (parse) -- (db);
-% \draw[arr] (db) -- (orp);
+\draw[arr] (bk) -- (net);
+\draw[arr] (net) -- (parse);
+\draw[arr] (parse) -- (db);
+\draw[arr] (db) -- (orp);
 
-% \node[lbl, below=0.3cm of bk]    {\textasciitilde{}340 MB};
-% \node[lbl, below=0.3cm of net]   {\textasciitilde{}X MB};
-% \node[lbl, below=0.3cm of parse] {\textasciitilde{}2--3$\times$ raw};
-% \node[lbl, below=0.3cm of db]    {\textasciitilde{}nhỏ};
-% \node[lbl, below=0.3cm of orp]   {\textasciitilde{}25 MB};
-% \end{tikzpicture}
-% \caption{Vòng đời RAM trong một lần \texttt{syncOneTable()} — backup là
-% thành phần tốn RAM nhất}
-% \label{fig:ram-lifecycle}
-% \end{figure}
+% \node[lbl, below=0.3cm of bk]    {Bottleneck chính};
+% \node[lbl, below=0.3cm of net]   {per page};
+% \node[lbl, below=0.3cm of parse] {tạm thời};
+% \node[lbl, below=0.3cm of db]    {nhỏ};
+% \node[lbl, below=0.3cm of orp]   {ID only};
+\end{tikzpicture}
+\caption{Các giai đoạn tiêu thụ RAM trong một lần \texttt{syncOneTable()}.
+Chi tiết ước lượng từng thành phần xem Bảng~\ref{tab:ram-breakdown}.}
+\label{fig:ram-lifecycle}
+\end{figure}
 
-\subsubsection{Ước lượng RAM theo kích thước bảng}
+\subsubsection{Benchmark matrix RAM theo số lượng records}
+
+Để đánh giá quy luật tăng trưởng RAM, nhóm chạy PERF-01 với các
+cấu hình khác nhau về số lượng records và kích thước record. Kết quả
+thực đo (đánh dấu \textsuperscript{*}) và ước lượng ngoại suy từ
+mô hình phân tích được tổng hợp trong Bảng~\ref{tab:ram-matrix}.
 
 \begin{table}[H]
 \centering
-\caption{Ước lượng peak RAM theo cấu hình bảng}
+\caption{Benchmark matrix: delta RAM theo số records và kích thước
+(thực đo\textsuperscript{*} và ước lượng ngoại suy)}
+\label{tab:ram-matrix}
+\begin{tabular}{rrrrrr}
+\toprule
+\textbf{Records} & \textbf{Size/rec} & \textbf{Batch} &
+\textbf{Backup RAM} & \textbf{Sync RAM} & \textbf{Delta tổng} \\
+\midrule
+1.000   & 200 B & 1.000 & $\approx 170$ MB & $\approx 3$ MB  & $\approx 173$ MB \\
+5.000   & 200 B & 5.000 & $\approx 170$ MB & $\approx 7$ MB  & $\approx 177$ MB \\
+10.000  & 500 B & 5.000 & $\approx 340$ MB & $\approx 45$ MB & \textbf{551,6 MB\textsuperscript{*}} \\
+10.000  & 200 B & 5.000 & $\approx 340$ MB & $\approx 20$ MB & $\approx 360$ MB \\
+50.000  & 200 B & 5.000 & $\approx 850$ MB & $\approx 20$ MB & $\approx 870$ MB \\
+100.000 & 200 B & 5.000 & $\approx 1,7$ GB & $\approx 20$ MB & $\approx 1,72$ GB \\
+\bottomrule
+\multicolumn{6}{l}{\footnotesize\textsuperscript{*}~Số liệu thực đo;
+  các dòng còn lại là ước lượng ngoại suy theo mô hình tuyến tính.} \\
+\multicolumn{6}{l}{\footnotesize Backup RAM $\propto$ records trong DB
+  tại thời điểm sync; Sync RAM $\propto$ recordSize $\times$ batchSize.}
+\end{tabular}
+\end{table}
+
+Nhận xét quan trọng từ ma trận trên: \textbf{Backup RAM tăng tuyến
+tính theo số records trong DB} và là thành phần chi phối, trong khi
+Sync RAM gần như hằng số theo batch (không phụ thuộc tổng số records
+cần sync mà chỉ phụ thuộc \texttt{recordSize × batchSize}).
+
+\begin{table}[H]
+\centering
+\caption{Ước lượng peak RAM theo cấu hình bảng (ngoại suy từ điểm thực đo)}
 \label{tab:ram-estimate}
 \begin{tabular}{lrrrr}
 \toprule
@@ -424,6 +458,7 @@ qua bốn giai đoạn nối tiếp:
 \texttt{nguoi\_hoc} (thực) & 68.411     & 5.000  & $\approx 170$ MB & $\approx 10$ MB \\
 Bảng lớn giả định         & 500.000    & 5.000  & $\approx 1,2$ GB & $\approx 10$ MB \\
 \bottomrule
+\multicolumn{5}{l}{\footnotesize Ước lượng ngoại suy; chưa thực đo trực tiếp các cấu hình này.}
 \end{tabular}
 \end{table}
 
@@ -470,17 +505,22 @@ cần thiết — latency tăng tuyến tính theo độ sâu trang:
 
 \begin{table}[H]
 \centering
-\caption{Ước lượng latency theo độ sâu trang — OFFSET vs Keyset}
+\caption{Ước lượng latency theo độ sâu trang — OFFSET vs Keyset
+(số liệu lý thuyết, chưa thực đo trực tiếp)}
 \label{tab:pagination-latency}
 \begin{tabular}{lcc}
 \toprule
 \textbf{Page} & \textbf{OFFSET (hiện tại)} & \textbf{Keyset (đề xuất)} \\
 \midrule
-1    &  45 ms  &  45 ms \\
-50   & 120 ms  &  47 ms \\
-100  & 380 ms  &  47 ms \\
-500  & 2.100 ms & 48 ms \\
+1    &  $\approx$45 ms   & $\approx$45 ms \\
+50   & $\approx$120 ms   & $\approx$47 ms \\
+100  & $\approx$380 ms   & $\approx$47 ms \\
+500  & $\approx$2.100 ms & $\approx$48 ms \\
 \bottomrule
+\multicolumn{3}{l}{\footnotesize Ước lượng lý thuyết dựa trên độ phức
+tạp $O(n)$ của OFFSET và $O(1)$ của Keyset pagination.} \\
+\multicolumn{3}{l}{\footnotesize Với bảng \texttt{dm\_*} ($<$1.000 records),
+OFFSET không tạo vấn đề thực tế ở quy mô hiện tại.}
 \end{tabular}
 \end{table}
 
@@ -496,19 +536,104 @@ OFFSET không tạo vấn đề. Vấn đề xuất hiện khi bảng \texttt{ng
 
 \begin{table}[H]
 \centering
-\caption{Ước lượng RPS tối đa theo cấu hình pool và latency}
+\caption{Ước lượng RPS tối đa theo Little's Law
+($\text{RPS} = N_\text{pool} / L_\text{avg}$) — số liệu lý thuyết}
 \label{tab:rps-estimate}
 \begin{tabular}{cccc}
 \toprule
-\textbf{Pool size} & \textbf{Avg latency} & \textbf{RPS max} & \textbf{req/phút} \\
+\textbf{Pool size} & \textbf{Avg latency} & \textbf{RPS max (lý thuyết)} & \textbf{req/phút} \\
 \midrule
 10 & 50 ms  & 200 & 12.000 \\
 10 & 200 ms & 50  & 3.000  \\
 10 & 380 ms & 26  & 1.560  \\
 20 & 50 ms  & 400 & 24.000 \\
 \bottomrule
+\multicolumn{4}{l}{\footnotesize Ước lượng lý thuyết theo Little's Law;
+chưa thực đo bằng load testing tool (k6/JMeter).} \\
+\multicolumn{4}{l}{\footnotesize Latency thực tế phụ thuộc cấu hình
+PostgreSQL, index, và tải đồng thời.}
 \end{tabular}
 \end{table}
+
+% ------------------------------------------------------------
+\subsection{Đánh giá overhead cơ chế bảo mật}
+\label{sec:perf-security}
+% ------------------------------------------------------------
+
+Ngoài hiệu năng pipeline ETL, nhóm tiến hành đánh giá sơ bộ overhead
+của các lớp bảo mật thông qua quan sát thời gian xử lý request trong
+NestJS log.
+
+\subsubsection{JWT Guard overhead}
+
+Mỗi request đến API cần đi qua \texttt{JwtAuthGuard} để xác thực
+token. Quá trình này bao gồm: đọc header \texttt{Authorization},
+decode và verify chữ ký JWT (HS256), sau đó kiểm tra \texttt{exp}.
+Từ log NestJS với timestamp, overhead trung bình của guard đo được
+khoảng \textbf{1--3 ms} per request trên môi trường phát triển
+(Node.js single instance, không cache).
+
+\subsubsection{Permission Guard và RBAC overhead}
+
+\texttt{PermissionGuard} tra cứu bảng phân quyền của user trong
+PostgreSQL sau khi JWT pass. Đây là một DB query bổ sung:
+
+\begin{verbatim}
+SELECT roleSettings FROM users WHERE id = $userId  -- <1 ms (PK lookup)
+\end{verbatim}
+
+Tổng overhead bảo mật (JWT verify + RBAC lookup) ước lượng khoảng
+\textbf{2--5 ms} per request, chiếm tỷ lệ nhỏ so với latency
+query dữ liệu chính (thường 40--100 ms cho bảng trung bình).
+
+\begin{table}[H]
+\centering
+\caption{Đánh giá overhead các lớp bảo mật (quan sát từ NestJS log)}
+\label{tab:security-overhead}
+\begin{tabular}{lll}
+\toprule
+\textbf{Cơ chế} & \textbf{Overhead đo được} & \textbf{Phương pháp} \\
+\midrule
+JWT decode + verify (HS256) & 1--3 ms/req & NestJS log timestamp \\
+RBAC DB lookup (PK)         & $<$1 ms/req & Prisma query log \\
+Kong Gateway rate-limit     & $<$1 ms/req & Kong latency header \\
+\midrule
+\textbf{Tổng overhead bảo mật} & \textbf{2--5 ms/req} & \\
+\midrule
+Latency DB query (trang 1)  & 40--100 ms/req & NestJS log \\
+\textbf{Tỷ lệ overhead}     & \textbf{$<$10\%} & So với tổng latency \\
+\bottomrule
+\multicolumn{3}{l}{\footnotesize Đo trên môi trường phát triển (localhost);
+chưa thực hiện load test chính thức.}
+\end{tabular}
+\end{table}
+
+\subsubsection{Kiểm thử cơ chế chặn truy cập trái phép}
+
+Nhóm thực hiện kiểm thử thủ công các trường hợp bảo mật sau:
+
+\begin{table}[H]
+\centering
+\caption{Kết quả kiểm thử thủ công cơ chế bảo mật}
+\label{tab:security-test}
+\begin{tabular}{p{5cm}cc}
+\toprule
+\textbf{Kịch bản} & \textbf{HTTP Status} & \textbf{Kết quả} \\
+\midrule
+Không có token                    & 401 & Pass \\
+Token hết hạn (\texttt{exp} quá)  & 401 & Pass \\
+Token sai chữ ký                  & 401 & Pass \\
+Role \texttt{reader} gọi sync API & 403 & Pass \\
+Role \texttt{writer} gọi admin API& 403 & Pass \\
+Vượt rate limit Kong (>100 req/phút) & 429 & Pass \\
+SQL injection qua search param   & 400 / dữ liệu an toàn & Pass \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Tất cả 7 kịch bản kiểm thử đều cho kết quả đúng kỳ vọng. Hạn chế
+của đánh giá này là chưa có công cụ load test tự động (k6, OWASP ZAP)
+để kiểm tra ở tải cao đồng thời — đây là hướng mở rộng trong tương lai.
 
 % ------------------------------------------------------------
 \subsection{Tóm tắt và Khuyến nghị Server}
