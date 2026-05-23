@@ -5,9 +5,14 @@
 \ProcessOptions\relax
 \LoadClass[12pt,a4paper]{article}
 
-\RequirePackage[utf8]{vntex,inputenc}
+\RequirePackage{iftex}
+\ifxetex
+  \RequirePackage{fontspec}
+\else
+  \RequirePackage[utf8]{vntex,inputenc}
+  \RequirePackage[T5]{fontenc}
+\fi
 \RequirePackage{anyfontsize,amsmath,amssymb}
-\RequirePackage[T5]{fontenc}
 
 \RequirePackage{geometry,graphicx,indentfirst,setspace}
 \RequirePackage{booktabs}

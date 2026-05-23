@@ -1,0 +1,116 @@
+\newpage
+\section{Khảo sát các nền tảng tích hợp và đề xuất kiến trúc}
+
+Trước khi thiết kế hệ thống, nhóm tiến hành khảo sát ba nền tảng tích hợp dữ liệu phổ biến trên thế giới nhằm rút ra bài học và xác định hướng tiếp cận phù hợp nhất với bối cảnh trường đại học.
+
+\subsection{Khảo sát các nền tảng tích hợp dữ liệu hiện có}
+
+\subsubsection{Apache NiFi}
+
+Apache NiFi là nền tảng mã nguồn mở do Apache Software Foundation phát triển, được thiết kế để tự động hóa luồng dữ liệu giữa các hệ thống. Điểm nổi bật của NiFi là giao diện kéo thả FlowFile trực quan, cho phép xây dựng pipeline dữ liệu mà không cần lập trình nhiều. NiFi hỗ trợ xử lý dữ liệu theo thời gian thực lẫn theo lô, theo dõi nguồn gốc dữ liệu (data provenance) và có thể mở rộng theo cụm (cluster).
+
+Tuy nhiên, NiFi đòi hỏi hạ tầng JVM có cấu hình cao và nhân lực vận hành chuyên biệt. Đây là mô hình lập trình theo luồng (flow-based programming), phù hợp với các tổ chức có đội ngũ kỹ thuật riêng cho hạ tầng dữ liệu.
+
+\subsubsection{MuleSoft Anypoint Platform}
+
+MuleSoft (hiện thuộc Salesforce) là nền tảng iPaaS (Integration Platform as a Service) cấp doanh nghiệp với kiến trúc API-led Connectivity 3 tầng: System API (kết nối hệ thống nguồn), Process API (xử lý nghiệp vụ) và Experience API (phục vụ ứng dụng đích). Anypoint Exchange cho phép tái sử dụng API trong toàn tổ chức, và Anypoint Gateway đảm nhiệm xác thực, phân quyền tập trung.
+
+MuleSoft hỗ trợ triển khai lai (hybrid), tích hợp sẵn hàng trăm connector và có hệ sinh thái quản trị tích hợp hoàn chỉnh. Điểm hạn chế lớn nhất là chi phí bản quyền rất cao, thường lên đến hàng trăm nghìn USD mỗi năm, nằm ngoài ngân sách của hầu hết các trường đại học công lập Việt Nam.
+
+\subsubsection{Talend}
+
+Talend (hiện thuộc Qlik) cung cấp cả phiên bản mã nguồn mở và thương mại, với thế mạnh là thiết kế pipeline trực quan cùng hơn 1.000 bộ kết nối sẵn có. Talend chú trọng vào chất lượng dữ liệu (data quality) và quản trị tích hợp, hỗ trợ cả ETL truyền thống lẫn ELT hiện đại với các công nghệ Big Data như Spark và Hadoop.
+
+Dù phiên bản mã nguồn mở của Talend miễn phí, các tính năng quản trị và chất lượng dữ liệu nâng cao chỉ có ở bản thương mại. Hơn nữa, việc triển khai và bảo trì đòi hỏi kiến thức chuyên sâu về hệ sinh thái Talend.
+
+\subsubsection{So sánh tổng quan}
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.4}
+\begin{tabularx}{\textwidth}{|l|X|X|X|}
+\hline
+\textbf{Tiêu chí} & \textbf{Apache NiFi} & \textbf{MuleSoft} & \textbf{Talend} \\
+\hline
+Mô hình & Flow-based (luồng dữ liệu) & API-led (3 tầng) & Pipeline ETL/ELT \\
+\hline
+Nguồn gốc & Mã nguồn mở (Apache) & Thương mại (Salesforce) & Mở + Thương mại (Qlik) \\
+\hline
+Giao diện & Kéo thả FlowFile & Anypoint Studio & Studio trực quan \\
+\hline
+Chi phí & Miễn phí (hạ tầng cao) & Rất cao (enterprise) & Trung bình–cao \\
+\hline
+Xử lý thời gian thực & Có & Có & Hạn chế \\
+\hline
+Quản trị schema & Thủ công & Anypoint Exchange & Có (bản TM) \\
+\hline
+Phù hợp ĐH & Đội ngũ kỹ thuật lớn & Ngân sách lớn & Đội ETL chuyên biệt \\
+\hline
+\end{tabularx}
+\caption{So sánh các nền tảng tích hợp dữ liệu phổ biến}
+\label{tab:platform-comparison}
+\end{table}
+
+\subsection{Đề xuất kiến trúc: Hub-and-Spoke kết hợp API-led Connectivity}
+
+Từ việc nghiên cứu Apache NiFi, MuleSoft và Talend, nhóm nhận thấy mô hình \textbf{Hub-and-Spoke kết hợp API-led Connectivity} là phù hợp nhất cho bài toán tích hợp dữ liệu tại trường đại học, vì những lý do sau:
+
+\subsubsection{Một đầu mối, giảm kết nối chằng chịt}
+
+Trường đại học có hàng chục hệ thống thông tin: đào tạo, nhân sự, tài chính, thư viện, ký túc xá, \ldots Nếu các hệ thống kết nối trực tiếp với nhau theo mô hình point-to-point. Ví dụ số lượng kết nối sẽ tăng theo công thức $N \times (N-1)/2$. Với 10 hệ thống, cần đến 45 kết nối; với 20 hệ thống, cần 190 kết nối — cực kỳ khó bảo trì và mở rộng.
+
+Mô hình Hub-and-Spoke giải quyết bài toán này bằng cách đưa toàn bộ luồng dữ liệu qua một trục trung tâm duy nhất. Mỗi hệ thống (Spoke) chỉ cần biết cách giao tiếp với Hub, không cần quan tâm đến các hệ thống khác. Kết quả là số kết nối giảm xuống còn $N$, đơn giản hóa đáng kể công tác vận hành.
+
+\subsubsection{Chuẩn hóa giao tiếp bằng REST API}
+
+Mô hình API-led Connectivity buộc mọi hệ thống nguồn phải tuân thủ một hợp đồng dữ liệu thống nhất — bao gồm cấu trúc phản hồi, tiêu đề HTTP, định dạng phân trang và khai báo khóa chính. Điều này giải quyết bài toán dữ liệu phân mảnh vốn rất phổ biến khi các phòng ban trong trường sử dụng các phần mềm khác nhau từ nhiều nhà cung cấp.
+
+Thay vì phải viết logic xử lý riêng cho từng nguồn dữ liệu như cách Talend thường làm, Hub chỉ cần một pipeline đồng bộ chung dùng được cho tất cả các bảng — miễn là nguồn tuân thủ API contract đã định nghĩa.
+
+\subsubsection{Kiểm soát schema thay đổi linh hoạt}
+
+Dữ liệu đại học thay đổi cấu trúc thường xuyên theo từng năm học: thêm cột mới vào bảng danh mục, đổi kiểu dữ liệu, bổ sung trường bắt buộc. Trục tích hợp trung tâm kết hợp với Schema Registry cho phép phát hiện thay đổi tự động thông qua so sánh hash và yêu cầu phê duyệt trước khi áp dụng.
+
+Đây là điều mà các mô hình kết nối trực tiếp (point-to-point) không thể làm được: khi schema thay đổi ở một nguồn, tất cả các kết nối đến nguồn đó đều phải được cập nhật thủ công.
+
+\subsubsection{Phân quyền tập trung theo đơn vị}
+
+Mỗi phòng ban chỉ được phép truy cập dữ liệu thuộc phạm vi quản lý của mình. Hub kết hợp với API Gateway xử lý toàn bộ xác thực và phân quyền tại một điểm duy nhất — tương tự vai trò của Anypoint Platform trong MuleSoft nhưng được xây dựng bằng công nghệ mã nguồn mở hoàn toàn miễn phí.
+
+\subsubsection{Phù hợp quy mô và ngân sách trường đại học}
+
+MuleSoft tốn hàng trăm nghìn USD mỗi năm. Apache NiFi đòi hỏi cụm JVM với cấu hình phần cứng cao và đội ngũ vận hành chuyên biệt. Trong khi đó, kiến trúc đề xuất có thể chạy trên một máy chủ đơn lẻ (1 EC2 t3.medium, khoảng \$30/tháng) với toàn bộ stack công nghệ mã nguồn mở: NestJS, PostgreSQL, MongoDB và Kong Gateway.
+
+Chi phí thấp không đồng nghĩa với chức năng kém: các cơ chế phòng thủ dữ liệu, lập lịch, backup và quản lý schema đều được hiện thực đầy đủ trong phạm vi đồ án.
+
+\subsubsection{Dễ mở rộng khi trường phát triển}
+
+Khi trường triển khai thêm một hệ thống mới, chỉ cần đăng ký cấu hình của hệ thống đó vào Schema Registry (một bản ghi MongoDB) và Hub sẽ tự động bắt đầu đồng bộ dữ liệu — không cần thay đổi code của các hệ thống đang chạy. Kiến trúc module hóa của NestJS cho phép bổ sung các module nghiệp vụ mới (backup, audit, notification\ldots) một cách độc lập mà không ảnh hưởng đến toàn hệ thống.
+
+\subsection{Kết luận lựa chọn kiến trúc}
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.4}
+\begin{tabularx}{\textwidth}{|l|X|}
+\hline
+\textbf{Tiêu chí} & \textbf{Hub-and-Spoke + API-led (đề xuất)} \\
+\hline
+Mô hình topo & Hub-and-Spoke: $N$ kết nối thay vì $N(N-1)/2$ \\
+\hline
+Giao thức & REST/HTTP chuẩn — mọi ngôn ngữ/platform đều hỗ trợ \\
+\hline
+Quản trị schema & Schema Registry + hash-based change detection \\
+\hline
+Phân quyền & Kong Gateway — JWT + RBAC tập trung \\
+\hline
+Chi phí & Toàn bộ mã nguồn mở, chạy trên 1 máy chủ nhỏ \\
+\hline
+Khả năng mở rộng & Thêm Spoke mới chỉ cần 1 bản ghi cấu hình \\
+\hline
+\end{tabularx}
+\caption{Tóm tắt đặc điểm kiến trúc Hub-and-Spoke + API-led được lựa chọn}
+\label{tab:proposed-architecture}
+\end{table}
+
+Kiến trúc Hub-and-Spoke kết hợp API-led Connectivity là lựa chọn cân bằng tốt nhất giữa chi phí, khả năng mở rộng và đặc thù nghiệp vụ của trường đại học Việt Nam. Các chương tiếp theo sẽ trình bày chi tiết cách kiến trúc này được hiện thực hóa trong hệ thống Trục tích hợp dữ liệu của đề tài.
