@@ -42,11 +42,13 @@ Hệ thống tiến hành đọc giá trị \texttt{metadata.totalPages} từ ph
 
 Hình  mô tả luồng xử lý tổng quát của một bảng dữ liệu, từ thời điểm bắt đầu cho đến khi cập nhật trường \texttt{lastSyncTime}.
 
-\newpage
-
-\begin{figure}[H]
+\begin{figure}[!htp]
     \centering
-    \includegraphics[width=0.5\linewidth]{graphics/SyncOne.png}
+    \includegraphics[
+        width=\linewidth,
+        height=0.9\textheight,
+        keepaspectratio
+    ]{graphics/SyncOne.png}
     \caption{Cách thức hoạt động của hàm syncOneTable}
     \label{fig:syncone}
 \end{figure}

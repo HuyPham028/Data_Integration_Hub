@@ -1,8 +1,7 @@
 \newpage
 \section{Phân tích nghiệp vụ và đặc trưng dữ liệu của trường đại học}
 
-\begin{enumerate}
-    \item \textbf{Tính chu kỳ và sự biến động theo thời gian}
+    \subsection{Tính chu kỳ và sự biến động theo thời gian}
     
     Dữ liệu trong trường đại học không phát sinh đồng đều mà phụ thuộc chặt chẽ vào lịch trình của năm học. Ở một số thời điểm, hệ thống có thể phải xử lý khối lượng dữ liệu rất lớn trong thời gian ngắn.
     
@@ -15,7 +14,7 @@
     
     Ngược lại, trong thời gian nghỉ hè hoặc giữa học kỳ, dữ liệu phát sinh rất ít và tần suất cập nhật thấp. Vì vậy, trục tích hợp cần được thiết kế để có khả năng mở rộng linh hoạt theo từng thời điểm, tránh quá tải vào giai đoạn cao điểm nhưng vẫn tiết kiệm tài nguyên khi nhu cầu thấp.
 
-    \item \textbf{Sự thay đổi vai trò của đối tượng}
+    \subsection{Sự thay đổi vai trò của đối tượng}
     
     Một đặc trưng quan trọng của dữ liệu đại học là cùng một cá nhân có thể thay đổi vai trò trong suốt quá trình gắn bó với nhà trường nhưng vẫn phải được quản lý như một đối tượng duy nhất.
     
@@ -27,7 +26,7 @@
     
     Do đó, trục tích hợp cần xây dựng một định danh duy nhất cho mỗi cá nhân, có thể dựa trên căn cước công dân hoặc mã định danh nội bộ. Định danh này được sử dụng để liên kết toàn bộ lịch sử và vai trò của đối tượng trong các hệ thống khác nhau.
 
-    \item \textbf{Tính đa dạng về cấu trúc dữ liệu}
+    \subsection{Tính đa dạng về cấu trúc dữ liệu}
     
     Dữ liệu của trường đại học rất đa dạng về nội dung và định dạng. Một hệ thống tích hợp phải có khả năng xử lý đồng thời nhiều loại dữ liệu khác nhau.
     
@@ -41,7 +40,7 @@
     
     Trong đó, có những dữ liệu được tổ chức theo cấu trúc chặt chẽ dưới dạng bảng, nhưng cũng có những dữ liệu tồn tại dưới dạng tệp văn bản, hình ảnh hoặc tài liệu đính kèm. Vì vậy, trục tích hợp cần hỗ trợ cả dữ liệu có cấu trúc và dữ liệu phi cấu trúc.
 
-    \item \textbf{Tính phụ thuộc và yêu cầu nhất quán giữa các hệ thống}
+    \subsection{Tính phụ thuộc và yêu cầu nhất quán giữa các hệ thống}
     
     Dữ liệu của một đơn vị thường là đầu vào cho hoạt động của đơn vị khác. Do đó, sự thay đổi dữ liệu ở hệ thống nguồn phải được phản ánh kịp thời đến các hệ thống liên quan.
     
@@ -49,7 +48,7 @@
     
     Vì vậy, trục tích hợp cần hỗ trợ cơ chế xử lý theo sự kiện. Khi có một thay đổi xảy ra ở hệ thống nguồn, trục tích hợp sẽ tự động phát sinh các tác vụ đồng bộ đến các hệ thống phụ thuộc nhằm bảo đảm dữ liệu luôn nhất quán.
 
-    \item \textbf{Tính phân cấp và nhu cầu tổng hợp dữ liệu}
+    \subsection{Tính phân cấp và nhu cầu tổng hợp dữ liệu}
     
     Dữ liệu trong trường đại học thường được hình thành theo nhiều cấp độ, từ dữ liệu chi tiết đến dữ liệu tổng hợp để phục vụ công tác thống kê và báo cáo.
     
@@ -59,7 +58,7 @@
     
     Trục tích hợp không chỉ lưu trữ dữ liệu chi tiết mà còn cần có khả năng tính toán, tổng hợp và chuẩn hóa dữ liệu ở mức cao hơn. Điều này đặc biệt quan trọng khi đồng bộ dữ liệu lên các hệ thống cấp trên, vì các hệ thống này thường chỉ yêu cầu dữ liệu tổng hợp thay vì toàn bộ dữ liệu chi tiết.
 
-    \item \textbf{Yêu cầu khác nhau về độ trễ đồng bộ}
+    \subsection{Yêu cầu khác nhau về độ trễ đồng bộ}
     
     Không phải mọi loại dữ liệu đều cần được đồng bộ ngay lập tức. Tùy theo mức độ quan trọng của nghiệp vụ, mỗi loại dữ liệu sẽ có yêu cầu khác nhau về thời gian cập nhật.
     
@@ -69,4 +68,3 @@
     \end{itemize}
     
     Vì vậy, trục tích hợp cần phân loại dữ liệu theo mức độ ưu tiên để lựa chọn cơ chế đồng bộ phù hợp, tránh lãng phí tài nguyên nhưng vẫn đáp ứng yêu cầu nghiệp vụ.
-\end{enumerate}

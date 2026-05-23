@@ -880,6 +880,7 @@ const happyPathDatasets = {
   dm_dt_chung_chi_tin_hoc: [
     { ma: "A", ten: "Chứng chỉ Tin học A", active: true },
     { ma: "B", ten: "Chứng chỉ Tin học B", active: true },
+    // { ma: "C", ten: "Chứng chỉ Tin học C", active: true, noiCap: "Ho Chi Minh" },
     { ma: "IC3", ten: "IC3 Computing Core", active: true },
     { ma: "MOS", ten: "Microsoft Office Specialist", active: true },
     { ma: "ICDL", ten: "ICDL", active: true },

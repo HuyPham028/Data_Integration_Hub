@@ -1,4 +1,5 @@
-\section{Tổng quan}
+\section{Giới thiệu}
+\subsection{Tổng quan}
 
 Trong bối cảnh chuyển đổi số đang diễn ra mạnh mẽ tại các cơ quan quản lý và các cơ sở giáo dục đại học, dữ liệu ngày càng trở thành tài sản cốt lõi của nhà trường. Việc quản lý, tích hợp và xây dựng các quy chuẩn dùng chung cho dữ liệu có vai trò đặc biệt quan trọng, nhằm bảo đảm hoạt động phối hợp thông suốt giữa các đơn vị, đồng thời tạo nền tảng cho công tác thống kê, phân tích và hỗ trợ ban lãnh đạo ra quyết định.
 
@@ -11,3 +12,38 @@ Kiến trúc được đề xuất theo mô hình Hub-and-Spoke kết hợp vớ
 Ngoài chức năng tích hợp dữ liệu, trục tích hợp còn hỗ trợ công tác quản trị dữ liệu thông qua các cơ chế theo dõi, ghi nhận lịch sử thay đổi, kiểm tra trạng thái đồng bộ và giám sát hoạt động của toàn hệ thống theo thời gian thực. Đồng thời, hệ thống cũng được thiết kế với các cơ chế bảo mật như xác thực, phân quyền, mã hóa dữ liệu và cổng quản lý truy cập nhằm bảo đảm an toàn cho dữ liệu khi trao đổi giữa các hệ thống.
 
 Bên cạnh việc phục vụ nhu cầu chia sẻ dữ liệu trong nội bộ trường, trục tích hợp còn là nền tảng để đồng bộ dữ liệu với các đơn vị quản lý cấp trên như Đại học Quốc gia Thành phố Hồ Chí Minh hoặc Hệ thống cơ sở dữ liệu giáo dục đại học. Qua đó, nhà trường có thể bảo đảm dữ liệu được cung cấp đầy đủ, chính xác và kịp thời theo đúng yêu cầu quản lý.
+
+\subsection{Mục tiêu đề tài}
+Mục tiêu tổng quát của đề tài là nghiên cứu, thiết kế và hiện thực hóa một hệ thống trục tích hợp dữ liệu trung tâm dành cho trường đại học. Hệ thống đóng vai trò làm đầu mối trung gian để kết nối, chuẩn hóa và đồng bộ dữ liệu giữa các phòng ban, nhằm xóa bỏ tình trạng cô lập thông tin, nâng cao tính nhất quán và bảo mật dữ liệu toàn trường.
+
+Để đạt được mục tiêu tổng quát trên, đề tài tập trung giải quyết các mục tiêu cụ thể sau:
+\begin{itemize}
+  \item Nghiên cứu lý thuyết: Tìm hiểu các mô hình kiến trúc tích hợp dữ liệu, quy trình trích xuất, biến đổi và tải dữ liệu, cùng các phương pháp xử lý xung đột thông tin phổ biến trong hệ thống phân tán.
+  \item Thiết kế kiến trúc: Thiết kế hệ thống trục tích hợp dữ liệu theo mô hình hướng mô-đun kết hợp cổng kết nối API để quản lý tập trung luồng dữ liệu, kiểm soát truy cập và giám sát trạng thái hệ thống.
+  \item Xây dựng cơ chế xử lý dữ liệu: Phát triển các chiến lược đồng bộ linh hoạt phù hợp với từng loại dữ liệu (đồng bộ toàn phần, đồng bộ tăng tiến, ghi đè) và thiết lập cơ chế tự động phát hiện thay đổi cấu trúc dữ liệu nguồn.
+  \item Đảm bảo an toàn thông tin: Hiện thực hóa cơ chế phân quyền truy cập dữ liệu dựa trên vai trò kết hợp biểu thức chính quy để giới hạn phạm vi khai thác dữ liệu của từng đơn vị thành viên.
+  \item Triển khai và đánh giá: Thử nghiệm hệ thống trên môi trường máy chủ đám mây, xây dựng quy trình kiểm thử tự động và thực hiện đo lường hiệu năng xử lý để đưa ra các khuyến nghị cấu hình phù hợp.
+\end{itemize}
+
+\subsection{Kết quả đạt được}
+Đề tài đã hoàn thành các nội dung nghiên cứu và đạt được một số kết quả chính sau:
+\begin{itemize}
+  \item Về mặt nghiên cứu: Hệ thống hóa được các lý thuyết về quản trị dữ liệu chủ, quy trình xử lý dữ liệu lớn trong môi trường đại học và đề xuất được mô hình kiến trúc thực tế phù hợp với quy mô cấp trường.
+  \item Về mặt sản phẩm: Xây dựng hoàn chỉnh hệ thống trục tích hợp dữ liệu bao gồm dịch vụ xử lý ngầm ở phía sau và ứng dụng web dành cho quản trị viên ở phía trước để giám sát trực quan toàn bộ tiến trình hoạt động.
+  \item Về xử lý và chuẩn hóa dữ liệu: Thiết lập thành công bộ lọc phòng thủ dữ liệu hai lớp giúp phát hiện sớm lỗi định dạng cấu trúc dữ liệu, loại bỏ trùng lặp khóa chính trong cùng một đợt xử lý và phân tách các bản ghi lỗi vào nhật ký riêng biệt mà không làm gián đoạn toàn bộ tiến trình.
+  \item Về lưu trữ dự phòng: Hiện thực hóa cơ chế sao lưu dữ liệu tự động đa tầng kết hợp lưu trữ nội bộ và lưu trữ đám mây phân tán, đảm bảo khả năng phục hồi dữ liệu kịp thời khi xảy ra sự cố hạ tầng vật lý.
+  \item Về vận hành hệ thống: Tự động hóa quy trình kiểm thử và triển khai ứng dụng bằng container hóa lên hạ tầng đám mây, rút ngắn thời gian cập nhật phiên bản và đơn giản hóa công tác bảo trì.
+\end{itemize}
+
+\subsection{Phạm vi đề tài}
+\begin{itemize}
+  \item Đối tượng nghiên cứu: Trực tích hợp dữ liệu trung tâm phục vụ kết nối thông tin giữa các hệ thống quản lý nghiệp vụ độc lập (như quản lý đào tạo, công tác sinh viên, khảo thí).
+  \item Dữ liệu thực nghiệm: Tập trung chủ yếu vào nhóm dữ liệu thông tin học tập của sinh viên và các danh mục dùng chung thuộc khối đào tạo đại học để kiểm chứng các cơ chế xử lý xung đột và đồng bộ.
+\end{itemize}
+
+\subsection{Giới hạn của đề tài}
+\begin{itemize}
+  \item Cơ chế thu thập dữ liệu: Hệ thống hiện tại vận hành theo mô hình tiếp nhận dữ liệu một chiều từ các cổng kết nối API do hệ thống nguồn cung cấp, chưa can thiệp sâu vào cơ sở dữ liệu gốc của các hệ thống này và chưa hỗ trợ đồng bộ hai chiều thời gian thực.
+  \item Mức độ tự động hóa cấu trúc: Khi hệ thống nguồn thay đổi cấu trúc dữ liệu (như thêm hoặc xóa cột), trục tích hợp chỉ tự động phát hiện, khóa bảng dữ liệu đó để bảo vệ an toàn hệ thống và gửi cảnh báo đến quản trị viên, chưa thể tự động phân tích và áp dụng các thay đổi phức tạp vào cơ sở dữ liệu đích mà không có sự phê duyệt thủ công.
+  \item Quy mô thử nghiệm hiệu năng: Các đánh giá về hiệu năng xử lý, dung lượng bộ nhớ và băng thông mạng mới được thực hiện trên môi trường giả lập với quy mô dữ liệu trung bình (khoảng dưới một trăm nghìn bản ghi), chưa có điều kiện thử nghiệm trực tiếp trên hệ thống đang vận hành thực tế của nhà trường trong các giai đoạn cao điểm có lưu lượng truy cập lớn như kỳ đăng ký học phần.
+\end{itemize}
