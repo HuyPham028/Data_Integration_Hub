@@ -4,533 +4,513 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
-/// Bảng dữ liệu tham chiếu - Văn bằng/Lý lịch công tác
-model DmDtVanBangLLCT {
-  id        Int      @id @default(autoincrement())
-  ma        String   @unique @db.VarChar(5)
-  ten       String   @db.VarChar(100)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now()) @db.Timestamp(6)
-  updatedAt DateTime @updatedAt @db.Timestamp(6)
-
-  @@index([ma])
-  @@map("dm_dt_van_bang_llct")
-}
-
-/// Bảng dữ liệu tham chiếu - Hình thức kỷ luật
-model DmHinhThucKyLuat {
-  id        Int      @id @default(autoincrement())
-  ma        String   @unique @db.VarChar(50)
-  ten       String   @db.VarChar(500)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now()) @db.Timestamp(6)
-  updatedAt DateTime @updatedAt @db.Timestamp(6)
-
-  @@index([ma])
-  @@map("dm_hinh_thuc_ky_luat")
-}
-
-/// Bảng dữ liệu tham chiếu - Loại cán bộ
-model DmLoaiCanBo {
-  id        Int      @id @default(autoincrement())
-  ma        String   @unique @db.VarChar(5)
-  ten       String   @db.VarChar(50)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now()) @db.Timestamp(6)
-  updatedAt DateTime @updatedAt @db.Timestamp(6)
-
-  @@index([ma])
-  @@map("dm_loai_can_bo")
-}
-
-/// Bảng dữ liệu tham chiếu - Loại chức vụ
-model DmLoaiChucVu {
-  id        Int      @id @default(autoincrement())
-  ma        String   @unique @db.VarChar(5)
-  ten       String   @db.VarChar(70)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now()) @db.Timestamp(6)
-  updatedAt DateTime @updatedAt @db.Timestamp(6)
-
-  @@index([ma])
-  @@map("dm_loai_chuc_vu")
-}
-
-/// Bảng dữ liệu tham chiếu - Loại phụ cấp
-model DmLoaiPhuCap {
-  id        Int      @id @default(autoincrement())
-  ma        String   @unique @db.VarChar(10)
-  ten       String   @db.VarChar(100)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now()) @db.Timestamp(6)
-  updatedAt DateTime @updatedAt @db.Timestamp(6)
-
-  @@index([ma])
-  @@map("dm_loai_phu_cap")
-}
-
-/// Bảng dữ liệu tham chiếu - Ngạch CDNN
-model DmNgachCDNN {
-  id        Int      @id @default(autoincrement())
-  ma        String   @unique @db.VarChar(20)
-  ten       String   @db.VarChar(100)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now()) @db.Timestamp(6)
-  updatedAt DateTime @updatedAt @db.Timestamp(6)
-
-  @@index([ma])
-  @@map("dm_ngach_cdnn")
-}
-
-/// Bảng dữ liệu tham chiếu - Ngân hàng
-model DmNganHang {
-  id        Int      @id @default(autoincrement())
-  ma        String   @unique @db.VarChar(20)
-  ten       String   @db.VarChar(200)
-  active    Boolean  @default(true)
-  diachi String?
-  createdAt DateTime @default(now()) @db.Timestamp(6)
-  updatedAt DateTime @updatedAt @db.Timestamp(6)
-
-  @@index([ma])
-  @@map("dm_ngan_hang")
-}
-
-/// Bảng dữ liệu tham chiếu - Nhóm máu
-model DmNhomMau {
-  id        Int      @id @default(autoincrement())
-  ma        String   @unique @db.VarChar(5)
-  ten       String   @db.VarChar(50)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now()) @db.Timestamp(6)
-  updatedAt DateTime @updatedAt @db.Timestamp(6)
-
-  @@index([ma])
-  @@map("dm_nhom_mau")
-}
-
-/// Bảng dữ liệu tham chiếu - Nơi cấp CCCD
-model DmNoiCapCCCD {
-  id        Int      @id @default(autoincrement())
-  ma        String   @unique @db.VarChar(10)
-  ten       String   @db.VarChar(100)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now()) @db.Timestamp(6)
-  updatedAt DateTime @updatedAt @db.Timestamp(6)
-
-  @@index([ma])
-  @@map("dm_noi_cap_cccd")
-}
-
-/// Bảng dữ liệu tham chiếu - Quân hàm
-model DmQuanHam {
-  id        Int      @id @default(autoincrement())
-  ma        String   @unique @db.VarChar(10)
-  ten       String   @db.VarChar(50)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now()) @db.Timestamp(6)
-  updatedAt DateTime @updatedAt @db.Timestamp(6)
-
-  @@index([ma])
-  @@map("dm_quan_ham")
-}
-
-/// Bảng dữ liệu tham chiếu - Quan hệ gia đình
-model DmQuanHeGiaDinh {
-  id        Int      @id @default(autoincrement())
-  ma        String   @unique @db.VarChar(5)
-  ten       String   @db.VarChar(50)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now()) @db.Timestamp(6)
-  updatedAt DateTime @updatedAt @db.Timestamp(6)
-
-  @@index([ma])
-  @@map("dm_quan_he_gia_dinh")
-}
-
-/// Bảng dữ liệu tham chiếu - Quốc gia
-model DmQuocGia {
-  id        Int      @id @default(autoincrement())
-  ma        String   @unique @db.VarChar(5)
-  ten       String   @db.VarChar(100)
-  maChauLuc String?  @db.VarChar(10)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now()) @db.Timestamp(6)
-  updatedAt DateTime @updatedAt @db.Timestamp(6)
-
-  @@index([ma])
-  @@map("dm_quoc_gia")
-}
-
-/// Bảng dữ liệu tham chiếu - Thành phần xuất thân
-model DmThanhPhanXuatThan {
-  id        Int      @id @default(autoincrement())
-  ma        String   @unique @db.VarChar(10)
-  ten       String   @db.VarChar(100)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now()) @db.Timestamp(6)
-  updatedAt DateTime @updatedAt @db.Timestamp(6)
-
-  @@index([ma])
-  @@map("dm_thanh_phan_xuat_than")
-}
-
-/// Bảng dữ liệu tham chiếu - Khen thưởng
-model DmKhenThuong {
-  id        Int      @id @default(autoincrement())
-  ma        String   @unique @db.VarChar(10)
-  ten       String   @db.VarChar(200)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now()) @db.Timestamp(6)
-  updatedAt DateTime @updatedAt @db.Timestamp(6)
-
-  @@index([ma])
-  @@map("dm_khen_thuong")
-}
-
-/// Bảng dữ liệu tham chiếu - Phương thức khen thưởng
-model DmPhuongThucKhenThuong {
-  id        Int      @id @default(autoincrement())
-  ma        String   @unique @db.VarChar(10)
-  ten       String   @db.VarChar(200)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now()) @db.Timestamp(6)
-  updatedAt DateTime @updatedAt @db.Timestamp(6)
-
-  @@index([ma])
-  @@map("dm_phuong_thuc_khen_thuong")
-}
-
-/// Bảng dữ liệu tham chiếu - Tôn giáo
-model DmTonGiao {
-  id        Int      @id @default(autoincrement())
-  ma        String   @unique @db.VarChar(5)
-  ten       String   @db.VarChar(100)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now()) @db.Timestamp(6)
-  updatedAt DateTime @updatedAt @db.Timestamp(6)
-
-  @@index([ma])
-  @@map("dm_ton_giao")
-}
-
-/// Bảng dữ liệu tham chiếu - Trình độ chuyên môn
-model DmTrinhDoChuyenMon {
-  id        Int      @id @default(autoincrement())
-  ma        String   @unique @db.VarChar(5)
-  ten       String   @db.VarChar(50)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now()) @db.Timestamp(6)
-  updatedAt DateTime @updatedAt @db.Timestamp(6)
-
-  @@index([ma])
-  @@map("dm_trinh_do_chuyen_mon")
-}
-
-/// Bảng dữ liệu tham chiếu - Trình độ phổ thông
-model DmTrinhDoPhoThong {
-  id        Int      @id @default(autoincrement())
-  ma        String   @unique @db.VarChar(5)
-  ten       String   @db.VarChar(50)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now()) @db.Timestamp(6)
-  updatedAt DateTime @updatedAt @db.Timestamp(6)
-
-  @@index([ma])
-  @@map("dm_trinh_do_pho_thong")
-}
-
-/// Bảng dữ liệu tham chiếu - Xếp loại chuyên môn
-model DmXepLoaiChuyenMon {
-  id        Int      @id @default(autoincrement())
-  ma        String   @unique @db.VarChar(50)
-  ten       String   @db.VarChar(500)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now()) @db.Timestamp(6)
-  updatedAt DateTime @updatedAt @db.Timestamp(6)
-
-  @@index([ma])
-  @@map("dm_xep_loai_chuyen_mon")
-}
-
-/// Bảng dữ liệu tham chiếu - Nhóm lương
-model DmNhomLuong {
-  id          Int      @id @default(autoincrement())
-  nhomLuong   String   @unique @db.VarChar(10)
-  maBacLuong  Int
-  tenBacLuong String   @db.VarChar(10)
-  heSoLuong   Decimal  @db.Decimal(10, 2)
-  createdAt   DateTime @default(now()) @db.Timestamp(6)
-  updatedAt   DateTime @updatedAt @db.Timestamp(6)
-
-  @@index([nhomLuong])
-  @@map("dm_nhom_luong")
-}
-
-/// Bảng dữ liệu tham chiếu - Vị trí việc làm
-model DmViTriViecLam {
-  id        Int      @id @default(autoincrement())
-  ma        String   @unique @db.VarChar(20)
-  ten       String   @db.VarChar(100)
-  loaiVtvl  String?  @db.VarChar(20)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now()) @db.Timestamp(6)
-  updatedAt DateTime @updatedAt @db.Timestamp(6)
-
-  @@index([ma])
-  @@map("dm_vi_tri_viec_lam")
-}
-
+/// Auto-generated from Schema Registry
 model DmGioiTinh {
   id        Int      @id @default(autoincrement())
-  ma        String   @unique @db.VarChar(5)
-  ten       String   @db.VarChar(20)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  ma                   String @unique @db.VarChar(5)
+  active               Boolean? @default(true)
+  ten                  String? @db.VarChar(20)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
 
   @@index([ma])
   @@map("dm_gioi_tinh")
 }
-
-model DmChauLuc {
-  id        Int      @id @default(autoincrement())
-  ma        String   @unique @db.VarChar(10)
-  ten       String   @db.VarChar(50)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([ma])
-  @@map("dm_chau_luc")
-}
-
+/// Auto-generated from Schema Registry
 model DmChucDanhKhoaHoc {
   id        Int      @id @default(autoincrement())
-  ma        String   @unique @db.VarChar(5)
-  ten       String   @db.VarChar(50)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  ma                   String @unique @db.VarChar(5)
+  ten                  String? @db.VarChar(50)
+  active               Boolean? @default(true)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
 
   @@index([ma])
   @@map("dm_chuc_danh_khoa_hoc")
 }
-
-model DmChucVu {
-  id         Int      @id @default(autoincrement())
-  ma         String   @unique @db.VarChar(5)
-  ten        String   @db.VarChar(200)
-  heSoPhuCap Float?
-  prefixText String?  @db.VarChar(50)
-  loaiChucVu String?  @db.VarChar(5)
-  priority   Int?
-  active     Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  @@index([ma])
-  @@map("dm_chuc_vu")
-}
-
-model DmChuyenNganhBGD {
-  id        Int      @id @default(autoincrement())
-  ma        String   @unique @db.VarChar(20)
-  ten       String   @db.VarChar(200)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([ma])
-  @@map("dm_chuyen_nganh_bgd")
-}
-
-model DmDanToc {
-  id        Int      @id @default(autoincrement())
-  ma        String   @unique @db.VarChar(5)
-  ten       String   @db.VarChar(100)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([ma])
-  @@map("dm_dan_toc")
-}
-
-model DmDanhHieuNhaNuoc {
-  id        Int      @id @default(autoincrement())
-  ma        String   @unique @db.VarChar(5)
-  ten       String   @db.VarChar(200)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([ma])
-  @@map("dm_danh_hieu_nha_nuoc")
-}
-
-model DmDoiTuongChinhSach {
-  id        Int      @id @default(autoincrement())
-  ma        String   @unique @db.VarChar(5)
-  ten       String   @db.VarChar(100)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([ma])
-  @@map("dm_doi_tuong_chinh_sach")
-}
-
-model DmDtChungChiBDNV {
-  id        Int      @id @default(autoincrement())
-  ma        String   @unique @db.VarChar(5)
-  ten       String   @db.VarChar(100)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([ma])
-  @@map("dm_dt_chung_chi_bdnv")
-}
-
+/// Auto-generated from Schema Registry
 model DmDtChungChiNgoaiNgu {
   id        Int      @id @default(autoincrement())
-  ma        String   @unique @db.VarChar(20)
-  ten       String   @db.VarChar(100)
-  ngoaiNgu  String?  @db.VarChar(5)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  ma                   String @unique @db.VarChar(20)
+  ten                  String? @db.VarChar(100)
+  ngoaiNgu             String? @db.VarChar(5)
+  active               Boolean? @default(true)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
 
   @@index([ma])
   @@map("dm_dt_chung_chi_ngoai_ngu")
 }
-
-model DmDtChungChiTinHoc {
-  id        Int      @id @default(autoincrement())
-  ma        String   @unique @db.VarChar(5)
-  ten       String   @db.VarChar(100)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([ma])
-  @@map("dm_dt_chung_chi_tin_hoc")
-}
-
+/// Auto-generated from Schema Registry
 model DmDtDoiTuongAnqp {
   id        Int      @id @default(autoincrement())
-  ma        String   @unique @db.VarChar(5)
-  ten       String   @db.VarChar(200)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  ma                   String @unique @db.VarChar(5)
+  ten                  String? @db.VarChar(200)
+  active               Boolean? @default(true)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
 
   @@index([ma])
   @@map("dm_dt_doi_tuong_anqp")
 }
+/// Auto-generated from Schema Registry
+model DmHinhThucKyLuat {
+  id        Int      @id @default(autoincrement())
+  ma                   String @unique @db.VarChar(50)
+  ten                  String? @db.VarChar(500)
+  active               Boolean? @default(true)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
 
+  @@index([ma])
+  @@map("dm_hinh_thuc_ky_luat")
+}
+/// Auto-generated from Schema Registry
+model DmNhomLuong {
+  id        Int      @id @default(autoincrement())
+  nhomLuong            String @unique @db.VarChar(10)
+  maBacLuong           Int?
+  tenBacLuong          String? @db.VarChar(10)
+  heSoLuong            Decimal?
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
+
+  @@index([nhomLuong])
+  @@map("dm_nhom_luong")
+}
+/// Auto-generated from Schema Registry
+model DmNhomMau {
+  id        Int      @id @default(autoincrement())
+  ma                   String @unique @db.VarChar(5)
+  active               Boolean? @default(true)
+  ten                  String? @db.VarChar(50)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
+
+  @@index([ma])
+  @@map("dm_nhom_mau")
+}
+/// Auto-generated from Schema Registry
+model DmQuanHeGiaDinh {
+  id        Int      @id @default(autoincrement())
+  ma                   String @unique @db.VarChar(5)
+  active               Boolean? @default(true)
+  ten                  String? @db.VarChar(50)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
+
+  @@index([ma])
+  @@map("dm_quan_he_gia_dinh")
+}
+/// Auto-generated from Schema Registry
+model DmTrinhDoPhoThong {
+  id        Int      @id @default(autoincrement())
+  ma                   String @unique @db.VarChar(5)
+  ten                  String? @db.VarChar(50)
+  active               Boolean? @default(true)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
+
+  @@index([ma])
+  @@map("dm_trinh_do_pho_thong")
+}
+/// Auto-generated from Schema Registry
+model DmViTriViecLam {
+  id        Int      @id @default(autoincrement())
+  ma                   String @unique @db.VarChar(20)
+  ten                  String? @db.VarChar(100)
+  loaiVtvl             String? @db.VarChar(20)
+  active               Boolean? @default(true)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
+
+  @@index([ma])
+  @@map("dm_vi_tri_viec_lam")
+}
+/// Auto-generated from Schema Registry
+model TcnsLyLich {
+  id        Int      @id @default(autoincrement())
+  shcc                 String @unique @db.VarChar(255)
+  maNhanVien           String? @db.VarChar(20)
+  ho                   String? @db.VarChar(150)
+  ten                  String? @db.VarChar(50)
+  ngaySinh             DateTime? @db.Timestamp(6)
+  thanhPhanGiaDinh     String? @db.VarChar(5)
+  thanhPhanBanThan     String? @db.VarChar(5)
+  gioiTinh             String? @db.VarChar(5)
+  danToc               String? @db.VarChar(5)
+  tonGiao              String? @db.VarChar(5)
+  quocTich             String? @db.VarChar(5)
+  emailCaNhan          String? @db.VarChar(70)
+  chieuCao             Int?
+  canNang              Int?
+  nhomMau              String? @db.VarChar(5)
+  ngayNhapNgu          DateTime? @db.Timestamp(6)
+  ngayXuatNgu          DateTime? @db.Timestamp(6)
+  quanHam              String? @db.VarChar(5)
+  ngayVaoDang          DateTime? @db.Timestamp(6)
+  ngayVaoDangCt        DateTime? @db.Timestamp(6)
+  ngayVaoDoan          DateTime? @db.Timestamp(6)
+  maSoThue             String? @db.VarChar(20)
+  stk                  String? @db.VarChar(20)
+  nganHang             String? @db.VarChar(100)
+  email                String? @db.VarChar(70)
+  chiNhanh             String? @db.VarChar(200)
+  biDanh               String? @db.VarChar(100)
+  cccd                 String? @db.VarChar(20)
+  sucKhoe              String? @db.VarChar(500)
+  isDangVien           Boolean?
+  ngayVaoCongDoan      DateTime? @db.Timestamp(6)
+  bhxh                 String? @db.VarChar(20)
+  doiTuongChinhSach    String? @db.VarChar(100)
+  bhyt                 String? @db.VarChar(20)
+  ngayCapCccd          DateTime? @db.Timestamp(6)
+  noiCapCccd           String? @db.VarChar(5)
+  sdt                  String? @db.VarChar(20)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
+
+  @@index([shcc])
+  @@map("tcns_ly_lich")
+}
+/// Auto-generated from Schema Registry
+model DmDoiTuongChinhSach {
+  id        Int      @id @default(autoincrement())
+  ma                   String @unique @db.VarChar(5)
+  ten                  String? @db.VarChar(100)
+  active               Boolean? @default(true)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
+
+  @@index([ma])
+  @@map("dm_doi_tuong_chinh_sach")
+}
+/// Auto-generated from Schema Registry
+model DmDtChungChiTinHoc {
+  id        Int      @id @default(autoincrement())
+  ma                   String @unique @db.VarChar(5)
+  ten                  String? @db.VarChar(100)
+  active               Boolean? @default(true)
+  noicap               String?
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
+
+  @@index([ma])
+  @@map("dm_dt_chung_chi_tin_hoc")
+}
+/// Auto-generated from Schema Registry
 model DmDtHinhThucCM {
   id        Int      @id @default(autoincrement())
-  ma        String   @unique @db.VarChar(5)
-  ten       String   @db.VarChar(50)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  ma                   String @unique @db.VarChar(5)
+  ten                  String? @db.VarChar(50)
+  active               Boolean? @default(true)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
 
   @@index([ma])
   @@map("dm_dt_hinh_thuc_cm")
 }
-
-model DmDtHinhThucLLCT {
+/// Auto-generated from Schema Registry
+model DmDtVanBangLLCT {
   id        Int      @id @default(autoincrement())
-  ma        String   @unique @db.VarChar(5)
-  ten       String   @db.VarChar(50)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  ma                   String @unique @db.VarChar(5)
+  ten                  String? @db.VarChar(100)
+  active               Boolean? @default(true)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
 
   @@index([ma])
-  @@map("dm_dt_hinh_thuc_llct")
+  @@map("dm_dt_van_bang_llct")
 }
+/// Auto-generated from Schema Registry
+model DmNgachCDNN {
+  id        Int      @id @default(autoincrement())
+  ma                   String @unique @db.VarChar(20)
+  ten                  String? @db.VarChar(100)
+  active               Boolean? @default(true)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
 
+  @@index([ma])
+  @@map("dm_ngach_cdnn")
+}
+/// Auto-generated from Schema Registry
+model DmNoiCapCCCD {
+  id        Int      @id @default(autoincrement())
+  ma                   String @unique @db.VarChar(10)
+  ten                  String? @db.VarChar(100)
+  active               Boolean? @default(true)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
+
+  @@index([ma])
+  @@map("dm_noi_cap_cccd")
+}
+/// Auto-generated from Schema Registry
+model DmQuanHam {
+  id        Int      @id @default(autoincrement())
+  ma                   String @unique @db.VarChar(10)
+  active               Boolean? @default(true)
+  ten                  String? @db.VarChar(50)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
+
+  @@index([ma])
+  @@map("dm_quan_ham")
+}
+/// Auto-generated from Schema Registry
+model DmQuocGia {
+  id        Int      @id @default(autoincrement())
+  ma                   String @unique @db.VarChar(5)
+  ten                  String? @db.VarChar(100)
+  maChauLuc            String? @db.VarChar(10)
+  active               Boolean? @default(true)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
+
+  @@index([ma])
+  @@map("dm_quoc_gia")
+}
+/// Auto-generated from Schema Registry
+model DmTonGiao {
+  id        Int      @id @default(autoincrement())
+  ma                   String @unique @db.VarChar(5)
+  active               Boolean? @default(true)
+  ten                  String? @db.VarChar(100)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
+
+  @@index([ma])
+  @@map("dm_ton_giao")
+}
+/// Auto-generated from Schema Registry
+model DmTrinhDoChuyenMon {
+  id        Int      @id @default(autoincrement())
+  ma                   String @unique @db.VarChar(5)
+  active               Boolean? @default(true)
+  ten                  String? @db.VarChar(50)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
+
+  @@index([ma])
+  @@map("dm_trinh_do_chuyen_mon")
+}
+/// Auto-generated from Schema Registry
+model DmXepLoaiChuyenMon {
+  id        Int      @id @default(autoincrement())
+  ma                   String @unique @db.VarChar(50)
+  ten                  String? @db.VarChar(500)
+  active               Boolean? @default(true)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
+
+  @@index([ma])
+  @@map("dm_xep_loai_chuyen_mon")
+}
+/// Auto-generated from Schema Registry
+model DmChauLuc {
+  id        Int      @id @default(autoincrement())
+  ma                   String @unique @db.VarChar(10)
+  active               Boolean? @default(true)
+  ten                  String? @db.VarChar(50)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
+
+  @@index([ma])
+  @@map("dm_chau_luc")
+}
+/// Auto-generated from Schema Registry
+model DmChucVu {
+  id        Int      @id @default(autoincrement())
+  ma                   String @unique @db.VarChar(5)
+  ten                  String? @db.VarChar(200)
+  heSoPhuCap           Float? @db.DoublePrecision
+  prefixText           String? @db.VarChar(50)
+  loaiChucVu           String? @db.VarChar(5)
+  priority             Int?
+  active               Boolean? @default(true)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
+
+  @@index([ma])
+  @@map("dm_chuc_vu")
+}
+/// Auto-generated from Schema Registry
+model DmDanToc {
+  id        Int      @id @default(autoincrement())
+  ma                   String @unique @db.VarChar(5)
+  active               Boolean? @default(true)
+  ten                  String? @db.VarChar(100)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
+
+  @@index([ma])
+  @@map("dm_dan_toc")
+}
+/// Auto-generated from Schema Registry
 model DmDtNgoaiNgu {
   id        Int      @id @default(autoincrement())
-  ma        String   @unique @db.VarChar(5)
-  ten       String   @db.VarChar(50)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  ma                   String @unique @db.VarChar(5)
+  ten                  String? @db.VarChar(50)
+  active               Boolean? @default(true)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
 
   @@index([ma])
   @@map("dm_dt_ngoai_ngu")
 }
+/// Auto-generated from Schema Registry
+model DmLoaiChucVu {
+  id        Int      @id @default(autoincrement())
+  ma                   String @unique @db.VarChar(5)
+  ten                  String? @db.VarChar(70)
+  active               Boolean? @default(true)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
 
-/// Bảng lý lịch cán bộ
-model TcnsLyLich {
-  id                Int       @id @default(autoincrement())
-  shcc              String    @unique @db.VarChar(255)
-  maNhanVien        String    @db.VarChar(20)
-  ho                String    @db.VarChar(150)
-  ten               String    @db.VarChar(50)
-  ngaySinh          DateTime? @db.Timestamp(6)
-  thanhPhanGiaDinh  String?   @db.VarChar(5)
-  thanhPhanBanThan  String?   @db.VarChar(5)
-  gioiTinh          String?   @db.VarChar(5)
-  danToc            String?   @db.VarChar(5)
-  tonGiao           String?   @db.VarChar(5)
-  quocTich          String?   @db.VarChar(5)
-  emailCaNhan       String?   @db.VarChar(70)
-  chieuCao          Int?
-  canNang           Int?
-  nhomMau           String?   @db.VarChar(5)
-  ngayNhapNgu       DateTime? @db.Timestamp(6)
-  ngayXuatNgu       DateTime? @db.Timestamp(6)
-  quanHam           String?   @db.VarChar(5)
-  ngayVaoDang       DateTime? @db.Timestamp(6)
-  ngayVaoDangCt     DateTime? @db.Timestamp(6)
-  ngayVaoDoan       DateTime? @db.Timestamp(6)
-  maSoThue          String?   @db.VarChar(20)
-  stk               String?   @db.VarChar(20)
-  nganHang          String?   @db.VarChar(100)
-  email             String?   @db.VarChar(70)
-  chiNhanh          String?   @db.VarChar(200)
-  biDanh            String?   @db.VarChar(100)
-  cccd              String?   @db.VarChar(20)
-  sucKhoe           String?
-  isDangVien        Boolean?  @default(false)
-  ngayVaoCongDoan   DateTime? @db.Timestamp(6)
-  bhxh              String?   @db.VarChar(20)
-  doiTuongChinhSach String?   @db.VarChar(100)
-  bhyt              String?   @db.VarChar(20)
-  ngayCapCccd       DateTime? @db.Timestamp(6)
-  noiCapCccd        String?   @db.VarChar(5)
-  sdt               String?   @db.VarChar(20)
-  createdAt         DateTime  @default(now()) @db.Timestamp(6)
-  updatedAt         DateTime  @updatedAt @db.Timestamp(6)
+  @@index([ma])
+  @@map("dm_loai_chuc_vu")
+}
+/// Auto-generated from Schema Registry
+model DmLoaiPhuCap {
+  id        Int      @id @default(autoincrement())
+  ma                   String @unique @db.VarChar(10)
+  ten                  String? @db.VarChar(100)
+  active               Boolean? @default(true)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
+
+  @@index([ma])
+  @@map("dm_loai_phu_cap")
+}
+/// Auto-generated from Schema Registry
+model DmNganHang {
+  id        Int      @id @default(autoincrement())
+  ma                   String @unique @db.VarChar(20)
+  ten                  String? @db.VarChar(200)
+  active               Boolean? @default(true)
+  diachi               String? @db.VarChar(200)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
+
+  @@index([ma])
+  @@map("dm_ngan_hang")
+}
+/// Auto-generated from Schema Registry
+model DmThanhPhanXuatThan {
+  id        Int      @id @default(autoincrement())
+  ma                   String @unique @db.VarChar(10)
+  active               Boolean? @default(true)
+  ten                  String? @db.VarChar(100)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
+
+  @@index([ma])
+  @@map("dm_thanh_phan_xuat_than")
+}
+/// Auto-generated from Schema Registry
+model TcnsCanBo {
+  id        Int      @id @default(autoincrement())
+  shcc                 String @unique @db.VarChar(20)
+  ho                   String? @db.VarChar(150)
+  ten                  String? @db.VarChar(50)
+  ngaySinh             DateTime? @db.Timestamp(6)
+  gioiTinh             String? @db.VarChar(5)
+  maNhanVien           String? @db.VarChar(20)
+  email                String? @db.VarChar(70)
+  sdt                  String? @db.VarChar(20)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
 
   @@index([shcc])
-  @@index([maNhanVien])
-  @@map("tcns_ly_lich")
-}
-
-/// Bảng cán bộ
-model TcnsCanBo {
-  id         Int       @id @default(autoincrement())
-  shcc       String?   @unique @db.VarChar(20)
-  ho         String?   @db.VarChar(150)
-  ten        String?   @db.VarChar(50)
-  ngaySinh   DateTime? @db.Timestamp(6)
-  gioiTinh   String?   @db.VarChar(5)
-  maNhanVien String?   @db.VarChar(20)
-  email      String?   @db.VarChar(70)
-  sdt        String?   @db.VarChar(20)
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-
   @@map("tcns_can_bo")
+}
+/// Auto-generated from Schema Registry
+model DmChuyenNganhBGD {
+  id        Int      @id @default(autoincrement())
+  ma                   String @unique @db.VarChar(20)
+  ten                  String? @db.VarChar(200)
+  active               Boolean? @default(true)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
+
+  @@index([ma])
+  @@map("dm_chuyen_nganh_bgd")
+}
+/// Auto-generated from Schema Registry
+model DmDanhHieuNhaNuoc {
+  id        Int      @id @default(autoincrement())
+  ma                   String @unique @db.VarChar(5)
+  ten                  String? @db.VarChar(200)
+  active               Boolean? @default(true)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
+
+  @@index([ma])
+  @@map("dm_danh_hieu_nha_nuoc")
+}
+/// Auto-generated from Schema Registry
+model DmDtChungChiBDNV {
+  id        Int      @id @default(autoincrement())
+  ma                   String @unique @db.VarChar(5)
+  ten                  String? @db.VarChar(100)
+  active               Boolean? @default(true)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
+
+  @@index([ma])
+  @@map("dm_dt_chung_chi_bdnv")
+}
+/// Auto-generated from Schema Registry
+model DmDtHinhThucLLCT {
+  id        Int      @id @default(autoincrement())
+  ma                   String @unique @db.VarChar(5)
+  ten                  String? @db.VarChar(50)
+  active               Boolean? @default(true)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
+
+  @@index([ma])
+  @@map("dm_dt_hinh_thuc_llct")
+}
+/// Auto-generated from Schema Registry
+model DmLoaiCanBo {
+  id        Int      @id @default(autoincrement())
+  ma                   String @unique @db.VarChar(5)
+  active               Boolean? @default(true)
+  ten                  String? @db.VarChar(50)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
+
+  @@index([ma])
+  @@map("dm_loai_can_bo")
+}
+/// Auto-generated from Schema Registry
+model DmKhenThuong {
+  id        Int      @id @default(autoincrement())
+  ma                   String @unique @db.VarChar(10)
+  ten                  String? @db.VarChar(200)
+  active               Boolean? @default(true)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
+
+  @@index([ma])
+  @@map("dm_khen_thuong")
+}
+/// Auto-generated from Schema Registry
+model DmPhuongThucKhenThuong {
+  id        Int      @id @default(autoincrement())
+  ma                   String @unique @db.VarChar(10)
+  ten                  String? @db.VarChar(200)
+  active               Boolean? @default(true)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
+
+  @@index([ma])
+  @@map("dm_phuong_thuc_khen_thuong")
 }
 
 /// Bảng Người học (Sinh viên)
@@ -704,6 +684,7 @@ model NhSinhHoatCongDan {
   @@map("nh_sinh_hoat_cong_dan")
 }
 
+
 model BackupRetentionPolicy {
   trigger   String   @id
   days      Int?
@@ -728,9 +709,7 @@ model User {
   isActive     Boolean?  @default(true) @map("is_active")
   createdAt    DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
   role         UserRole  @default(reader) @map("role")
-  /// Cấu hình quyền truy cập bảng dạng YAML-like:
-  /// { "writeScopes": ["^tcns_.*"], "readScopes": ["^dm_.*"] }
-  /// admin: null (bypass toàn bộ)
+  /// Cấu hình quyền truy cập bảng dạng YAML-like
   roleSettings Json?     @map("role_settings")
 
   @@map("users")
