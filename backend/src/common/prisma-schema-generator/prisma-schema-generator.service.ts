@@ -56,7 +56,6 @@ const SCHEMA_HEADER = `generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 `;
 
