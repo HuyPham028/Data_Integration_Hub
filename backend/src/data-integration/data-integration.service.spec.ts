@@ -8,6 +8,7 @@ import { SyncEngineService } from 'src/modules/sync-engine/sync-engine.service';
 import { BackupService } from 'src/modules/backup/backup.service';
 import { EventLogService } from 'src/common/event-log/event-log.service';
 import { NotificationService } from 'src/common/notification/notification.service';
+import { SourceConfigService } from 'src/common/source-config/source-config.service';
 
 const mockSchemaRegistry = {
   getAllSchema: jest.fn(),
@@ -31,6 +32,9 @@ const mockNotification = {
   sendJobSuccessSummary: jest.fn().mockResolvedValue(undefined),
   sendJobFailureAlert: jest.fn().mockResolvedValue(undefined),
 };
+const mockSourceConfig = {
+  getSourceConfig: jest.fn().mockResolvedValue(null),
+};
 
 describe('DataIntegrationService', () => {
   let service: DataIntegrationService;
@@ -49,6 +53,7 @@ describe('DataIntegrationService', () => {
         { provide: EventLogService, useValue: mockEventLog },
         { provide: BackupService, useValue: mockBackupService },
         { provide: NotificationService, useValue: mockNotification },
+        { provide: SourceConfigService, useValue: mockSourceConfig },
       ],
     }).compile();
 
@@ -185,7 +190,7 @@ describe('DataIntegrationService', () => {
 
   describe('runCustomIntegrationPipeline', () => {
     it('returns early with a message when tableNames is empty', async () => {
-      const result = await service.runCustomIntegrationPipeline([]);
+      const result = await service.runCustomIntegrationPipeline('job', []);
       expect(result).toEqual({ message: 'No table names provided' });
       expect(mockSchemaRegistry.getAllSchema).not.toHaveBeenCalled();
     });
@@ -193,7 +198,7 @@ describe('DataIntegrationService', () => {
     it('trims and deduplicates table names before querying schemas', async () => {
       mockSchemaRegistry.getAllSchema.mockResolvedValue([]);
 
-      await service.runCustomIntegrationPipeline(['  users  ', 'users', 'orders']);
+      await service.runCustomIntegrationPipeline('job', ['  users  ', 'users', 'orders']);
 
       // getAllSchema is called once (dedup ran first, early-exit due to no schemas)
       expect(mockSchemaRegistry.getAllSchema).toHaveBeenCalledTimes(1);
@@ -204,7 +209,7 @@ describe('DataIntegrationService', () => {
         { tableName: 'other_table', status: 'stable' },
       ]);
 
-      const result = (await service.runCustomIntegrationPipeline([
+      const result = (await service.runCustomIntegrationPipeline('job', [
         'nonexistent',
       ])) as any;
       expect(result.missingTables).toContain('nonexistent');
@@ -215,7 +220,7 @@ describe('DataIntegrationService', () => {
         { tableName: 'users', status: 'draft' }, // not stable
       ]);
 
-      const result = (await service.runCustomIntegrationPipeline(['users'])) as any;
+      const result = (await service.runCustomIntegrationPipeline('job', ['users'])) as any;
       expect(result.missingTables).toContain('users');
     });
   });

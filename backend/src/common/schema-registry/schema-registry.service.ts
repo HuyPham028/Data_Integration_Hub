@@ -11,6 +11,7 @@ import { EventLogService } from '../event-log/event-log.service';
 import { UpdateSchemaRegistryDto } from './dto/update-schema-registry.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { generateSchemaHash } from 'src/utils/schema.util';
+import { GitHubDeployService } from '../github-deploy/github-deploy.service';
 
 @Injectable()
 export class SchemaRegistryService {
@@ -21,6 +22,7 @@ export class SchemaRegistryService {
     private registryModel: Model<SchemaRegistry>,
     private readonly eventLogService: EventLogService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly githubDeploy: GitHubDeployService,
   ) {}
 
   async importSchemaData(rawDataArray: any[]) {
@@ -216,14 +218,24 @@ export class SchemaRegistryService {
   }
 
   /**
-   * Hàm Admin xác nhận "Đã cập nhật file Prisma, cho phép sync tiếp"
+   * Admin xác nhận thay đổi schema → cập nhật MongoDB status → tự động
+   * commit schema.prisma mới lên GitHub để kích hoạt CI/CD pipeline.
    */
   async resolveSchemaWarning(tableName: string) {
-    return this.registryModel.findOneAndUpdate(
+    const updated = await this.registryModel.findOneAndUpdate(
       { tableName },
       { $set: { status: 'stable' } },
       { new: true },
     );
+
+    // Fire-and-forget: generate + commit schema.prisma → triggers GitHub Actions
+    this.githubDeploy.triggerSchemaUpdate(tableName).catch((err) =>
+      this.logger.error(
+        `[GitHubDeploy] Failed to auto-deploy schema for "${tableName}": ${err.message}`,
+      ),
+    );
+
+    return updated;
   }
 
   async updateLastSyncTime(tableName: string, timestamp: Date) {
