@@ -2,9 +2,9 @@ name: CI Pipeline
 
 on:
   push:
-    branches: ["master"]
+    branches: ["**"]     # chạy CI trên tất cả branch
   pull_request:
-    branches: ["master"]
+    branches: ["master"] # chỉ check PR vào master
 
 env:
   NODE_VERSION: "20"

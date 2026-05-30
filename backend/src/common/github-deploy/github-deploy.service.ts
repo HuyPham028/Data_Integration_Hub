@@ -11,6 +11,7 @@ export class GitHubDeployService {
   private readonly octokit: Octokit;
   private readonly owner: string;
   private readonly repo: string;
+  private readonly branch: string;
 
   constructor(
     private readonly config: ConfigService,
@@ -21,6 +22,7 @@ export class GitHubDeployService {
     });
     this.owner = this.config.get<string>('GITHUB_OWNER') ?? '';
     this.repo = this.config.get<string>('GITHUB_REPO') ?? '';
+    this.branch = this.config.get<string>('GITHUB_BRANCH') ?? 'master';
   }
 
   /**
@@ -36,7 +38,7 @@ export class GitHubDeployService {
     }
 
     this.logger.log(
-      `[GitHubDeploy] Generating new schema.prisma after approval of "${approvedTable}"...`,
+      `[GitHubDeploy] Generating new schema.prisma after approval of "${approvedTable}" → branch: ${this.branch}`,
     );
 
     const newContent = await this.generator.generateFullSchema();
@@ -46,6 +48,7 @@ export class GitHubDeployService {
       owner: this.owner,
       repo: this.repo,
       path: SCHEMA_PATH,
+      ref: this.branch,
     });
 
     if (Array.isArray(fileData) || fileData.type !== 'file') {
@@ -71,6 +74,7 @@ export class GitHubDeployService {
       message: `chore(schema): auto-update prisma model for table "${approvedTable}"`,
       content: encoded,
       sha: file.sha,
+      branch: this.branch,
     });
 
     this.logger.log(

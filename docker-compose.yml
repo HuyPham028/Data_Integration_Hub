@@ -72,6 +72,7 @@ services:
       GITHUB_PAT: ${GITHUB_PAT}
       GITHUB_OWNER: ${GITHUB_OWNER}
       GITHUB_REPO: ${GITHUB_REPO}
+      GITHUB_BRANCH: ${GITHUB_BRANCH:-master}
     ports:
       - "4000:4000"
     restart: always
