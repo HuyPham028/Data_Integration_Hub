@@ -18,29 +18,35 @@ const TYPE_MAP: Record<string, string> = {
   varchar: 'String',
   nvarchar: 'String',
   char: 'String',
+  nchar: 'String',
+  string: 'String',   // generic fallback from older schema entries
   text: 'String',
   ntext: 'String',
   int: 'Int',
+  integer: 'Int',
   bigint: 'BigInt',
   smallint: 'Int',
   tinyint: 'Int',
   bit: 'Boolean',
+  boolean: 'Boolean',
+  bool: 'Boolean',
   float: 'Float',
   real: 'Float',
+  double: 'Float',
   decimal: 'Decimal',
   numeric: 'Decimal',
   money: 'Decimal',
   smallmoney: 'Decimal',
+  number: 'Decimal',
   datetime: 'DateTime',
   datetime2: 'DateTime',
   date: 'DateTime',
   time: 'DateTime',
   timestamp: 'DateTime',
   uniqueidentifier: 'String',
+  uuid: 'String',
   json: 'Json',
   jsonb: 'Json',
-  boolean: 'Boolean',
-  bool: 'Boolean',
 };
 
 // ─── File header (generator + datasource) ────────────────────────────────────
@@ -282,7 +288,7 @@ function getDbHint(
   if (t === 'time') return '@db.Time(6)';
   if (t === 'json' || t === 'jsonb') return '';
   if (
-    ['varchar', 'nvarchar', 'char', 'nchar'].includes(t) &&
+    ['varchar', 'nvarchar', 'char', 'nchar', 'string'].includes(t) &&
     length != null &&
     length > 0
   )
@@ -296,11 +302,14 @@ function toCamel(s: string): string {
   return s.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
 }
 
-/** table_name → ModelName (PascalCase) */
+/** Known acronyms that should stay UPPERCASE in model names */
+const ACRONYMS = new Set(['llct', 'cdnn', 'cccd', 'bgd', 'bdnv', 'cm']);
+
+/** table_name → ModelName (PascalCase, preserving known acronyms) */
 function toModelName(tableName: string): string {
   return tableName
     .split('_')
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .map((w) => ACRONYMS.has(w) ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1))
     .join('');
 }
 
@@ -360,37 +369,45 @@ export class PrismaSchemaGeneratorService {
     lines.push(`/// Auto-generated from Schema Registry`);
     lines.push(`model ${modelName} {`);
 
-    // Auto-increment surrogate PK (unless the source already has a numeric PK)
-    const hasPk =
-      Array.isArray(schema.primaryKey) && schema.primaryKey.length > 0;
-    const pkField = hasPk ? schema.primaryKey[0] : null;
+    // Always use surrogate autoincrement id, same pattern as manually-written models.
+    // The source PK field (e.g. "ma") becomes @unique instead of @id so existing
+    // PostgreSQL tables are not broken by a PK type change.
+    lines.push(`  id        Int      @id @default(autoincrement())`);
 
-    if (!hasPk) {
-      lines.push(`  id        Int      @id @default(autoincrement())`);
-    }
+    const pkFields = new Set<string>(
+      Array.isArray(schema.primaryKey) ? schema.primaryKey : [],
+    );
 
     for (const detail of schema.details ?? []) {
       const rawType: string = (detail.type ?? 'varchar').toLowerCase();
       const prismaType = TYPE_MAP[rawType] ?? 'String';
       const camel = toCamel(detail.name);
       const dbHint = getDbHint(rawType, detail.length ?? null);
-
-      const isPk = hasPk && detail.name === pkField;
-      const pkAnnotation = isPk ? ' @id' : '';
-      const nullMark = isPk ? '' : '?';
       const hintStr = dbHint ? ` ${dbHint}` : '';
 
+      const isSourcePk = pkFields.has(detail.name);
+      // Source PK → @unique NOT NULL; all others → nullable
+      const uniqueAnnotation = isSourcePk ? ' @unique' : '';
+      const nullMark = isSourcePk ? '' : '?';
+
+      // active Boolean → preserve @default(true) to match hand-written models
+      const defaultAnnotation =
+        detail.name === 'active' && (rawType === 'bit' || rawType === 'boolean')
+          ? ' @default(true)'
+          : '';
+
       lines.push(
-        `  ${camel.padEnd(20)} ${prismaType}${nullMark}${pkAnnotation}${hintStr}`,
+        `  ${camel.padEnd(20)} ${prismaType}${nullMark}${uniqueAnnotation}${defaultAnnotation}${hintStr}`,
       );
     }
 
-    lines.push(`  createdAt DateTime @default(now()) @db.Timestamp(6)`);
-    lines.push(`  updatedAt DateTime @updatedAt @db.Timestamp(6)`);
+    lines.push(`  createdAt DateTime  @default(now()) @db.Timestamp(6)`);
+    lines.push(`  updatedAt DateTime  @updatedAt @db.Timestamp(6)`);
     lines.push(``);
 
-    if (hasPk && pkField) {
-      lines.push(`  @@index([${toCamel(pkField)}])`);
+    if (pkFields.size > 0) {
+      const indexField = toCamel([...pkFields][0]);
+      lines.push(`  @@index([${indexField}])`);
     }
     lines.push(`  @@map("${schema.tableName}")`);
     lines.push(`}`);

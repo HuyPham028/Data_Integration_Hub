@@ -218,6 +218,29 @@ export class SchemaRegistryService {
   }
 
   /**
+   * Bulk approve tất cả bảng đang ở trạng thái "changed" → stable,
+   * sau đó trigger 1 commit duy nhất để regenerate toàn bộ schema.prisma.
+   */
+  async resolveAllWarnings() {
+    const result = await this.registryModel.updateMany(
+      { status: 'changed' },
+      { $set: { status: 'stable' } },
+    );
+
+    const approvedCount = result.modifiedCount;
+    this.logger.log(
+      `[BulkResolve] Approved ${approvedCount} changed schemas → triggering deploy...`,
+    );
+
+    // Trigger 1 commit duy nhất thay vì N commits
+    this.githubDeploy.triggerSchemaUpdate(`bulk-resolve (${approvedCount} tables)`).catch((err) =>
+      this.logger.error(`[BulkResolve] Deploy failed: ${err.message}`),
+    );
+
+    return { approvedCount };
+  }
+
+  /**
    * Admin xác nhận thay đổi schema → cập nhật MongoDB status → tự động
    * commit schema.prisma mới lên GitHub để kích hoạt CI/CD pipeline.
    */
