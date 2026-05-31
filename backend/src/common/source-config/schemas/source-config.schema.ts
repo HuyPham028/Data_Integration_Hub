@@ -20,6 +20,9 @@ export class SourceConfig extends Document {
 
   @Prop({ default: '' })
   description!: string;
+
+  @Prop({ default: 'none' })
+  authType!: string;
 }
 
 export const SourceConfigSchema = SchemaFactory.createForClass(SourceConfig);

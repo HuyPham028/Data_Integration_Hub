@@ -10,11 +10,18 @@ export interface LogLine {
   message: string;
 }
 
+export type SyncProgress = {
+  current: number;
+  total: number;
+  currentTable: string;
+} | null;
+
 type TerminalProps = {
   logs: LogLine[];
   terminalEndRef: RefObject<HTMLDivElement | null>;
   hostLabel?: string;
   heightClassName?: string;
+  progress?: SyncProgress;
 };
 
 const formatTime = (isoString: string) => {
@@ -31,6 +38,7 @@ export function Terminal({
   terminalEndRef,
   hostLabel = 'root@univ-hub-server:~',
   heightClassName = 'h-[42vh]',
+  progress,
 }: TerminalProps) {
   const [isOpen, setIsOpen] = useState(true);
 
@@ -89,6 +97,47 @@ export function Terminal({
             ))
           )}
           <div ref={terminalEndRef} />
+        </div>
+
+        {/* ── Progress bar footer ──────────────────────────────────────────── */}
+        <div className="border-t border-slate-800 bg-slate-900 px-4 py-2.5">
+          {progress && progress.total > 0 ? (() => {
+            const pct = Math.round((progress.current / progress.total) * 100);
+            const isDone = progress.current >= progress.total;
+            return (
+              <>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-mono truncate max-w-[70%]"
+                    style={{ color: isDone ? '#10b981' : '#a3e635' }}>
+                    {isDone
+                      ? '✓ Sync completed'
+                      : progress.currentTable
+                        ? `⟳ ${progress.currentTable}`
+                        : 'Initializing...'}
+                  </span>
+                  <span className="text-xs text-slate-400 flex-shrink-0 ml-2 font-mono">
+                    {progress.current}/{progress.total} tables · {pct}%
+                  </span>
+                </div>
+                <div className="w-full h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${pct}%`,
+                      background: isDone
+                        ? '#10b981'
+                        : 'linear-gradient(90deg, #3b82f6 0%, #10b981 100%)',
+                    }}
+                  />
+                </div>
+              </>
+            );
+          })() : (
+            <div className="flex items-center gap-2 h-5">
+              <div className="w-full h-1.5 bg-slate-800 rounded-full" />
+              <span className="text-[10px] text-slate-600 flex-shrink-0 font-mono whitespace-nowrap">no active sync</span>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

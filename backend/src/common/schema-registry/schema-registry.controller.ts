@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Put, Param, UseGuards, HttpCode } from '@nestjs/common';
+import { Controller, Post, Body, Get, Put, Patch, Param, UseGuards, HttpCode } from '@nestjs/common';
 import { SchemaRegistryService } from './schema-registry.service';
 import { UpdateSchemaRegistryDto } from './dto/update-schema-registry.dto';
 import { JwtAuthGuard } from '../../modules/auth/guards/jwt-auth.guard';
@@ -43,6 +43,18 @@ export class SchemaRegistryController {
   @Post('run-detector')
   async runDetector(@Body() incomingData: any[]) {
     return this.schemaRegistryService.detectSchemaChanges(incomingData);
+  }
+
+  @Patch(':tableName/strategy')
+  @HttpCode(200)
+  async updateStrategy(
+    @Param('tableName') tableName: string,
+    @Body('strategy') strategy: string,
+  ) {
+    return this.schemaRegistryService.updateSyncStrategy(
+      tableName,
+      strategy as 'upsert' | 'overwrite' | 'incremental',
+    );
   }
 
   @Put(':tableName/reject')

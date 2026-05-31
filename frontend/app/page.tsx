@@ -5,7 +5,7 @@ import { IntegrationAPI, JobAPI } from '@/lib/api-client';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { RefreshCw, PlayCircle, Activity, Database, CheckCircle2, AlertTriangle, Clock } from "lucide-react";
-import { LogLine, Terminal } from '@/components/dashboard/terminal';
+import { LogLine, Terminal, SyncProgress } from '@/components/dashboard/terminal';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
@@ -55,6 +55,8 @@ export default function DashboardPage() {
   const [chartData, setChartData] = useState<Array<{ name: string; success: number; failed: number }>>([]);
   const [draftCron, setDraftCron] = useState<Record<string, string>>({});
   
+  const [syncProgress, setSyncProgress] = useState<SyncProgress>(null);
+
   const API_URL = process.env.NEXT_PUBLIC_KONG_URL;
   const terminalEndRef = useRef<HTMLDivElement>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -73,6 +75,18 @@ export default function DashboardPage() {
         message: parsedLog.message,
       };
       setLogs((prev) => [...prev, normalizedLog]);
+
+      // ── Parse sync progress from log messages ──────────────────────────
+      const msg = parsedLog.message;
+      const startMatch = msg.match(/\[START\] Processing table:\s*(\S+)/);
+      if (startMatch) {
+        const tableName = startMatch[1].replace(/\.+$/, '');
+        setSyncProgress((prev) => prev ? { ...prev, currentTable: tableName } : prev);
+      } else if (msg.includes('[DONE]') && msg.includes('synced=')) {
+        setSyncProgress((prev) =>
+          prev ? { ...prev, current: Math.min(prev.current + 1, prev.total) } : prev
+        );
+      }
     };
 
     return () => eventSource.close();
@@ -82,6 +96,15 @@ export default function DashboardPage() {
   useEffect(() => {
     terminalEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [logs]);
+
+  // Tự clear progress bar sau 3s khi sync hoàn tất
+  useEffect(() => {
+    if (!syncProgress || syncProgress.total === 0) return;
+    if (syncProgress.current >= syncProgress.total) {
+      const timer = setTimeout(() => setSyncProgress(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [syncProgress]);
 
   const fetchDashboardData = async () => {
     try {
@@ -126,7 +149,12 @@ export default function DashboardPage() {
   const handleTriggerSync = async (jobId?: string, selectedTables?: string[]) => {
     setIsSyncing(true);
     setLogs([{ timestamp: new Date().toISOString(), type: 'INFO', message: 'System: Init connection to Hub API...' }]);
-    
+
+    // Khởi tạo progress bar
+    const stableCount = (availableSchemas as any[]).filter((s) => s.status === 'stable').length;
+    const total = selectedTables?.length ?? stableCount;
+    if (total > 0) setSyncProgress({ current: 0, total, currentTable: '' });
+
     try {
       if (jobId) {
         await JobAPI.triggerJob(jobId);
@@ -373,7 +401,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="mt-auto shrink-0 border border-slate-200 rounded-lg overflow-hidden shadow-sm">
-        <Terminal logs={logs} terminalEndRef={terminalEndRef} heightClassName="h-[32vh] md:h-[36vh]" />
+        <Terminal logs={logs} terminalEndRef={terminalEndRef} heightClassName="h-[32vh] md:h-[36vh]" progress={syncProgress} />
       </div>
 
       <TableSelect 

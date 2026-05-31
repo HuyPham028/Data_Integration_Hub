@@ -20,4 +20,8 @@ export class UpdateSourceConfigDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsString()
+  authType?: string;
 }
