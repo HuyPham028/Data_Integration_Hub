@@ -12,6 +12,7 @@ import { UpdateSchemaRegistryDto } from './dto/update-schema-registry.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { generateSchemaHash } from 'src/utils/schema.util';
 import { GitHubDeployService } from '../github-deploy/github-deploy.service';
+import { SchemaMigratorService } from './schema-migrator.service';
 
 @Injectable()
 export class SchemaRegistryService {
@@ -23,6 +24,7 @@ export class SchemaRegistryService {
     private readonly eventLogService: EventLogService,
     private readonly eventEmitter: EventEmitter2,
     private readonly githubDeploy: GitHubDeployService,
+    private readonly schemaMigrator: SchemaMigratorService,
   ) {}
 
   async importSchemaData(rawDataArray: any[]) {
@@ -97,6 +99,10 @@ export class SchemaRegistryService {
 
   async getAllSchema() {
     return this.registryModel.find({}).exec();
+  }
+
+  async getSchemaByName(tableName: string) {
+    return this.registryModel.findOne({ tableName }).lean().exec();
   }
 
   async detectSchemaChanges(fetchedSchemas: any[]) {
@@ -221,24 +227,24 @@ export class SchemaRegistryService {
    * Bulk approve tất cả bảng đang ở trạng thái "changed" → stable,
    * sau đó trigger 1 commit duy nhất để regenerate toàn bộ schema.prisma.
    */
-  async resolveAllWarnings() {
-    const result = await this.registryModel.updateMany(
-      { status: 'changed' },
-      { $set: { status: 'stable' } },
-    );
+  // async resolveAllWarnings() {
+  //   const result = await this.registryModel.updateMany(
+  //     { status: 'changed' },
+  //     { $set: { status: 'stable' } },
+  //   );
 
-    const approvedCount = result.modifiedCount;
-    this.logger.log(
-      `[BulkResolve] Approved ${approvedCount} changed schemas → triggering deploy...`,
-    );
+  //   const approvedCount = result.modifiedCount;
+  //   this.logger.log(
+  //     `[BulkResolve] Approved ${approvedCount} changed schemas → triggering deploy...`,
+  //   );
 
-    // Trigger 1 commit duy nhất thay vì N commits
-    this.githubDeploy.triggerSchemaUpdate(`bulk-resolve (${approvedCount} tables)`).catch((err) =>
-      this.logger.error(`[BulkResolve] Deploy failed: ${err.message}`),
-    );
+  //   // Trigger 1 commit duy nhất thay vì N commits
+  //   this.githubDeploy.triggerSchemaUpdate(`bulk-resolve (${approvedCount} tables)`).catch((err) =>
+  //     this.logger.error(`[BulkResolve] Deploy failed: ${err.message}`),
+  //   );
 
-    return { approvedCount };
-  }
+  //   return { approvedCount };
+  // }
 
   /**
    * Admin xác nhận thay đổi schema → cập nhật MongoDB status → tự động
@@ -251,11 +257,9 @@ export class SchemaRegistryService {
       { new: true },
     );
 
-    // Fire-and-forget: generate + commit schema.prisma → triggers GitHub Actions
-    this.githubDeploy.triggerSchemaUpdate(tableName).catch((err) =>
-      this.logger.error(
-        `[GitHubDeploy] Failed to auto-deploy schema for "${tableName}": ${err.message}`,
-      ),
+    // 2. Trigger the local migration + git push
+    this.schemaMigrator.applyLiveMigration(tableName).catch((err) =>
+      this.logger.error(`[AutoDeploy] Failed to apply migration for "${tableName}": ${err.message}`),
     );
 
     return updated;

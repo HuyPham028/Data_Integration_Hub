@@ -104,6 +104,11 @@ export const IntegrationAPI = {
     const response = await apiClient.post('/integration/purge-orphans', { tableName, primaryKey, ids });
     return response.data;
   },
+
+  previewMigration: async (tableName: string) => {
+    const res = await apiClient.get(`/schema-registry/preview-sql/${tableName}`);
+    return res.data.sql;
+  },
 };
 
 export const BackupAPI = {

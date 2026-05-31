@@ -9,28 +9,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { 
   Loader2, Server, AlertTriangle, CheckCircle, 
-  Copy, Check, ArrowRight, FileJson
+  X, ArrowRight, FileJson, Terminal, Database
 } from "lucide-react";
 import ConfirmDialog from '@/components/modals/ConfirmModal';
 import { useLanguage } from '@/lib/i18n';
 
-// --- CÁC HÀM LOGIC XỬ LÝ DIFF & PRISMA GENERATOR ---
+// --- CÁC HÀM LOGIC XỬ LÝ DIFF ---
 
-// 1. Hàm tính toán Diff (GitHub Style)
 const calculateDiff = (newFields: any = [], oldFields: any = []) => {
-  const safeNewFields = Array.isArray(newFields)
-    ? newFields
-    : [];
-
-  const safeOldFields = Array.isArray(oldFields)
-    ? oldFields
-    : [];
+  const safeNewFields = Array.isArray(newFields) ? newFields : [];
+  const safeOldFields = Array.isArray(oldFields) ? oldFields : [];
 
   const diff: any[] = [];
   const oldMap = new Map(safeOldFields.map(f => [f.name, f]));
   const newMap = new Map(safeNewFields.map(f => [f.name, f]));
 
-  // Quét các trường mới (Added, Changed, Unchanged)
   safeNewFields.forEach(newF => {
     const oldF = oldMap.get(newF.name);
     if (!oldF) {
@@ -42,7 +35,6 @@ const calculateDiff = (newFields: any = [], oldFields: any = []) => {
     }
   });
 
-  // Quét các trường bị xóa (Removed)
   safeOldFields.forEach(oldF => {
     if (!newMap.has(oldF.name)) {
       diff.push({ name: oldF.name, status: 'removed', new: null, old: oldF });
@@ -50,32 +42,6 @@ const calculateDiff = (newFields: any = [], oldFields: any = []) => {
   });
 
   return diff;
-};
-
-// 2. Hàm chuyển đổi type JSON sang Prisma type
-const mapTypeToPrisma = (type: string, length: number | null) => {
-  const t = type.toLowerCase();
-  if (t.includes('varchar') || t.includes('string') || t.includes('text')) {
-    return `String? ${length ? `@db.VarChar(${length})` : ''}`.trim();
-  }
-  if (t.includes('int')) return 'Int?';
-  if (t.includes('bit') || t.includes('boolean')) return 'Boolean?';
-  if (t.includes('datetime') || t.includes('date')) return 'DateTime?';
-  return 'String?'; // Default fallback
-};
-
-// 3. Hàm Auto-generate Prisma Model
-const generatePrismaModel = (tableName: string, fields: any[]) => {
-  const modelName = tableName.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('');
-  let code = `model ${modelName} {\n`;
-  code += `  id String @id @default(uuid())\n`; // Default Hub ID
-  fields.forEach(f => {
-    if (f.name !== 'id') { // Bỏ qua id nếu API trả về để tránh trùng lặp, hoặc tự custom
-      code += `  ${f.name.padEnd(20)} ${mapTypeToPrisma(f.type, f.length)}\n`;
-    }
-  });
-  code += `\n  @@map("${tableName}")\n}`;
-  return code;
 };
 
 // --- COMPONENT CHÍNH ---
@@ -87,12 +53,13 @@ export default function SchemaRegistryPage() {
   
   // State Review Modal
   const [selectedSchema, setSelectedSchema] = useState<any | null>(null);
-  const [isResolving, setIsResolving] = useState(false);
-  const [isCopied, setIsCopied] = useState(false);
-  const [confirmPrismaUpdated, setConfirmPrismaUpdated] = useState(false);
+  const [isApplying, setIsApplying] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
-
   const [isOpen, setIsOpen] = useState(false);
+
+  // Live SQL Preview State
+  const [sqlPreview, setSqlPreview] = useState<string>('');
+  const [loadingSql, setLoadingSql] = useState(false);
 
   // Fetch Data
   const fetchSchemas = async () => {
@@ -109,32 +76,42 @@ export default function SchemaRegistryPage() {
 
   useEffect(() => { fetchSchemas(); }, []);
 
-  const handleResolve = async () => {
+  // Fetch SQL Preview when a schema is selected
+  useEffect(() => {
+    if (selectedSchema && selectedSchema.status !== 'stable') {
+      setLoadingSql(true);
+      setSqlPreview('');
+      IntegrationAPI.previewMigration(selectedSchema.tableName)
+        .then((sql) => setSqlPreview(sql))
+        .catch((err) => setSqlPreview(`-- Lỗi khi tạo SQL Preview: ${err.message}`))
+        .finally(() => setLoadingSql(false));
+    }
+  }, [selectedSchema]);
+
+  const handleApplyLiveMigration = async () => {
     if (!selectedSchema) return;
-    setIsResolving(true);
+    setIsApplying(true);
     try {
+      // Calls the new backend endpoint to generate schema, migrate deploy, reload client, and push to GitHub
       await IntegrationAPI.resolveSchema(selectedSchema.tableName);
       setSelectedSchema(null);
       await fetchSchemas();
+      // Optionally add a toast notification here
+      alert('Migration applied successfully and pushed to GitHub!');
+    } catch (error: any) {
+      console.error("Lỗi khi Apply Migration:", error);
+      alert(`Lỗi: ${error.response?.data?.message || error.message}`);
     } finally {
-      setIsResolving(false);
+      setIsApplying(false);
     }
-  };
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setIsCopied(true);
-    setTimeout(() => setIsCopied(false), 2000);
   };
 
   const handleReject = async () => {
     if (!selectedSchema) return;
-
     setIsRejecting(true);
     try {
       await IntegrationAPI.rejectSchema(selectedSchema.tableName);
       setSelectedSchema(null);
-      setConfirmPrismaUpdated(false);
       setIsOpen(false);
       await fetchSchemas();
     } catch (error) {
@@ -146,9 +123,7 @@ export default function SchemaRegistryPage() {
 
   const diffData = useMemo(() => {
     if (!selectedSchema) return { diff: [], stats: { added: 0, removed: 0, changed: 0 } };
-    const oldData = selectedSchema.status === 'new'
-      ? []
-      : (selectedSchema.oldDetails || []);
+    const oldData = selectedSchema.status === 'new' ? [] : (selectedSchema.oldDetails || []);
     const diff = calculateDiff(selectedSchema.details || [], oldData);
 
     return {
@@ -187,7 +162,7 @@ export default function SchemaRegistryPage() {
                   <TableHead>{t('schema.colFields')}</TableHead>
                   <TableHead>{t('schema.colStatus')}</TableHead>
                   <TableHead>Chiến thuật đồng bộ</TableHead>
-                  <TableHead className="text-right pr-6">{t('schema.colStatus')}</TableHead>
+                  <TableHead className="text-right pr-6">Hành động</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -203,19 +178,19 @@ export default function SchemaRegistryPage() {
                     </TableCell>
                     <TableCell className="text-slate-500">{schema.fieldsCount} fields</TableCell>
                     <TableCell>
-                      {schema.status === 'stable' && <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50"><CheckCircle className="w-3 h-3 mr-1"/> Stable</Badge>}
-                      {schema.status === 'new' && <Badge className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50"><FileJson className="w-3 h-3 mr-1"/> New Model</Badge>}
-                      {schema.status === 'changed' && <Badge className="bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-50"><AlertTriangle className="w-3 h-3 mr-1"/> Schema Drift</Badge>}
+                      {schema.status === 'stable' && <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200"><CheckCircle className="w-3 h-3 mr-1"/> Stable</Badge>}
+                      {schema.status === 'new' && <Badge className="bg-blue-50 text-blue-700 border-blue-200"><FileJson className="w-3 h-3 mr-1"/> New Model</Badge>}
+                      {schema.status === 'changed' && <Badge className="bg-amber-50 text-amber-700 border-amber-200"><AlertTriangle className="w-3 h-3 mr-1"/> Schema Drift</Badge>}
                     </TableCell>
                     <TableCell>{schema.syncStrategy}</TableCell>
                     <TableCell className="text-right pr-6">
                       {schema.status !== 'stable' ? (
                         <Button 
                           size="sm" 
-                          className="bg-slate-900 hover:bg-slate-800 text-white shadow-sm"
+                          className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
                           onClick={() => setSelectedSchema(schema)}
                         >
-                          {t('schema.reviewDiff')} <ArrowRight className="w-4 h-4 ml-1" />
+                          Review & Apply <ArrowRight className="w-4 h-4 ml-1" />
                         </Button>
                       ) : (
                         <span className="text-xs font-medium text-slate-400">{t('schema.synced')}</span>
@@ -229,150 +204,147 @@ export default function SchemaRegistryPage() {
         </CardContent>
       </Card>
 
-      {/* GitHub-style Diff Modal */}
+      {/* GitOps Live Apply Modal */}
       <Dialog
         open={selectedSchema !== null}
         onOpenChange={(open) => {
-          if(!open) {
-            setSelectedSchema(null);
-            setConfirmPrismaUpdated(false);
-          }
+          if(!open && !isApplying) setSelectedSchema(null);
         }}
       >
-        <DialogContent className="sm:max-w-5xl p-0 overflow-hidden bg-white shadow-2xl border-slate-200 sm:rounded-xl data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
+        <DialogContent className="sm:max-w-6xl p-0 overflow-hidden bg-slate-50 shadow-2xl border-slate-200 sm:rounded-xl flex flex-col max-h-[90vh]">
           
           {/* Header */}
-          <div className="p-6 border-b bg-white flex justify-between items-start">
+          <div className="p-6 border-b bg-white flex justify-between items-start shrink-0">
             <div>
               <DialogTitle className="text-xl flex items-center gap-2 font-bold text-slate-900">
-                Schema Diff: <span className="font-mono text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">{selectedSchema?.tableName}</span>
+                Schema Deployment: <span className="font-mono text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">{selectedSchema?.tableName}</span>
               </DialogTitle>
               <DialogDescription className="mt-2 text-slate-500">
-                {t('schema.diffDesc')}
+                Review the structural changes and the generated SQL migration before applying live to the PostgreSQL database.
               </DialogDescription>
               
-              {/* Summary Bar */}
               <div className="flex gap-3 text-xs mt-4 font-medium">
-                {diffData.stats.added > 0 && <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-0">+{diffData.stats.added} Added</Badge>}
-                {diffData.stats.removed > 0 && <Badge className="bg-rose-100 text-rose-800 hover:bg-rose-100 border-0">-{diffData.stats.removed} Removed</Badge>}
-                {diffData.stats.changed > 0 && <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 border-0">~{diffData.stats.changed} Changed</Badge>}
-                {diffData.stats.added === 0 && diffData.stats.removed === 0 && diffData.stats.changed === 0 && (
-                   <Badge className="bg-slate-100 text-slate-600 border-0">{t('schema.newInit')}</Badge>
-                )}
+                {diffData.stats.added > 0 && <Badge className="bg-emerald-100 text-emerald-800 border-0">+{diffData.stats.added} Added</Badge>}
+                {diffData.stats.removed > 0 && <Badge className="bg-rose-100 text-rose-800 border-0">-{diffData.stats.removed} Removed</Badge>}
+                {diffData.stats.changed > 0 && <Badge className="bg-amber-100 text-amber-800 border-0">~{diffData.stats.changed} Changed</Badge>}
               </div>
             </div>
-
-            {/* Nút Copy Prisma Model */}
-            <Button 
-              variant="outline" size="sm" 
-              className="border-slate-200 text-slate-700 bg-slate-50 hover:bg-slate-100"
-              onClick={() => copyToClipboard(generatePrismaModel(selectedSchema?.tableName, selectedSchema?.details))}
-            >
-              {isCopied ? <Check className="w-4 h-4 mr-2 text-emerald-600" /> : <Copy className="w-4 h-4 mr-2" />}
-              {isCopied ? t('schema.copiedModel') : t('schema.copyPrisma')}
-            </Button>
           </div>
 
-          {/* Content (Scrollable Diff Area) */}
-          <div className="p-6 max-h-[60vh] overflow-y-auto bg-slate-50/50">
+          {/* Body: 2 Columns - Visual Diff & SQL Preview */}
+          <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
             
-            {/* Breaking Change Warning */}
-            {hasBreakingChange && (
-              <div className="mb-4 p-4 bg-rose-50 border border-rose-200 rounded-lg flex items-start gap-3 text-rose-800">
-                <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
-                <div>
-                  <h4 className="font-semibold text-sm">{t('schema.breakWarn')}</h4>
-                  <p className="text-xs mt-1 opacity-90">{t('schema.breakDesc')}</p>
+            {/* Left Column: Visual Diff */}
+            <div className="space-y-4">
+              <h3 className="font-semibold text-slate-700 flex items-center gap-2">
+                <Database className="w-4 h-4 text-slate-500" />
+                Visual Drift Analysis
+              </h3>
+              
+              {hasBreakingChange && (
+                <div className="p-4 bg-rose-50 border border-rose-200 rounded-lg flex items-start gap-3 text-rose-800">
+                  <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="font-semibold text-sm">{t('schema.breakWarn')}</h4>
+                    <p className="text-xs mt-1 opacity-90">{t('schema.breakDesc')}</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
+                <div className="grid grid-cols-2 text-xs font-bold uppercase tracking-wider text-slate-500 bg-slate-100 border-b border-slate-200">
+                  <div className="p-3 pl-4 border-r border-slate-200">{t('schema.newStruct')}</div>
+                  <div className="p-3 pl-4">{t('schema.oldStruct')}</div>
+                </div>
+                <div className="divide-y divide-slate-100 text-sm max-h-[400px] overflow-y-auto">
+                  {diffData.diff.map((row) => (
+                    <div key={row.name} className="grid grid-cols-2">
+                      <div className={`p-3 pl-4 flex justify-between items-center border-r border-slate-200 ${row.status === 'added' ? 'bg-emerald-100' : row.status === 'changed' ? 'bg-blue-200' : ''}`}>
+                        {row.new ? (
+                          <>
+                            <span className="font-mono font-medium text-slate-900">{row.new.name}</span>
+                            <span className="text-slate-500 text-xs bg-white px-2 py-1 rounded-md border border-slate-100">{row.new.type}</span>
+                          </>
+                        ) : (
+                          <span className="text-slate-300 italic">{t('schema.removed')}</span>
+                        )}
+                      </div>
+                      <div className={`p-3 pl-4 flex justify-between items-center ${row.status === 'removed' ? 'bg-rose-50/50' : row.status === 'changed' ? 'bg-amber-50/50' : ''}`}>
+                        {row.old ? (
+                          <>
+                            <span className="font-mono text-slate-600 line-through decoration-slate-300 opacity-80">{row.old.name}</span>
+                            <span className="text-slate-400 text-xs">{row.old.type}</span>
+                          </>
+                        ) : (
+                          <span className="text-slate-300 italic">{t('schema.notExisted')}</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            )}
+            </div>
 
-            {/* Side-by-side Diff Table */}
-            <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
-              <div className="grid grid-cols-2 text-xs font-bold uppercase tracking-wider text-slate-500 bg-slate-100 border-b border-slate-200">
-                <div className="p-3 pl-4 border-r border-slate-200 flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-400"></div> {t('schema.newStruct')}</div>
-                <div className="p-3 pl-4 flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-slate-400"></div> {t('schema.oldStruct')}</div>
-              </div>
-
-              <div className="divide-y divide-slate-100 text-sm">
-                {diffData.diff.map((row) => (
-                  <div key={row.name} className="grid grid-cols-2">
-                    
-                    {/* NEW COLUMN */}
-                    <div className={`p-3 pl-4 flex justify-between items-center border-r border-slate-200 ${
-                      row.status === 'added' ? 'bg-emerald-100' : 
-                      row.status === 'changed' ? 'bg-blue-200' : ''
-                    }`}>
-                      {row.new ? (
-                        <>
-                          <span className="font-mono font-medium text-slate-900">{row.new.name}</span>
-                          <span className="text-slate-500 text-xs bg-white px-2 py-1 rounded-md border border-slate-100">{row.new.type} {row.new.length ? `(${row.new.length})` : ''}</span>
-                        </>
-                      ) : (
-                        <span className="text-slate-300 italic">{t('schema.removed')}</span>
-                      )}
-                    </div>
-
-                    {/* OLD COLUMN */}
-                    <div className={`p-3 pl-4 flex justify-between items-center ${
-                      row.status === 'removed' ? 'bg-rose-50/50' : 
-                      row.status === 'changed' ? 'bg-amber-50/50' : ''
-                    }`}>
-                      {row.old ? (
-                        <>
-                          <span className="font-mono text-slate-600 line-through decoration-slate-300 opacity-80">{row.old.name}</span>
-                          <span className="text-slate-400 text-xs">{row.old.type} {row.old.length ? `(${row.old.length})` : ''}</span>
-                        </>
-                      ) : (
-                        <span className="text-slate-300 italic">{t('schema.notExisted')}</span>
-                      )}
-                    </div>
-
+            {/* Right Column: SQL Preview */}
+            <div className="space-y-4 flex flex-col">
+              <h3 className="font-semibold text-slate-700 flex items-center gap-2">
+                <Terminal className="w-4 h-4 text-slate-500" />
+                migration.sql Preview
+              </h3>
+              
+              <div className="flex-1 bg-[#0d1117] border border-slate-800 rounded-xl overflow-hidden flex flex-col shadow-inner min-h-[400px]">
+                <div className="bg-[#161b22] px-4 py-2 border-b border-slate-800 flex items-center text-xs text-slate-400 font-mono">
+                  <div className="flex space-x-2 mr-4">
+                    <div className="w-3 h-3 rounded-full bg-rose-500/80"></div>
+                    <div className="w-3 h-3 rounded-full bg-amber-500/80"></div>
+                    <div className="w-3 h-3 rounded-full bg-emerald-500/80"></div>
                   </div>
-                ))}
+                  prisma/migrations/.../migration.sql
+                </div>
+                <div className="flex-1 p-4 overflow-y-auto text-sm font-mono text-slate-300 relative">
+                  {loadingSql ? (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500 space-y-3">
+                      <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
+                      <p>Generating SQL dry-run...</p>
+                    </div>
+                  ) : (
+                    <pre className="whitespace-pre-wrap break-words">{sqlPreview}</pre>
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Footer */}
-          <div className="p-5 border-t border-slate-200 bg-white flex flex-col gap-4">
+          {/* Footer Actions */}
+          <div className="p-5 border-t border-slate-200 bg-white flex justify-between items-center shrink-0">
+            <Button
+              variant="ghost"
+              onClick={() => setIsOpen(true)}
+              disabled={isRejecting || isApplying}
+              className="text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+            >
+              <X className="w-4 h-4 mr-2" />
+              {t('schema.rejectBtn') || 'Reject Changes'}
+            </Button>
 
-            <div className="flex items-center space-x-2 bg-amber-50 p-3 rounded-lg border border-amber-200">
-              <input
-                type="checkbox"
-                id="confirm-sync"
-                className="w-4 h-4 text-emerald-600 rounded border-gray-300 cursor-pointer"
-                checked={confirmPrismaUpdated}
-                onChange={(e) => setConfirmPrismaUpdated(e.target.checked)}
-              />
-              <label htmlFor="confirm-sync" className="text-sm text-slate-700 font-medium cursor-pointer">
-                {t('schema.confirmLabel')} <code className="text-pink-600 bg-pink-50 px-1 rounded">schema.prisma</code> {t('schema.confirmLabel2')}
-              </label>
-            </div>
-
-            <div className="flex justify-between items-center mt-2">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsOpen(true)
-                }}
-                disabled={isRejecting || isResolving}
-                className="text-rose-600 border-rose-200 hover:bg-rose-50"
-              >
-                {isRejecting ? <Loader2 className="animate-spin w-4 h-4 mr-2" /> : null}
-                {t('schema.reject')}
-              </Button>
-
-              <Button
-                size="lg"
-                onClick={handleResolve}
-                disabled={!confirmPrismaUpdated || isResolving || isRejecting}
-                className={`${confirmPrismaUpdated ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-slate-200 text-slate-400'} font-semibold shadow-sm px-6 transition-colors`}
-              >
-                {isResolving ? <Loader2 className="animate-spin w-5 h-5 mr-2" /> : <CheckCircle className="w-5 h-5 mr-2" />}
-                {t('schema.resolve')}
-              </Button>
-            </div>
+            <Button
+              size="lg"
+              onClick={handleApplyLiveMigration}
+              disabled={isApplying || loadingSql || isRejecting}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-md px-8"
+            >
+              {isApplying ? (
+                <>
+                  <Loader2 className="animate-spin w-5 h-5 mr-2" />
+                  Deploying to Database...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-5 h-5 mr-2" />
+                  Accept & Apply Live
+                </>
+              )}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

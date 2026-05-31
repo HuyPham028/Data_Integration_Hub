@@ -8,10 +8,13 @@ import { SchemaRegistry, SchemaRegistrySchema } from './schemas/schema-registry.
 import { EventLog, EventLogSchema } from '../event-log/schemas/event-log.schema';
 import { GitHubDeployService } from '../github-deploy/github-deploy.service';
 import { PrismaSchemaGeneratorService } from '../prisma-schema-generator/prisma-schema-generator.service';
+import { SchemaMigratorService } from './schema-migrator.service';
+import { PrismaModule } from 'src/prisma/prisma.module';
 
 @Module({
   imports: [
     ConfigModule,
+    PrismaModule,
     MongooseModule.forFeature([
       { name: SchemaRegistry.name, schema: SchemaRegistrySchema },
       { name: EventLog.name, schema: EventLogSchema },
@@ -20,10 +23,11 @@ import { PrismaSchemaGeneratorService } from '../prisma-schema-generator/prisma-
   controllers: [SchemaRegistryController],
   providers: [
     SchemaRegistryService,
+    SchemaMigratorService,
     EventLogService,
     GitHubDeployService,
     PrismaSchemaGeneratorService,
   ],
-  exports: [SchemaRegistryService],
+  exports: [SchemaRegistryService, SchemaMigratorService],
 })
 export class SchemaRegistryModule {}

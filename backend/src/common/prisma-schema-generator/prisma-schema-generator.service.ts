@@ -413,4 +413,28 @@ export class PrismaSchemaGeneratorService {
 
     return lines.join('\n');
   }
+
+  async generatePreviewSchema(targetTableName: string, newDetails: any[]): Promise<string> {
+    const stableSchemas = await this.registryModel.find({ status: 'stable' }).lean().exec();
+    const dynamicParts: string[] = [];
+
+    // Simulate the schema as if the target table was approved
+    let found = false;
+    for (const schema of stableSchemas) {
+      if (STATIC_TABLE_NAMES.has(schema.tableName)) continue;
+      
+      if (schema.tableName === targetTableName) {
+        schema.details = newDetails;
+        found = true;
+      }
+      dynamicParts.push(this.generateModel(schema));
+    }
+
+    // If it's a completely new table
+    if (!found) {
+      dynamicParts.push(this.generateModel({ tableName: targetTableName, details: newDetails, primaryKey: ['id'] }));
+    }
+
+    return [SCHEMA_HEADER, ...dynamicParts, STATIC_RELATIONAL_MODELS, STATIC_SYSTEM_MODELS].join('\n');
+  }
 }
