@@ -265,6 +265,25 @@ export class SchemaRegistryService {
     return updated;
   }
 
+  async updateSyncStrategy(
+    tableName: string,
+    strategy: 'upsert' | 'overwrite' | 'incremental',
+  ) {
+    const valid = ['upsert', 'overwrite', 'incremental'];
+    if (!valid.includes(strategy)) {
+      throw new BadRequestException(`Invalid strategy. Must be one of: ${valid.join(', ')}`);
+    }
+    const updated = await this.registryModel.findOneAndUpdate(
+      { tableName },
+      { $set: { syncStrategy: strategy } },
+      { new: true },
+    );
+    if (!updated) {
+      throw new NotFoundException(`Schema table "${tableName}" not found.`);
+    }
+    return { tableName, syncStrategy: updated.syncStrategy };
+  }
+
   async updateLastSyncTime(tableName: string, timestamp: Date) {
     return this.registryModel.findOneAndUpdate(
       { tableName },

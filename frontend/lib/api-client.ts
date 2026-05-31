@@ -73,6 +73,11 @@ export const IntegrationAPI = {
   rejectSchema: async (tableName: string) => {
     const response = await apiClient.put(`/schema-registry/${tableName}/reject`);
   },
+
+  updateSyncStrategy: async (tableName: string, strategy: 'upsert' | 'overwrite' | 'incremental') => {
+    const response = await apiClient.patch(`/schema-registry/${tableName}/strategy`, { strategy });
+    return response.data;
+  },
   
   getLogs: async () => {
     const response = await apiClient.get('/event-logs?type=sync');
@@ -258,6 +263,16 @@ export const AdminDataAPI = {
       currentPage++;
     } while (currentPage <= totalPages);
     return { columns: allData.length > 0 ? Object.keys(allData[0]) : [], data: allData };
+  },
+
+  executeRawQuery: async (sql: string): Promise<{
+    columns: string[];
+    rows: Record<string, unknown>[];
+    rowCount: number;
+    executionTime: number;
+  }> => {
+    const response = await apiClient.post('/api/master-data/raw-query', { sql });
+    return response.data;
   },
 };
 

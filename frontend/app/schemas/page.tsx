@@ -56,6 +56,25 @@ export default function SchemaRegistryPage() {
   const [isApplying, setIsApplying] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [updatingStrategy, setUpdatingStrategy] = useState<Set<string>>(new Set());
+
+  const handleStrategyChange = async (tableName: string, strategy: 'upsert' | 'overwrite' | 'incremental') => {
+    setUpdatingStrategy(prev => new Set(prev).add(tableName));
+    try {
+      await IntegrationAPI.updateSyncStrategy(tableName, strategy);
+      setSchemas(prev =>
+        prev.map(s => s.tableName === tableName ? { ...s, syncStrategy: strategy } : s)
+      );
+    } catch (error) {
+      console.error('Failed to update strategy:', error);
+    } finally {
+      setUpdatingStrategy(prev => {
+        const next = new Set(prev);
+        next.delete(tableName);
+        return next;
+      });
+    }
+  };
 
   // Live SQL Preview State
   const [sqlPreview, setSqlPreview] = useState<string>('');
@@ -182,7 +201,40 @@ export default function SchemaRegistryPage() {
                       {schema.status === 'new' && <Badge className="bg-blue-50 text-blue-700 border-blue-200"><FileJson className="w-3 h-3 mr-1"/> New Model</Badge>}
                       {schema.status === 'changed' && <Badge className="bg-amber-50 text-amber-700 border-amber-200"><AlertTriangle className="w-3 h-3 mr-1"/> Schema Drift</Badge>}
                     </TableCell>
-                    <TableCell>{schema.syncStrategy}</TableCell>
+                    <TableCell>
+                      <div className="relative">
+                        <select
+                          value={schema.syncStrategy || 'upsert'}
+                          disabled={updatingStrategy.has(schema.tableName)}
+                          onChange={(e) =>
+                            handleStrategyChange(
+                              schema.tableName,
+                              e.target.value as 'upsert' | 'overwrite' | 'incremental',
+                            )
+                          }
+                          className={`
+                            text-xs font-medium px-2 py-1.5 pr-7 rounded-md border appearance-none cursor-pointer
+                            bg-white border-slate-200 text-slate-700
+                            hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                            disabled:opacity-50 disabled:cursor-not-allowed
+                            transition-colors
+                          `}
+                        >
+                          <option value="upsert">upsert</option>
+                          <option value="overwrite">overwrite</option>
+                          <option value="incremental">incremental</option>
+                        </select>
+                        <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-400">
+                          {updatingStrategy.has(schema.tableName) ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          )}
+                        </span>
+                      </div>
+                    </TableCell>
                     <TableCell className="text-right pr-6">
                       {schema.status !== 'stable' ? (
                         <Button 

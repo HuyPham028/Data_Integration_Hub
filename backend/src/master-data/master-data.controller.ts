@@ -9,6 +9,7 @@ import {
   Query,
   UseGuards,
   Request,
+  BadRequestException,
 } from '@nestjs/common';
 
 import { MasterDataService } from './master-data.service';
@@ -25,6 +26,14 @@ import { PermissionsGuard } from '../modules/auth/guards/permissions.guard';
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class MasterDataController {
   constructor(private readonly masterDataService: MasterDataService) {}
+
+  @Post('raw-query')
+  executeRawQuery(@Body('sql') sql: string) {
+    if (!sql?.trim()) {
+      throw new BadRequestException('Trường sql không được để trống.');
+    }
+    return this.masterDataService.executeRawQuery(sql);
+  }
 
   // GET /api/master-data/dm_gioi_tinh?page=1&limit=20&search=Nam
   @Get(':table')

@@ -114,6 +114,54 @@ export class MasterDataService {
     return model.delete({ where: { id: Number(id) } });
   }
 
+  async executeRawQuery(sql: string): Promise<{
+    columns: string[];
+    rows: Record<string, unknown>[];
+    rowCount: number;
+    executionTime: number;
+  }> {
+    const trimmed = sql.trim();
+    const upper = trimmed.toUpperCase();
+
+    if (!upper.startsWith('SELECT') && !upper.startsWith('WITH')) {
+      throw new BadRequestException('Chỉ cho phép câu lệnh SELECT hoặc WITH (CTE).');
+    }
+
+    const forbidden = /\b(INSERT|UPDATE|DELETE|DROP|TRUNCATE|ALTER|CREATE|GRANT|REVOKE|EXECUTE|EXEC)\b/i;
+    if (forbidden.test(trimmed)) {
+      throw new BadRequestException('Query chứa lệnh không được phép (INSERT/UPDATE/DELETE/DROP...).');
+    }
+
+    const start = Date.now();
+    let raw: Record<string, unknown>[];
+    try {
+      raw = await this.prisma.$queryRawUnsafe<Record<string, unknown>[]>(trimmed);
+    } catch (err: any) {
+      const pgMessage =
+        err?.meta?.message ||
+        err?.message ||
+        'Query thất bại.';
+      throw new BadRequestException(pgMessage);
+    }
+    const executionTime = Date.now() - start;
+
+    const capped = Array.isArray(raw) ? raw.slice(0, 500) : [];
+    const rows = capped.map((row) => {
+      const out: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(row)) {
+        out[k] = typeof v === 'bigint' ? Number(v) : v;
+      }
+      return out;
+    });
+
+    return {
+      columns: rows.length > 0 ? Object.keys(rows[0]) : [],
+      rows,
+      rowCount: rows.length,
+      executionTime,
+    };
+  }
+
   async getAllowedTablesForUser(user: any) {
     const allSchemas = await this.schemaRegistryService.getAllSchema();
 

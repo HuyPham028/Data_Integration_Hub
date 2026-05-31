@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { IntegrationAPI, AdminDataAPI } from '@/lib/api-client';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   Database, Search, FileDown, Loader2, ChevronLeft, ChevronRight,
   ScanSearch, AlertTriangle, CheckCircle2, Trash2, X, TableProperties, ShieldAlert,
+  Terminal, Play,
 } from 'lucide-react';
 import ConfirmDialog from '@/components/modals/ConfirmModal';
 import { useLanguage } from '@/lib/i18n';
@@ -47,6 +48,21 @@ export default function DataManagementPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
   const [exportingCSV, setExportingCSV] = useState(false);
+
+  // ── Table list search ───────────────────────────────────────────────────────
+  const [tableSearch, setTableSearch] = useState('');
+
+  // ── SQL Query console ───────────────────────────────────────────────────────
+  const [sqlModalOpen, setSqlModalOpen] = useState(false);
+  const [sqlQuery, setSqlQuery] = useState('SELECT * FROM dm_gioi_tinh LIMIT 20;');
+  const [sqlRunning, setSqlRunning] = useState(false);
+  const [sqlResult, setSqlResult] = useState<{
+    columns: string[];
+    rows: Record<string, unknown>[];
+    rowCount: number;
+    executionTime: number;
+  } | null>(null);
+  const [sqlError, setSqlError] = useState('');
 
   // ── Orphan panel ────────────────────────────────────────────────────────────
   const [orphanPanelOpen, setOrphanPanelOpen] = useState(false);
@@ -96,6 +112,29 @@ export default function DataManagementPage() {
     setOrphanPanelOpen(false);
     setOrphanResult(null);
     setPurgeSuccess(null);
+  };
+
+  // ── SQL Query ───────────────────────────────────────────────────────────────
+  const handleRunQuery = async () => {
+    if (!sqlQuery.trim()) return;
+    setSqlRunning(true);
+    setSqlResult(null);
+    setSqlError('');
+    try {
+      const result = await AdminDataAPI.executeRawQuery(sqlQuery);
+      setSqlResult(result);
+    } catch (err: any) {
+      setSqlError(err?.response?.data?.message || 'Query thất bại.');
+    } finally {
+      setSqlRunning(false);
+    }
+  };
+
+  const handleQueryKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      handleRunQuery();
+    }
   };
 
   // ── Export CSV ──────────────────────────────────────────────────────────────
@@ -173,19 +212,43 @@ export default function DataManagementPage() {
       {/* ── LEFT: Table list ─────────────────────────────────────────────────── */}
       <Card className="w-64 flex-shrink-0 flex flex-col border-slate-200 h-full overflow-hidden">
         <CardHeader className="bg-slate-50 border-b py-3 px-4">
-          <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-            <TableProperties className="w-4 h-4 text-blue-600" />
-            {t('dm.allTables')}
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+              <TableProperties className="w-4 h-4 text-blue-600" />
+              {t('dm.allTables')}
+            </CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs gap-1 text-violet-700 border-violet-200 hover:bg-violet-50 px-2"
+              onClick={() => { setSqlResult(null); setSqlError(''); setSqlModalOpen(true); }}
+            >
+              <Terminal className="w-3 h-3" />
+              SQL
+            </Button>
+          </div>
           <p className="text-xs text-slate-400 mt-0.5">{t('dm.stableOnly')}</p>
         </CardHeader>
+
+        <div className="px-2 pt-2 pb-1 border-b border-slate-100 flex-shrink-0">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+            <Input
+              type="text"
+              placeholder="Tìm tên bảng..."
+              className="pl-8 h-8 text-xs"
+              value={tableSearch}
+              onChange={(e) => setTableSearch(e.target.value)}
+            />
+          </div>
+        </div>
 
         <CardContent className="p-2 overflow-y-auto flex-1">
           {loadingSchemas ? (
             <div className="flex justify-center py-6"><Loader2 className="animate-spin w-5 h-5 text-blue-500" /></div>
           ) : (
             <div className="space-y-0.5">
-              {schemas.map((schema) => (
+              {schemas.filter((s) => s.tableName.toLowerCase().includes(tableSearch.toLowerCase())).map((schema) => (
                 <button
                   key={schema._id}
                   onClick={() => handleSelectTable(schema)}
@@ -230,17 +293,6 @@ export default function DataManagementPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <div className="relative w-52">
-                    <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
-                    <Input
-                      type="text"
-                      placeholder={t('dm.search')}
-                      className="pl-8 h-8 text-sm"
-                      value={searchTerm}
-                      onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-                    />
-                  </div>
-
                   <Button variant="outline" size="sm" className="h-8 text-slate-600 text-xs"
                     onClick={handleExportCSV} disabled={exportingCSV || loadingData}>
                     {exportingCSV
@@ -457,6 +509,133 @@ export default function DataManagementPage() {
         loading={purging}
         onConfirm={handlePurgeOrphans}
       />
+
+      {/* ── SQL Query Console Modal ─────────────────────────────────────────── */}
+      {sqlModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-white w-[92vw] h-[88vh] rounded-xl shadow-2xl flex flex-col overflow-hidden border border-slate-200">
+
+            {/* Modal header */}
+            <div className="border-b px-5 py-3 bg-slate-900 flex items-center justify-between flex-shrink-0">
+              <div className="flex items-center gap-2.5">
+                <Terminal className="w-4 h-4 text-violet-400" />
+                <h2 className="text-sm font-semibold text-white">SQL Query Console</h2>
+                <Badge variant="outline" className="text-xs text-violet-300 border-violet-700 bg-violet-950/50 font-mono">
+                  PostgreSQL
+                </Badge>
+                <span className="text-xs text-slate-500">· chỉ SELECT · tối đa 500 rows</span>
+              </div>
+              <button
+                onClick={() => setSqlModalOpen(false)}
+                className="text-slate-400 hover:text-white transition-colors p-1 rounded hover:bg-slate-700"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* SQL editor */}
+            <div className="border-b bg-slate-950 px-4 pt-3 pb-3 flex-shrink-0">
+              <textarea
+                className="w-full h-28 bg-slate-800 text-emerald-300 font-mono text-sm rounded-lg p-3 resize-none border border-slate-700 focus:border-violet-500 focus:ring-1 focus:ring-violet-500 focus:outline-none placeholder:text-slate-600"
+                value={sqlQuery}
+                onChange={(e) => setSqlQuery(e.target.value)}
+                onKeyDown={handleQueryKeyDown}
+                placeholder="SELECT * FROM dm_gioi_tinh LIMIT 20;"
+                spellCheck={false}
+              />
+              <div className="flex items-center justify-between mt-2">
+                <div className="flex items-center gap-3 text-xs">
+                  {sqlResult && !sqlRunning && (
+                    <>
+                      <span className="text-emerald-400 flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" />
+                        {sqlResult.rowCount} rows
+                      </span>
+                      <span className="text-slate-500">{sqlResult.executionTime}ms</span>
+                    </>
+                  )}
+                  {sqlError && !sqlRunning && (
+                    <span className="text-rose-400 flex items-center gap-1.5">
+                      <AlertTriangle className="w-3 h-3" />
+                      {sqlError}
+                    </span>
+                  )}
+                  {!sqlResult && !sqlError && !sqlRunning && (
+                    <span className="text-slate-600 text-xs">Ctrl+Enter để chạy</span>
+                  )}
+                </div>
+                <Button
+                  size="sm"
+                  className="h-8 bg-violet-600 hover:bg-violet-700 text-white text-xs"
+                  onClick={handleRunQuery}
+                  disabled={sqlRunning || !sqlQuery.trim()}
+                >
+                  {sqlRunning
+                    ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Running...</>
+                    : <><Play className="w-3.5 h-3.5 mr-1.5" />Run Query</>}
+                </Button>
+              </div>
+            </div>
+
+            {/* Results area */}
+            <div className="flex-1 overflow-auto bg-white">
+              {sqlRunning && (
+                <div className="flex items-center justify-center h-full">
+                  <Loader2 className="w-8 h-8 animate-spin text-violet-500" />
+                </div>
+              )}
+
+              {!sqlRunning && sqlResult && sqlResult.rows.length > 0 && (
+                <Table className="min-w-max">
+                  <TableHeader className="bg-slate-100 sticky top-0 z-10">
+                    <TableRow>
+                      {sqlResult.columns.map((col, i) => (
+                        <TableHead key={i} className="font-bold text-slate-600 uppercase text-xs whitespace-nowrap py-2.5 font-mono">
+                          {col}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {sqlResult.rows.map((row, ri) => (
+                      <TableRow key={ri} className="hover:bg-violet-50/40 text-sm">
+                        {sqlResult.columns.map((col, ci) => (
+                          <TableCell key={ci} className="text-slate-700 max-w-[280px] truncate py-2 text-xs">
+                            {row[col] !== null && row[col] !== undefined ? (
+                              typeof row[col] === 'boolean' ? (
+                                <Badge variant={row[col] ? 'default' : 'secondary'} className={`text-xs ${row[col] ? 'bg-green-500' : ''}`}>
+                                  {row[col] ? 'True' : 'False'}
+                                </Badge>
+                              ) : String(row[col])
+                            ) : (
+                              <span className="text-slate-300 italic">null</span>
+                            )}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+
+              {!sqlRunning && sqlResult && sqlResult.rows.length === 0 && (
+                <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-2">
+                  <CheckCircle2 className="w-10 h-10 text-slate-200" />
+                  <p className="text-sm">Query thành công — 0 kết quả trả về.</p>
+                </div>
+              )}
+
+              {!sqlRunning && !sqlResult && !sqlError && (
+                <div className="flex flex-col items-center justify-center h-full text-slate-300 gap-3">
+                  <Terminal className="w-14 h-14" />
+                  <p className="text-sm text-slate-400">Nhập câu lệnh SQL và nhấn <kbd className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-xs font-mono">Ctrl+Enter</kbd> hoặc Run Query.</p>
+                  <p className="text-xs text-slate-300">Chỉ cho phép SELECT · Kết quả giới hạn 500 rows.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
