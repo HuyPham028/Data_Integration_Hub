@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Put, Param, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, Get, Put, Param, UseGuards, HttpCode } from '@nestjs/common';
 import { SchemaRegistryService } from './schema-registry.service';
 import { UpdateSchemaRegistryDto } from './dto/update-schema-registry.dto';
 import { JwtAuthGuard } from '../../modules/auth/guards/jwt-auth.guard';
@@ -19,6 +19,12 @@ export class SchemaRegistryController {
   @Get()
   async getAll() {
     return this.schemaRegistryService.getAllSchemasForAdmin();
+  }
+
+  @Put('resolve-all')
+  @HttpCode(200)
+  async resolveAllWarnings() {
+    return this.schemaRegistryService.resolveAllWarnings();
   }
 
   @Put(':tableName/resolve')
