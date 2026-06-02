@@ -188,6 +188,19 @@ model DmDoiTuongChinhSach {
   @@map("dm_doi_tuong_chinh_sach")
 }
 /// Auto-generated from Schema Registry
+model DmDtChungChiTinHoc {
+  id        Int      @id @default(autoincrement())
+  ma                   String @unique @db.VarChar(5)
+  ten                  String? @db.VarChar(100)
+  active               Boolean? @default(true)
+  noiCap               String?
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
+
+  @@index([ma])
+  @@map("dm_dt_chung_chi_tin_hoc")
+}
+/// Auto-generated from Schema Registry
 model DmDtHinhThucCM {
   id        Int      @id @default(autoincrement())
   ma                   String @unique @db.VarChar(5)
