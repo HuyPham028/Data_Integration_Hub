@@ -105,6 +105,14 @@ export class SchemaRegistryService {
     return this.registryModel.findOne({ tableName }).lean().exec();
   }
 
+  async markAsStable(tableName: string) {
+    return this.registryModel.findOneAndUpdate(
+      { tableName },
+      { $set: { status: 'stable' } },
+      { new: true },
+    );
+  }
+
   async detectSchemaChanges(fetchedSchemas: any[]) {
     let changesDetected = 0;
     let newSchemas = 0;
@@ -257,10 +265,7 @@ export class SchemaRegistryService {
       { new: true },
     );
 
-    // 2. Trigger the local migration + git push
-    this.schemaMigrator.applyLiveMigration(tableName).catch((err) =>
-      this.logger.error(`[AutoDeploy] Failed to apply migration for "${tableName}": ${err.message}`),
-    );
+    // Migration is now triggered from the controller with explicit SQL from the frontend
 
     return updated;
   }

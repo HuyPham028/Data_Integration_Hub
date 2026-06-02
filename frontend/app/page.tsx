@@ -182,16 +182,6 @@ export default function DashboardPage() {
 
   // --- STATS CALCULATIONS ---
 
-  const totalRuns = allRuns.length;
-  
-  // Job Completion Rate: Consider 'done', 'done_with_warnings', and 'partial_success' as completed jobs
-  const completedRuns = allRuns.filter((run) => run.status !== 'failed' && run.status !== 'running').length;
-  const failedRuns = allRuns.filter((run) => run.status === 'failed').length;
-  const completionRate = totalRuns > 0 ? Math.round((completedRuns / totalRuns) * 100) : 0;
-
-  // Total Records Synced (A much better vanity metric for ETL)
-  const totalRecordsSynced = allRuns.reduce((sum, run) => sum + Number(run.details?.metrics?.success || 0), 0);
-
   const activeJobsCount = scheduledJobs.filter((j) => j.isActive).length;
 
   const avgDurationMs = (() => {
@@ -211,20 +201,29 @@ export default function DashboardPage() {
     return `${m}m ${sec}s`;
   };
 
-  const nextRunAt = (() => {
-    const nexts = scheduledJobs
-      .map((j) => j.nextRunAt)
-      .filter((n): n is string => !!n)
-      .map((s) => new Date(s));
-    if (!nexts.length) return 'N/A';
-    const earliest = new Date(Math.min(...nexts.map((d) => d.getTime())));
-    
-    const now = new Date();
-    if (earliest.toDateString() === now.toDateString()) {
-      return earliest.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-    }
-    return earliest.toLocaleString('vi-VN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+  // Last run
+  const lastRun = allRuns[0] ?? null;
+  const lastRunRecords = Number(lastRun?.details?.metrics?.success ?? 0);
+  const lastRunStatus = lastRun?.status ?? null;
+  const lastRunTimeAgo = (() => {
+    if (!lastRun?.createdAt) return null;
+    const diffMs = Date.now() - new Date(lastRun.createdAt).getTime();
+    const diffMin = Math.floor(diffMs / 60000);
+    if (diffMin < 1) return 'vừa xong';
+    if (diffMin < 60) return `${diffMin} phút trước`;
+    const diffH = Math.floor(diffMin / 60);
+    if (diffH < 24) return `${diffH}h trước`;
+    return `${Math.floor(diffH / 24)} ngày trước`;
   })();
+
+  // Schema warnings
+  const schemaWarnings = (availableSchemas as any[]).filter(
+    (s) => s.status === 'changed' || s.status === 'new'
+  ).length;
+
+  // Stable tables
+  const stableTablesCount = (availableSchemas as any[]).filter((s) => s.status === 'stable').length;
+  const totalTablesCount = availableSchemas.length;
 
   return (
     <div className="h-full min-h-0 flex flex-col gap-4">
@@ -265,64 +264,114 @@ export default function DashboardPage() {
 
           {/* ETL Stats Grid */}
           <div className="grid grid-cols-3 gap-3">
+            {/* Card 1: Last Run Records */}
             <Card className="border-slate-200 shadow-sm">
               <CardContent className="p-4 flex flex-col justify-center">
-                <div className="flex items-center text-sm text-slate-500 mb-1">
-                  <Database className="h-4 w-4 mr-1 text-blue-500" /> Records
+                <div className="flex items-center text-xs text-slate-500 mb-1 gap-1">
+                  <Database className="h-3.5 w-3.5 text-blue-500" /> Last Run Records
                 </div>
                 <div className="text-2xl font-bold text-slate-800">
-                  {new Intl.NumberFormat('vi-VN').format(totalRecordsSynced)}
+                  {lastRunRecords > 0
+                    ? new Intl.NumberFormat('vi-VN').format(lastRunRecords)
+                    : <span className="text-slate-400 text-lg">—</span>}
                 </div>
+                {lastRunTimeAgo && (
+                  <div className="text-[10px] text-slate-400 mt-0.5">{lastRunTimeAgo}</div>
+                )}
               </CardContent>
             </Card>
 
-            <Card className="border-slate-200 shadow-sm">
+            {/* Card 2: Last Run Status */}
+            <Card className={`shadow-sm border ${
+              lastRunStatus === 'done' || lastRunStatus === 'done_with_warnings' || lastRunStatus === 'partial_success'
+                ? 'border-emerald-200 bg-emerald-50/40'
+                : lastRunStatus === 'failed'
+                ? 'border-red-200 bg-red-50/40'
+                : 'border-slate-200'
+            }`}>
               <CardContent className="p-4 flex flex-col justify-center">
-                <div className="flex items-center text-sm text-slate-500 mb-1">
-                  <CheckCircle2 className="h-4 w-4 mr-1 text-emerald-500" /> Job Success
+                <div className="flex items-center text-xs text-slate-500 mb-1 gap-1">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-slate-400" /> Last Run Status
                 </div>
-                <div className="text-2xl font-bold text-emerald-600">
-                  {completionRate}%
-                </div>
+                {lastRunStatus ? (
+                  <div className={`text-lg font-bold ${
+                    lastRunStatus === 'done' ? 'text-emerald-600' :
+                    lastRunStatus === 'done_with_warnings' ? 'text-amber-500' :
+                    lastRunStatus === 'partial_success' ? 'text-amber-500' :
+                    lastRunStatus === 'failed' ? 'text-red-500' :
+                    'text-blue-500'
+                  }`}>
+                    {lastRunStatus === 'done' ? '✓ SUCCESS' :
+                     lastRunStatus === 'done_with_warnings' ? '⚠ WARNINGS' :
+                     lastRunStatus === 'partial_success' ? '~ PARTIAL' :
+                     lastRunStatus === 'failed' ? '✗ FAILED' :
+                     '⟳ RUNNING'}
+                  </div>
+                ) : (
+                  <div className="text-lg font-bold text-slate-400">—</div>
+                )}
               </CardContent>
             </Card>
 
-            <Card className="border-slate-200 shadow-sm">
+            {/* Card 3: Schema Warnings */}
+            <Card className={`shadow-sm border ${schemaWarnings > 0 ? 'border-amber-200 bg-amber-50/40' : 'border-slate-200'}`}>
               <CardContent className="p-4 flex flex-col justify-center">
-                <div className="flex items-center text-sm text-slate-500 mb-1">
-                  <AlertTriangle className="h-4 w-4 mr-1 text-red-400" /> Failed Jobs
+                <div className="flex items-center text-xs text-slate-500 mb-1 gap-1">
+                  <AlertTriangle className="h-3.5 w-3.5 text-amber-400" /> Schema Warnings
                 </div>
-                <div className="text-2xl font-bold text-red-500">
-                  {failedRuns}
+                <div className={`text-2xl font-bold ${schemaWarnings > 0 ? 'text-amber-500' : 'text-emerald-600'}`}>
+                  {schemaWarnings > 0 ? schemaWarnings : '✓ 0'}
+                </div>
+                <div className="text-[10px] text-slate-400 mt-0.5">
+                  {schemaWarnings > 0 ? 'bảng cần review' : 'tất cả ổn định'}
                 </div>
               </CardContent>
             </Card>
           </div>
-          
+
           <div className="grid grid-cols-3 gap-3">
+            {/* Card 4: Active Jobs */}
             <Card className="border-slate-200 shadow-sm">
               <CardContent className="p-4 flex flex-col justify-center">
-                <div className="text-sm text-slate-500 mb-1">Active Jobs</div>
+                <div className="flex items-center text-xs text-slate-500 mb-1 gap-1">
+                  <Clock className="h-3.5 w-3.5 text-violet-500" /> Active Jobs
+                </div>
                 <div className="text-2xl font-bold text-slate-800">{activeJobsCount}</div>
+                <div className="text-[10px] text-slate-400 mt-0.5">cron jobs đang chạy</div>
               </CardContent>
             </Card>
 
+            {/* Card 5: Avg Duration */}
             <Card className="border-slate-200 shadow-sm">
               <CardContent className="p-4 flex flex-col justify-center">
-                <div className="text-sm text-slate-500 mb-1">Avg Duration</div>
+                <div className="flex items-center text-xs text-slate-500 mb-1 gap-1">
+                  <Activity className="h-3.5 w-3.5 text-blue-500" /> Avg Duration
+                </div>
                 <div className="text-2xl font-bold text-slate-800">
                   {formatDuration(avgDurationMs)}
                 </div>
+                <div className="text-[10px] text-slate-400 mt-0.5">trung bình mỗi lần sync</div>
               </CardContent>
             </Card>
 
-            <Card className="border-slate-200 shadow-sm">
+            {/* Card 6: Stable Tables */}
+            <Card className={`shadow-sm border ${
+              totalTablesCount > 0 && stableTablesCount < totalTablesCount
+                ? 'border-amber-200 bg-amber-50/30'
+                : 'border-slate-200'
+            }`}>
               <CardContent className="p-4 flex flex-col justify-center">
-                <div className="flex items-center text-sm text-slate-500 mb-1">
-                  <Clock className="h-4 w-4 mr-1 text-amber-500" /> Next Run
+                <div className="flex items-center text-xs text-slate-500 mb-1 gap-1">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> Stable Tables
                 </div>
-                <div className="text-lg font-bold text-slate-800 truncate" title={nextRunAt}>
-                  {nextRunAt}
+                <div className="text-2xl font-bold text-slate-800">
+                  {stableTablesCount}
+                  <span className="text-base font-normal text-slate-400">/{totalTablesCount}</span>
+                </div>
+                <div className="text-[10px] text-slate-400 mt-0.5">
+                  {totalTablesCount > 0
+                    ? `${Math.round((stableTablesCount / totalTablesCount) * 100)}% schema ổn định`
+                    : 'đang tải...'}
                 </div>
               </CardContent>
             </Card>

@@ -32,8 +32,20 @@ export class SchemaRegistryController {
   // }
 
   @Put(':tableName/resolve')
-  async resolveWarning(@Param('tableName') tableName: string) {
-    return this.schemaRegistryService.resolveSchemaWarning(tableName);
+  @HttpCode(200)
+  async resolveWarning(
+    @Param('tableName') tableName: string,
+    @Body('sql') sql?: string,
+  ) {
+    // Mark stable FIRST so generateFullSchema() includes this table in the new schema.prisma
+    const updated = await this.schemaRegistryService.markAsStable(tableName);
+
+    if (sql?.trim()) {
+      // New flow: user reviewed + (optionally edited) the SQL → apply live
+      await this.schemaMigratorService.applyLiveMigration(tableName, sql);
+    }
+
+    return updated;
   }
 
   @Put(':tableName')

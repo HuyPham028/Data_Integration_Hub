@@ -108,14 +108,12 @@ export default function SchemaRegistryPage() {
   }, [selectedSchema]);
 
   const handleApplyLiveMigration = async () => {
-    if (!selectedSchema) return;
+    if (!selectedSchema || !sqlPreview.trim()) return;
     setIsApplying(true);
     try {
-      // Calls the new backend endpoint to generate schema, migrate deploy, reload client, and push to GitHub
-      await IntegrationAPI.resolveSchema(selectedSchema.tableName);
+      await IntegrationAPI.resolveSchema(selectedSchema.tableName, sqlPreview);
       setSelectedSchema(null);
       await fetchSchemas();
-      // Optionally add a toast notification here
       alert('Migration applied successfully and pushed to GitHub!');
     } catch (error: any) {
       console.error("Lỗi khi Apply Migration:", error);
@@ -353,14 +351,20 @@ export default function SchemaRegistryPage() {
                   </div>
                   prisma/migrations/.../migration.sql
                 </div>
-                <div className="flex-1 p-4 overflow-y-auto text-sm font-mono text-slate-300 relative">
+                <div className="flex-1 relative flex flex-col">
                   {loadingSql ? (
                     <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500 space-y-3">
                       <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
-                      <p>Generating SQL dry-run...</p>
+                      <p className="text-sm">Generating SQL dry-run...</p>
                     </div>
                   ) : (
-                    <pre className="whitespace-pre-wrap break-words">{sqlPreview}</pre>
+                    <textarea
+                      className="flex-1 w-full h-full min-h-[360px] p-4 bg-transparent text-sm font-mono text-slate-300 resize-none focus:outline-none focus:ring-1 focus:ring-blue-500/50 rounded-b-xl"
+                      value={sqlPreview}
+                      onChange={(e) => setSqlPreview(e.target.value)}
+                      spellCheck={false}
+                      placeholder="-- SQL will appear here after loading..."
+                    />
                   )}
                 </div>
               </div>

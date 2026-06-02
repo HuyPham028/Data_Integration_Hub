@@ -783,7 +783,7 @@ const nhVanBangDataset = Array.from({ length: NH_VAN_BANG_TOTAL }, (_, i) => {
     vbNgayCap: new Date(gradYear, month + 2, issueDay).toISOString(),
     vbSoHieu: "VB-" + gradYear + "-" + seq, // ≤50
     vbSoVaoSoGoc: "SG-" + gradYear + "-" + seq, // ≤50
-    nhDaoTaoId: null,  // nullable FK — avoid constraint violation in demo
+    nhDaoTaoId: null, // nullable FK — avoid constraint violation in demo
   };
 });
 
@@ -880,7 +880,12 @@ const happyPathDatasets = {
   dm_dt_chung_chi_tin_hoc: [
     { ma: "A", ten: "Chứng chỉ Tin học A", active: true },
     { ma: "B", ten: "Chứng chỉ Tin học B", active: true },
-    // { ma: "C", ten: "Chứng chỉ Tin học C", active: true, noiCap: "Ho Chi Minh" },
+    {
+      ma: "C",
+      ten: "Chứng chỉ Tin học C",
+      active: true,
+      noiCap: "Ho Chi Minh",
+    },
     { ma: "IC3", ten: "IC3 Computing Core", active: true },
     { ma: "MOS", ten: "Microsoft Office Specialist", active: true },
     { ma: "ICDL", ten: "ICDL", active: true },
@@ -1111,7 +1116,13 @@ const schemaDefinitions = {
       { field: "nhomLuong", type: "varchar", required: true, length: 10 },
       { field: "maBacLuong", type: "int", required: true },
       { field: "tenBacLuong", type: "varchar", required: true, length: 10 },
-      { field: "heSoLuong", type: "decimal", required: true, precision: 10, scale: 2 },
+      {
+        field: "heSoLuong",
+        type: "decimal",
+        required: true,
+        precision: 10,
+        scale: 2,
+      },
     ],
   },
   dm_trinh_do_pho_thong: {

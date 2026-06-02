@@ -65,8 +65,8 @@ export const IntegrationAPI = {
     return response.data;
   },
 
-  resolveSchema: async (tableName: string) => {
-    const response = await apiClient.put(`/schema-registry/${tableName}/resolve`);
+  resolveSchema: async (tableName: string, sql?: string) => {
+    const response = await apiClient.put(`/schema-registry/${tableName}/resolve`, { sql });
     return response.data;
   },
 
