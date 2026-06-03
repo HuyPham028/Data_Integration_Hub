@@ -121,3 +121,33 @@ jobs:
         env:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
         run: docker compose push
+
+  deploy-ec2:
+    runs-on: ubuntu-latest
+    needs: docker-push
+    if: github.ref == 'refs/heads/master'
+
+    steps:
+      - name: SSH to EC2 & deploy
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_PRIVATE_KEY }}
+          script: |
+            set -e
+            cd /home/ubuntu/Data_Integration_Hub
+
+            echo "==> Pulling latest code..."
+            git pull origin master
+
+            echo "==> Pulling latest Docker images..."
+            docker compose pull
+
+            echo "==> Restarting services..."
+            docker compose up -d
+
+            echo "==> Cleaning up old images..."
+            docker image prune -f
+
+            echo "==> Deploy complete."
