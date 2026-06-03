@@ -136,7 +136,7 @@ jobs:
           key: ${{ secrets.EC2_PRIVATE_KEY }}
           script: |
             set -e
-            cd /home/ubuntu/Data_Integration_Hub
+            cd /home/ec2-user/Data_Integration_Hub
 
             echo "==> Pulling latest code..."
             git pull origin master
