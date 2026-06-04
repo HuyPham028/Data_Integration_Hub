@@ -128,6 +128,13 @@ jobs:
     if: github.ref == 'refs/heads/master'
 
     steps:
+      - name: Debug secrets
+        run: |
+          echo "EC2_HOST is set: ${{ secrets.EC2_HOST != '' }}"
+          echo "EC2_USER is set: ${{ secrets.EC2_USER != '' }}"
+          echo "EC2_KEY is set: ${{ secrets.EC2_PRIVATE_KEY != '' }}"
+          echo "EC2_HOST value: ${{ secrets.EC2_HOST }}"
+
       - name: SSH to EC2 & deploy
         uses: appleboy/ssh-action@v1.2.0
         with:
