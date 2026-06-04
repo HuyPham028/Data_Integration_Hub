@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs/promises';
@@ -63,8 +63,11 @@ export class SchemaMigratorService {
     try {
       await pool.query(customSql);
       this.logger.log(`[Migrator] SQL executed successfully on PostgreSQL.`);
-    } finally {
+    } catch (err: any) {
       await pool.end();
+      throw new BadRequestException(err?.message || 'SQL execution failed.');
+    } finally {
+      await pool.end().catch(() => null);
     }
 
     // 2. Generate new schema.prisma and write locally

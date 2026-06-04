@@ -141,11 +141,8 @@ jobs:
             echo "==> Pulling latest code..."
             git pull origin master
 
-            echo "==> Pulling latest Docker images..."
-            docker compose pull
-
-            echo "==> Restarting services..."
-            docker compose up -d
+            echo "==> Rebuilding and restarting services..."
+            docker compose up -d --build
 
             echo "==> Cleaning up old images..."
             docker image prune -f

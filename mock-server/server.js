@@ -885,6 +885,7 @@ const happyPathDatasets = {
       ten: "Chứng chỉ Tin học C",
       active: true,
       noiCap: "Ho Chi Minh",
+      thoiHan: "24",
     },
     { ma: "IC3", ten: "IC3 Computing Core", active: true },
     { ma: "MOS", ten: "Microsoft Office Specialist", active: true },
