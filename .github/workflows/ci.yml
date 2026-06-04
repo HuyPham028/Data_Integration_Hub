@@ -148,6 +148,9 @@ jobs:
             echo "==> Pulling latest code..."
             git pull origin master
 
+            echo "==> Cleaning up Docker cache to free disk space..."
+            docker system prune -af
+
             echo "==> Rebuilding and restarting services..."
             docker compose up -d --build
 
