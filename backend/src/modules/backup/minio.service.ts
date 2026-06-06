@@ -89,4 +89,10 @@ export class MinioService implements OnModuleInit {
       stream.on('error', reject);
     });
   }
+
+  async getObjectStream(objectKey: string): Promise<{ stream: NodeJS.ReadableStream; size: number }> {
+    const stat = await this.client.statObject(this.bucket, objectKey);
+    const stream = await this.client.getObject(this.bucket, objectKey);
+    return { stream, size: stat.size };
+  }
 }

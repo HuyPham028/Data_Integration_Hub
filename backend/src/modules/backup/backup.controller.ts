@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Patch, Post, Query, Res, UseGuards } from '@nestjs/common';
+import { Response } from 'express';
 import { BackupService } from './backup.service';
 import { TriggerBackupDto } from './dto/trigger-backup.dto';
 import { RestoreBackupDto } from './dto/restore-backup.dto';
@@ -45,13 +46,17 @@ export class BackupController {
   }
 
   /**
-   * Lấy presigned URL để download 1 file backup.
+   * Download backup file — stream qua backend, không cần mở port MinIO ra ngoài.
    * Body: { "key": "pre-sync/nguoi_hoc/2026-04-23T05-00-45-710Z.json" }
    */
   @Post('download')
-  async getDownloadUrl(@Body() body: RestoreBackupDto) {
-    const url = await this.backupService.getDownloadUrl(body.key);
-    return { url, expiresIn: '1 hour' };
+  async downloadBackup(@Body() body: RestoreBackupDto, @Res() res: Response) {
+    const { stream, size } = await this.backupService.getBackupStream(body.key);
+    const filename = body.key.split('/').pop() ?? 'backup.json';
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', size);
+    stream.pipe(res);
   }
 
   /**

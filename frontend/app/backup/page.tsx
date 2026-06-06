@@ -113,10 +113,7 @@ export default function BackupPage() {
 
   const handleDownload = async (key: string) => {
     try {
-      const response = await BackupAPI.getDownloadUrl(key);
-
-      window.open(response.url, '_blank');
-
+      await BackupAPI.downloadBackup(key);
       toast.success(t('backup.toastDownload'));
     } catch (error) {
       toast.error(t('backup.toastErrLink'));

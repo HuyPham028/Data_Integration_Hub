@@ -227,6 +227,10 @@ export class BackupService implements OnModuleInit {
     return this.minio.getPresignedUrl(objectKey, 3600);
   }
 
+  async getBackupStream(objectKey: string) {
+    return this.minio.getObjectStream(objectKey);
+  }
+
   async deleteBackup(objectKey: string): Promise<void> {
     await this.minio.deleteObject(objectKey);
     this.logger.log(`[BACKUP DELETE] Đã xóa file: ${objectKey}`);

@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Database, Search, LayoutGrid, FileDown, Loader2, ChevronLeft, ChevronRight, Lock, LogOut } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Database, Search, LayoutGrid, FileDown, Loader2, ChevronLeft, ChevronRight, Lock, LogOut, Zap, Copy, Check, Eye, EyeOff } from "lucide-react";
 import { clearAuthSession } from '@/lib/auth-session';
 import { useLanguage } from '@/lib/i18n';
 
@@ -31,6 +32,13 @@ export default function DataExplorerPage() {
 
   // Export CSV
   const [exportingCSV, setExportingCSV] = useState(false);
+
+  // API modal
+  const [apiModalOpen, setApiModalOpen] = useState(false);
+  const [showToken, setShowToken] = useState(false);
+  const [copiedField, setCopiedField] = useState<'url' | 'curl' | 'token' | null>(null);
+  const [apiTestResult, setApiTestResult] = useState<string | null>(null);
+  const [apiTesting, setApiTesting] = useState(false);
 
   // 1. Load danh sách bảng khi vào trang
   useEffect(() => {
@@ -118,7 +126,43 @@ export default function DataExplorerPage() {
   const handleLogOut = () => {
     clearAuthSession();
     window.location.href = '/login';
-  }
+  };
+
+  const getApiUrl = (page = 1) => {
+    const base = process.env.NEXT_PUBLIC_KONG_URL || '';
+    return `${base}/api/master-data/${selectedTable?.id}?page=${page}&limit=10`;
+  };
+
+  const getAccessToken = () =>
+    typeof window !== 'undefined' ? (localStorage.getItem('access_token') ?? '') : '';
+
+  const getCurlCommand = () => {
+    const token = getAccessToken();
+    return `curl -X GET "${getApiUrl()}" \\\n  -H "Authorization: Bearer ${token}"`;
+  };
+
+  const handleCopy = (field: 'url' | 'curl' | 'token', text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    setTimeout(() => setCopiedField(null), 2000);
+  };
+
+  const handleApiTest = async () => {
+    setApiTesting(true);
+    setApiTestResult(null);
+    try {
+      const token = getAccessToken();
+      const res = await fetch(getApiUrl(), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = await res.json();
+      setApiTestResult(JSON.stringify(json, null, 2));
+    } catch (err: any) {
+      setApiTestResult(`Error: ${err.message}`);
+    } finally {
+      setApiTesting(false);
+    }
+  };
 
   return (
     <div className="flex h-[calc(100vh-4rem)] gap-6">
@@ -197,6 +241,13 @@ export default function DataExplorerPage() {
                     }}
                   />
                 </div>
+                <Button
+                  variant="outline"
+                  className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                  onClick={() => { setApiTestResult(null); setShowToken(false); setApiModalOpen(true); }}
+                >
+                  <Zap className="w-4 h-4 mr-2" /> {t('explorer.callApi')}
+                </Button>
                 <Button
                   variant="outline"
                   className="text-slate-600"
@@ -298,6 +349,89 @@ export default function DataExplorerPage() {
           </div>
         )}
       </Card>
+
+      {/* API Modal */}
+      <Dialog open={apiModalOpen} onOpenChange={setApiModalOpen}>
+        <DialogContent className="w-[90vw] !max-w-4xl max-h-[92vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg">
+              <Zap className="w-5 h-5 text-blue-600" />
+              {t('explorer.apiModal.title')} — <span className="text-blue-600">{selectedTable?.id}</span>
+            </DialogTitle>
+            <DialogDescription>{t('explorer.apiModal.desc')}</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-5 mt-2">
+            {/* Endpoint URL */}
+            <div>
+              <p className="text-xs font-semibold text-slate-500 uppercase mb-2">{t('explorer.apiModal.endpoint')}</p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 text-sm bg-slate-100 rounded-lg px-4 py-3 break-all text-slate-800 font-mono">
+                  {getApiUrl()}
+                </code>
+                <Button size="sm" variant="ghost" className="shrink-0" onClick={() => handleCopy('url', getApiUrl())}>
+                  {copiedField === 'url' ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                </Button>
+              </div>
+            </div>
+
+            {/* Access Token */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-semibold text-slate-500 uppercase">{t('explorer.apiModal.token')}</p>
+                <button
+                  className="text-xs text-blue-500 hover:underline flex items-center gap-1"
+                  onClick={() => setShowToken(v => !v)}
+                >
+                  {showToken ? <><EyeOff className="w-3 h-3" /> {t('explorer.apiModal.hideToken')}</> : <><Eye className="w-3 h-3" /> {t('explorer.apiModal.showToken')}</>}
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 text-sm bg-slate-100 rounded-lg px-4 py-3 break-all text-slate-800 font-mono overflow-hidden">
+                  {showToken ? getAccessToken() : '••••••••••••••••••••••••••••••••••••••••'}
+                </code>
+                <Button size="sm" variant="ghost" className="shrink-0" onClick={() => handleCopy('token', getAccessToken())}>
+                  {copiedField === 'token' ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                </Button>
+              </div>
+            </div>
+
+            {/* cURL */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-semibold text-slate-500 uppercase">{t('explorer.apiModal.curl')}</p>
+                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => handleCopy('curl', getCurlCommand())}>
+                  {copiedField === 'curl' ? <><Check className="w-3 h-3 mr-1 text-green-500" /> {t('explorer.apiModal.copied')}</> : <><Copy className="w-3 h-3 mr-1" /> {t('explorer.apiModal.copy')}</>}
+                </Button>
+              </div>
+              <pre className="text-sm bg-slate-900 text-green-300 rounded-lg px-4 py-4 overflow-x-auto whitespace-pre-wrap leading-relaxed">
+                {getCurlCommand()}
+              </pre>
+            </div>
+
+            {/* Test Button */}
+            <div className="flex gap-2">
+              <Button
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={handleApiTest}
+                disabled={apiTesting}
+              >
+                {apiTesting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t('explorer.apiModal.testing')}</> : <><Zap className="w-4 h-4 mr-2" /> {t('explorer.apiModal.test')}</>}
+              </Button>
+            </div>
+
+            {/* Response */}
+            {apiTestResult && (
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase mb-1">{t('explorer.apiModal.response')}</p>
+                <pre className="text-xs bg-slate-900 text-slate-200 rounded px-3 py-3 overflow-auto max-h-64 whitespace-pre-wrap">
+                  {apiTestResult}
+                </pre>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

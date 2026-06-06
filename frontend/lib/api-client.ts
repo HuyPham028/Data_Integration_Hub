@@ -133,9 +133,18 @@ export const BackupAPI = {
     return response.data;
   },
 
-  getDownloadUrl: async (key: string) => {
-    const response = await apiClient.post('/backup/download', { key });
-    return response.data;
+  downloadBackup: async (key: string) => {
+    const response = await apiClient.post('/backup/download', { key }, { responseType: 'blob' });
+    const blob = new Blob([response.data as BlobPart], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const filename = key.split('/').pop() ?? 'backup.json';
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   },
 
   restoreBackup: async (key: string) => {
@@ -314,6 +323,14 @@ export const AccessControlAPI = {
 
   updateRoleSettings: async (userId: number, roleSettings: RoleSettings) => {
     return (await apiClient.post(`/users/${userId}/permissions`, roleSettings)).data;
+  },
+
+  createUser: async (data: { username: string; email: string; password: string; fullName?: string }) => {
+    return (await apiClient.post('/users', data)).data;
+  },
+
+  deleteUser: async (userId: number) => {
+    return (await apiClient.delete(`/users/${userId}`)).data;
   },
 };
 
