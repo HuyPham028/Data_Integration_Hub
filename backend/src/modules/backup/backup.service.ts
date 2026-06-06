@@ -1,6 +1,7 @@
 import { Injectable, Logger, BadRequestException, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { OnEvent } from '@nestjs/event-emitter';
+import { Prisma } from '@prisma/client';
 import { MinioService } from './minio.service';
 import { S3Service } from './s3.service';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -366,6 +367,11 @@ export class BackupService implements OnModuleInit {
   }
 
   private getPrismaModelName(tableName: string): string {
+    const mappedModel = Prisma.dmmf.datamodel.models.find((model) => model.dbName === tableName);
+    if (mappedModel) {
+      return mappedModel.name;
+    }
+
     return tableName.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
   }
 }

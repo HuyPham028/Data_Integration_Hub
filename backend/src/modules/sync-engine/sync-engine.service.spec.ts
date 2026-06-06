@@ -32,9 +32,9 @@ describe('SyncEngineService', () => {
   describe('getPrismaModelName', () => {
     const convert = (name: string) => (service as any).getPrismaModelName(name);
 
-    it('converts snake_case to camelCase', () => {
-      expect(convert('nguoi_hoc')).toBe('nguoiHoc');
-      expect(convert('sinh_vien_info')).toBe('sinhVienInfo');
+    it('resolves mapped Prisma model names from snake_case table names', () => {
+      expect(convert('nguoi_hoc')).toBe('NguoiHoc');
+      expect(convert('dm_dt_hinh_thuc_cm')).toBe('DmDtHinhThucCM');
     });
 
     it('leaves single-word names unchanged', () => {
@@ -42,7 +42,7 @@ describe('SyncEngineService', () => {
       expect(convert('user')).toBe('user');
     });
 
-    it('handles three or more segments', () => {
+    it('falls back to the camel-case heuristic when no mapped model exists', () => {
       // single-letter segments: a_b_c → aBC (each letter capitalised)
       expect(convert('a_b_c')).toBe('aBC');
     });

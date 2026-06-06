@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { snakeToCamel } from '../utils/string.util';
 import { SchemaRegistryService } from 'src/common/schema-registry/schema-registry.service';
@@ -15,8 +16,24 @@ export class MasterDataService {
     private schemaRegistryService: SchemaRegistryService
   ) { }
 
+  private resolveModelName(tableName: string): string {
+    const mappedModel = Prisma.dmmf.datamodel.models.find((model) => model.dbName === tableName);
+    if (mappedModel) {
+      return mappedModel.name;
+    }
+
+    const camelName = snakeToCamel(tableName);
+    const camelPascal = camelName.charAt(0).toUpperCase() + camelName.slice(1);
+    const camelModel = Prisma.dmmf.datamodel.models.find((model) => model.name === camelPascal);
+    if (camelModel) {
+      return camelModel.name;
+    }
+
+    return camelName;
+  }
+
   private getModel(tableName: string) {
-    const modelName = snakeToCamel(tableName);
+    const modelName = this.resolveModelName(tableName);
     if (!this.prisma[modelName]) {
       throw new BadRequestException(
         `Table '${tableName}' does not exist or has not been declared in Prisma.`,
@@ -27,11 +44,10 @@ export class MasterDataService {
 
   private getModelFields(tableName: string): string[] {
     try {
-      const camel = snakeToCamel(tableName);
-      const pascal = camel.charAt(0).toUpperCase() + camel.slice(1);
-      const modelMeta = (this.prisma as any)._dmmf?.modelMap?.[pascal];
+      const modelName = this.resolveModelName(tableName);
+      const modelMeta = Prisma.dmmf.datamodel.models.find((model) => model.name === modelName);
       if (!modelMeta) return [];
-      return modelMeta.fields.map((f: any) => f.name);
+      return modelMeta.fields.map((field) => field.name);
     } catch (e) {
       return [];
     }
