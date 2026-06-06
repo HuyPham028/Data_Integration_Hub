@@ -175,6 +175,54 @@ model TcnsLyLich {
   @@index([shcc])
   @@map("tcns_ly_lich")
 }
+
+/// Auto-generated from Schema Registry
+model TcnsCongTac {
+  id           Int       @id @default(autoincrement())
+  shcc         String?   @db.VarChar(20)
+  chucVu       String?   @db.VarChar(1000)
+  ngayBatDau   DateTime? @db.Timestamp(6)
+  donVi        String?   @db.VarChar(1000)
+  ngayKetThuc  DateTime? @db.Timestamp(6)
+  isBk         Boolean?
+  isChucVu     Boolean?
+  nguoiNhap    String?   @db.VarChar(20)
+  ngayNhap     DateTime? @db.Timestamp(6)
+  nguoiDuyet   String?   @db.VarChar(20)
+  ngayDuyet    DateTime? @db.Timestamp(6)
+  active       Boolean
+
+  createdAt    DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt    DateTime  @updatedAt @db.Timestamp(6)
+
+  @@index([shcc])
+  @@map("tcns_cong_tac")
+}
+
+/// Auto-generated from Schema Registry
+model TcnsChucVu {
+  id                  Int       @id @default(autoincrement())
+  shcc                String?   @db.VarChar(20)
+  chucVu              String?   @db.VarChar(10)
+  chucVuChinh         Boolean?
+  active              Boolean?
+  heSoPhuCap          Decimal?  @db.Decimal(4, 2)
+  donVi               String?   @db.VarChar(10)
+  ngayTao             DateTime? @db.Timestamp(6)
+  quyetDinhBoNhiem    String?   @db.VarChar(200)
+  ngayQdBoNhiem       DateTime? @db.Timestamp(6)
+  ngayBoNhiem         DateTime? @db.Timestamp(6)
+  quyetDinhThoiCv     String?   @db.VarChar(200)
+  ngayQdThoiCv        DateTime? @db.Timestamp(6)
+  ngayThoiCv          DateTime? @db.Timestamp(6)
+
+  createdAt           DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt           DateTime  @updatedAt @db.Timestamp(6)
+
+  @@index([shcc])
+  @@map("tcns_chuc_vu")
+}
+
 /// Auto-generated from Schema Registry
 model DmDoiTuongChinhSach {
   id        Int      @id @default(autoincrement())
