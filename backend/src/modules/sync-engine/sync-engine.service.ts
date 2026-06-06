@@ -13,6 +13,11 @@ export class SyncEngineService {
   ) {}
 
   private getPrismaModelName(tableName: string): string {
+    const mappedModel = Prisma.dmmf.datamodel.models.find((model) => model.dbName === tableName);
+    if (mappedModel) {
+      return mappedModel.name;
+    }
+
     return tableName.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
   }
 
