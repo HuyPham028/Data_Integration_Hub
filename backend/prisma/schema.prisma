@@ -190,7 +190,7 @@ model TcnsCongTac {
   ngayNhap     DateTime? @db.Timestamp(6)
   nguoiDuyet   String?   @db.VarChar(20)
   ngayDuyet    DateTime? @db.Timestamp(6)
-  active       Boolean
+  active       Boolean   @default(true)
 
   createdAt    DateTime  @default(now()) @db.Timestamp(6)
   updatedAt    DateTime  @updatedAt @db.Timestamp(6)
