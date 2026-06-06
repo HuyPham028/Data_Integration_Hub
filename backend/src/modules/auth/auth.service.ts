@@ -54,8 +54,16 @@ export class AuthService {
 
   async refreshToken(token: string) {
     try {
-      const payload = this.jwtService.verify(token);
-      return { accessToken: this.jwtService.sign(payload) };
+      const payload = this.jwtService.verify(token) as { sub: number };
+      const user = await this.usersService.findById(payload.sub);
+      if (!user) throw new UnauthorizedException('Tài khoản không tồn tại.');
+      const newPayload = {
+        sub: user.id,
+        username: user.username,
+        role: user.role,
+        roleSettings: user.roleSettings ?? null,
+      };
+      return { accessToken: this.jwtService.sign(newPayload) };
     } catch {
       throw new UnauthorizedException('Invalid refresh token');
     }
