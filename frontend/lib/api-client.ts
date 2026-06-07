@@ -165,6 +165,20 @@ export const BackupAPI = {
     const response = await apiClient.post('/backup/sync-s3/all');
     return response.data;
   },
+
+  getRetentionPolicies: async () => {
+    return (await apiClient.get('/backup/retention')).data as RetentionPolicy[];
+  },
+
+  updateRetentionPolicy: async (trigger: string, days: number | null) => {
+    return (await apiClient.patch('/backup/retention', { trigger, days })).data;
+  },
+};
+
+export type RetentionPolicy = {
+  trigger: string;
+  days: number | null;
+  updatedAt: string;
 };
 
 export const JobAPI = {
