@@ -79,22 +79,30 @@ export class BackupService implements OnModuleInit {
     }
 
     try {
-      const records = await this.prisma[modelName].findMany();
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const objectKey = `${trigger}/${tableName}/${timestamp}.json`;
 
-      const payload = {
-        meta: {
-          tableName,
-          trigger,
-          backedUpAt: new Date().toISOString(),
-          recordCount: records.length,
-        },
-        data: records,
+      // COUNT trước để biết recordCount cho meta — chỉ 1 query nhỏ, không load data
+      const totalCount: number = await this.prisma[modelName].count();
+
+      const meta = {
+        tableName,
+        trigger,
+        backedUpAt: new Date().toISOString(),
+        recordCount: totalCount,
       };
 
-      await this.minio.uploadJson(objectKey, payload);
-      this.logger.log(`[BACKUP] "${tableName}" → MinIO: ${objectKey} (${records.length} records)`);
+      // Stream upload: RAM = O(BATCH_SIZE) thay vì O(totalCount)
+      const BATCH_SIZE = parseInt(process.env.BACKUP_STREAM_BATCH_SIZE ?? '5000', 10);
+      await this.minio.uploadJsonStream(
+        objectKey,
+        meta,
+        (skip, take) => this.prisma[modelName].findMany({ skip, take }),
+        totalCount,
+        BATCH_SIZE,
+      );
+
+      this.logger.log(`[BACKUP] "${tableName}" → MinIO: ${objectKey} (${totalCount} records, streamed)`);
       return objectKey;
     } catch (err) {
       this.logger.error(`[BACKUP] Lỗi backup "${tableName}": ${err.message}`);

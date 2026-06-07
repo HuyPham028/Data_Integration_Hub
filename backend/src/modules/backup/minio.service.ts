@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as Minio from 'minio';
+import { PassThrough } from 'stream';
 
 @Injectable()
 export class MinioService implements OnModuleInit {
@@ -49,6 +50,52 @@ export class MinioService implements OnModuleInit {
     await this.client.putObject(this.bucket, objectKey, buffer, buffer.length, {
       'Content-Type': 'application/json',
     });
+  }
+
+  /**
+   * Stream upload: đọc records theo từng batch, ghi JSON từng phần lên MinIO.
+   * RAM luôn ở mức O(batchSize) thay vì O(totalRecords).
+   *
+   * @param objectKey  Key MinIO
+   * @param meta       Thông tin meta (tableName, trigger, backedUpAt, recordCount)
+   * @param fetchBatch Hàm nhận (skip, take) → trả về batch records
+   * @param totalCount Tổng số records (từ COUNT(*) trước)
+   */
+  async uploadJsonStream(
+    objectKey: string,
+    meta: Record<string, unknown>,
+    fetchBatch: (skip: number, take: number) => Promise<unknown[]>,
+    totalCount: number,
+    batchSize = 5000,
+  ): Promise<void> {
+    const BATCH_SIZE = batchSize;
+    const passThrough = new PassThrough();
+
+    // Upload chạy song song với việc ghi stream
+    const uploadPromise = this.client.putObject(
+      this.bucket,
+      objectKey,
+      passThrough,
+      undefined,          // không cần Content-Length khi stream
+      { 'Content-Type': 'application/json' },
+    );
+
+    // Ghi JSON header + data từng batch
+    passThrough.write(`{\n  "meta": ${JSON.stringify({ ...meta, recordCount: totalCount })},\n  "data": [\n`);
+
+    let skip = 0;
+    let isFirst = true;
+    while (skip < totalCount) {
+      const batch = await fetchBatch(skip, BATCH_SIZE);
+      for (const record of batch) {
+        passThrough.write((isFirst ? '    ' : ',\n    ') + JSON.stringify(record));
+        isFirst = false;
+      }
+      skip += BATCH_SIZE;
+    }
+
+    passThrough.end('\n  ]\n}\n');
+    await uploadPromise;
   }
 
   async listObjects(prefix: string): Promise<Minio.BucketItem[]> {
