@@ -1,4 +1,4 @@
 {
-  "10.8.0.2/32": { "name": "Tuấn (Admin)", "role": "admin" },
-  "10.8.0.3/32": { "name": "Client 2",     "role": "developer" }
+  "10.8.0.2/32": { "name": "Data_Integration_Hub_Admin", "role": "admin" },
+  "10.8.0.3/32": { "name": "Huy_Pham_Le", "role": "developer" }
 }

@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Loader2, UserPlus } from 'lucide-react';
+import { Loader2, UserPlus, Shield, ShieldOff } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n';
 
 type EditState = {
@@ -38,6 +38,21 @@ export default function AccessControlPage() {
   const [newUser, setNewUser] = useState({ username: '', email: '', password: '', fullName: '' });
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
+
+  // VPN IP inline edit
+  const [editingVpnId, setEditingVpnId] = useState<number | null>(null);
+  const [vpnIpInput, setVpnIpInput] = useState('');
+
+  const handleSaveVpnIp = async (userId: number) => {
+    try {
+      await AccessControlAPI.setVpnIp(userId, vpnIpInput.trim() || null);
+      setEditingVpnId(null);
+      setSuccess('Đã cập nhật VPN IP.');
+      await fetchData();
+    } catch {
+      setError('Cập nhật VPN IP thất bại.');
+    }
+  };
 
   // FETCH
   const fetchData = async () => {
@@ -158,6 +173,7 @@ export default function AccessControlPage() {
                   <th className="p-2 border text-left">{t('ac.colRole')}</th>
                   <th className="p-2 border text-left">{t('ac.colRead')}</th>
                   <th className="p-2 border text-left">{t('ac.colWrite')}</th>
+                  <th className="p-2 border text-left">VPN IP</th>
                   <th className="p-2 border"></th>
                 </tr>
               </thead>
@@ -174,6 +190,37 @@ export default function AccessControlPage() {
 
                     <td className="p-2 border text-xs">
                       {(u.roleSettings?.writeScopes ?? []).join(', ')}
+                    </td>
+
+                    <td className="p-2 border text-xs min-w-[160px]">
+                      {editingVpnId === u.userId ? (
+                        <div className="flex gap-1 items-center">
+                          <Input
+                            value={vpnIpInput}
+                            onChange={(e) => setVpnIpInput(e.target.value)}
+                            placeholder="10.8.0.x"
+                            className="h-7 text-xs w-28 font-mono"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') void handleSaveVpnIp(u.userId);
+                              if (e.key === 'Escape') setEditingVpnId(null);
+                            }}
+                          />
+                          <Button size="sm" className="h-7 px-2 text-xs" onClick={() => handleSaveVpnIp(u.userId)}>✓</Button>
+                          <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => setEditingVpnId(null)}>✕</Button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => { setEditingVpnId(u.userId); setVpnIpInput(u.vpnIp ?? ''); }}
+                          className="flex items-center gap-1.5 group w-full"
+                        >
+                          {u.vpnIp ? (
+                            <><Shield className="w-3 h-3 text-green-600" /><span className="font-mono text-green-700">{u.vpnIp}</span></>
+                          ) : (
+                            <><ShieldOff className="w-3 h-3 text-slate-400" /><span className="text-slate-400 italic">Chưa gán</span></>
+                          )}
+                        </button>
+                      )}
                     </td>
 
                     <td className="p-2 border">

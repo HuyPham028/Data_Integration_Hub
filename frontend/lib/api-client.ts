@@ -306,6 +306,7 @@ export type UserPermissionSummary = {
   email: string;
   role: RoleType;
   roleSettings: RoleSettings | null;
+  vpnIp: string | null;
 };
 
 export const AccessControlAPI = {
@@ -331,6 +332,10 @@ export const AccessControlAPI = {
 
   deleteUser: async (userId: number) => {
     return (await apiClient.delete(`/users/${userId}`)).data;
+  },
+
+  setVpnIp: async (userId: number, vpnIp: string | null) => {
+    return (await apiClient.patch(`/users/${userId}`, { vpnIp })).data;
   },
 };
 

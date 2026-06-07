@@ -18,6 +18,7 @@ import { JobSchedulerModule } from './scheduler/job-scheduler.module';
 import { BackupModule } from './modules/backup/backup.module';
 import { NotificationModule } from './common/notification/notification.module';
 import { MetricsModule } from './modules/metrics/metrics.module';
+import { ApiLogModule } from './modules/api-log/api-log.module';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { MetricsModule } from './modules/metrics/metrics.module';
     BackupModule,
     NotificationModule,
     MetricsModule,
+    ApiLogModule,
   ],
   controllers: [AppController],
   providers: [AppService],

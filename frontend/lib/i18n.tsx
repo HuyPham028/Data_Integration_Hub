@@ -13,6 +13,7 @@ const translations = {
   'nav.syncHistory':    { vi: 'Sync History',         en: 'Sync History' },
   'nav.backup':         { vi: 'Backup',               en: 'Backup' },
   'nav.dataMgmt':       { vi: 'Data Management',      en: 'Data Management' },
+  'nav.accessLogs':     { vi: 'Access Logs',          en: 'Access Logs' },
   'nav.gateway':        { vi: 'API Gateway (Kong)',   en: 'API Gateway (Kong)' },
   'nav.logout':         { vi: 'Đăng xuất',            en: 'Log out' },
   'nav.sourceConfig':   { vi: 'Source Config',        en: 'Source Config' },

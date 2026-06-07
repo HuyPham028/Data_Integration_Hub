@@ -23,11 +23,21 @@ export class AuthService {
     return null;
   }
 
-  async login(dto: LoginDto) {
+  async login(dto: LoginDto, clientIp?: string) {
     const user = await this.validateUser(dto.username, dto.password);
 
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('Sai tên đăng nhập hoặc mật khẩu.');
+    }
+
+    // Kiểm tra VPN IP binding nếu user được gán vpnIp
+    if (user.vpnIp) {
+      const ip = clientIp?.split(',')[0]?.trim() ?? '';
+      if (ip !== user.vpnIp) {
+        throw new UnauthorizedException(
+          `Tài khoản này chỉ được đăng nhập từ IP VPN "${user.vpnIp}". IP hiện tại: "${ip}".`,
+        );
+      }
     }
 
     const payload = {

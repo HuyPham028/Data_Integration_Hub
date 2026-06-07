@@ -26,29 +26,28 @@ export class MetricsController {
 
   @Get('kong')
   async getKongMetrics(@Query('minutes') minutes = '60') {
-    const mins = Math.min(Math.max(parseInt(minutes) || 60, 5), 1440);
+    const mins = Math.min(Math.max(parseInt(minutes) || 60, 5), 10080);
     const end = Math.floor(Date.now() / 1000);
     const start = end - mins * 60;
-    const step = Math.max(15, Math.floor((mins * 60) / 80));
+    // ~120 data points cho mọi khoảng thời gian
+    const step = mins <= 60 ? 15 : mins <= 360 ? 60 : mins <= 1440 ? 120 : 900;
+
+    // Loại trừ route nội bộ của monitoring dashboard khỏi tất cả metrics
+    const EXCLUDE_ROUTE = `route!="metrics-internal-route"`;
 
     const [requestRate, statusCodes, latencyP99, connections, errorRate, bandwidth, nginxReqs] =
       await Promise.allSettled([
-        // Available after prometheus plugin config: status_code_metrics: true
-        this.queryRange(`sum by (service) (rate(kong_http_requests_total[2m]))`, start, end, step),
-        this.queryRange(`sum by (code) (rate(kong_http_requests_total[2m]))`, start, end, step),
-        // Available after: latency_metrics: true
+        this.queryRange(`sum by (service) (rate(kong_http_requests_total{${EXCLUDE_ROUTE}}[2m]))`, start, end, step),
+        this.queryRange(`sum by (code) (rate(kong_http_requests_total{${EXCLUDE_ROUTE}}[2m]))`, start, end, step),
         this.queryRange(
-          `histogram_quantile(0.99, sum by (le, service) (rate(kong_latency_bucket{type="request"}[2m])))`,
+          `histogram_quantile(0.99, sum by (le, service) (rate(kong_latency_bucket{type="request",${EXCLUDE_ROUTE}}[2m])))`,
           start, end, step,
         ),
-        // Available in base install — correct metric name is kong_nginx_connections_total
         this.queryInstant(`sum by (state) (kong_nginx_connections_total)`),
         this.queryInstant(
-          `sum(rate(kong_http_requests_total{code=~"5.."}[5m])) / sum(rate(kong_http_requests_total[5m])) * 100`,
+          `sum(rate(kong_http_requests_total{code=~"5..",${EXCLUDE_ROUTE}}[5m])) / sum(rate(kong_http_requests_total{${EXCLUDE_ROUTE}}[5m])) * 100`,
         ),
-        // Available after: bandwidth_metrics: true
-        this.queryRange(`sum by (direction) (rate(kong_bandwidth_bytes[2m]))`, start, end, step),
-        // Fallback: always available basic nginx request rate
+        this.queryRange(`sum by (direction) (rate(kong_bandwidth_bytes{${EXCLUDE_ROUTE}}[2m]))`, start, end, step),
         this.queryRange(`rate(kong_nginx_requests_total[2m])`, start, end, step),
       ]);
 
@@ -62,13 +61,13 @@ export class MetricsController {
       latencyP99: this.toTimeSeries(latencyP99, 'service', (v) => parseFloat((v * 1000).toFixed(2))),
       connections: this.toInstantMap(connections, 'state'),
       errorRate: this.toSingleValue(errorRate),
-      bandwidth: this.toTimeSeries(bandwidth, 'direction'),
+      bandwidth: this.toTimeSeries(bandwidth, 'direction', (v) => parseFloat((v / 1024 / 1024).toFixed(4))),
     };
   }
 
   // ─── Prometheus helpers ───────────────────────────────────────────────────
 
-  private async queryRange(query: string, start: number, end: number, step: number) {
+  private async queryRange(query: string, start: number, end: number, step: number, _transform?: (v: number) => number) {
     const url = `${this.prometheusUrl}/api/v1/query_range?query=${encodeURIComponent(query)}&start=${start}&end=${end}&step=${step}`;
     const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) throw new Error(`Prometheus ${res.status}`);
@@ -158,7 +157,7 @@ export class MetricsController {
   @Get('docker')
   async getDockerServices() {
     const [containers, statsMap] = await Promise.all([
-      this.dockerGet<DockerContainer[]>('/containers/json?all=true'),
+      this.dockerGet<DockerContainer[]>('/containers/json?all=true&size=true'),
       this.getAllStats(),
     ]);
 
@@ -183,6 +182,8 @@ export class MetricsController {
         memUsedMB: stats?.memUsedMB ?? null,
         memLimitMB: stats?.memLimitMB ?? null,
         memPercent: stats?.memPercent ?? null,
+        storageMB: c.SizeRootFs != null ? parseFloat((c.SizeRootFs / 1024 / 1024).toFixed(0)) : null,
+        storageRwMB: c.SizeRw != null ? parseFloat((c.SizeRw / 1024 / 1024).toFixed(1)) : null,
       };
     });
   }
@@ -314,6 +315,8 @@ interface DockerContainer {
   Status: string;
   Created: number;
   Ports: { PublicPort?: number; PrivatePort: number; Type: string }[];
+  SizeRootFs?: number;
+  SizeRw?: number;
 }
 
 interface DockerStats {

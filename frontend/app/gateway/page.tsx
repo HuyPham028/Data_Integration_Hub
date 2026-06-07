@@ -47,6 +47,8 @@ interface DockerService {
   memUsedMB: number | null;
   memLimitMB: number | null;
   memPercent: number | null;
+  storageMB: number | null;
+  storageRwMB: number | null;
 }
 
 interface KongMetrics {
@@ -74,6 +76,11 @@ function formatUptime(seconds: number | null): string {
 function getSeriesKeys(data: TimePoint[]): string[] {
   if (!data.length) return [];
   return Object.keys(data[0]).filter((k) => k !== 'time');
+}
+
+// Hiển thị ~6 mốc trên trục X, tránh bị sát nhau
+function xTicks(data: TimePoint[]): number {
+  return Math.max(1, Math.floor(data.length / 6));
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -193,6 +200,8 @@ export default function KongGatewayPage() {
             <option value={60}>1 giờ</option>
             <option value={180}>3 giờ</option>
             <option value={360}>6 giờ</option>
+            <option value={1440}>1 ngày</option>
+            <option value={10080}>7 ngày</option>
           </select>
 
           {/* Status indicator */}
@@ -260,7 +269,7 @@ export default function KongGatewayPage() {
                 <ResponsiveContainer width="100%" height={220}>
                   <LineChart data={metrics.requestRate} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                    <XAxis dataKey="time" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
+                    <XAxis dataKey="time" tick={{ fontSize: 11 }} interval={xTicks(metrics.requestRate)} />
                     <YAxis tick={{ fontSize: 11 }} width={40} />
                     <Tooltip />
                     <Legend iconSize={10} wrapperStyle={{ fontSize: 12 }} />
@@ -281,7 +290,7 @@ export default function KongGatewayPage() {
                 <ResponsiveContainer width="100%" height={220}>
                   <BarChart data={metrics.statusCodes} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                    <XAxis dataKey="time" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
+                    <XAxis dataKey="time" tick={{ fontSize: 11 }} interval={xTicks(metrics.statusCodes)} />
                     <YAxis tick={{ fontSize: 11 }} width={40} />
                     <Tooltip />
                     <Legend iconSize={10} wrapperStyle={{ fontSize: 12 }} />
@@ -302,7 +311,7 @@ export default function KongGatewayPage() {
                 <ResponsiveContainer width="100%" height={220}>
                   <LineChart data={metrics.latencyP99} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                    <XAxis dataKey="time" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
+                    <XAxis dataKey="time" tick={{ fontSize: 11 }} interval={xTicks(metrics.latencyP99)} />
                     <YAxis tick={{ fontSize: 11 }} width={45} unit="ms" />
                     <Tooltip formatter={(v) => [v != null ? `${v} ms` : '—']} />
                     <Legend iconSize={10} wrapperStyle={{ fontSize: 12 }} />
@@ -316,16 +325,16 @@ export default function KongGatewayPage() {
 
             {/* Bandwidth */}
             <ChartCard
-              title="Bandwidth (bytes/s)"
+              title="Bandwidth (MB/s)"
               description="Lưu lượng dữ liệu qua Kong. Ingress = dữ liệu client gửi lên, Egress = dữ liệu server trả về client."
             >
               {!metrics.bandwidth.length ? <EmptyChart /> : (
                 <ResponsiveContainer width="100%" height={220}>
                   <LineChart data={metrics.bandwidth} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                    <XAxis dataKey="time" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
-                    <YAxis tick={{ fontSize: 11 }} width={50} />
-                    <Tooltip />
+                    <XAxis dataKey="time" tick={{ fontSize: 11 }} interval={xTicks(metrics.bandwidth)} />
+                    <YAxis tick={{ fontSize: 11 }} width={55} unit=" MB/s" />
+                    <Tooltip formatter={(v) => [v != null ? `${v} MB/s` : '—']} />
                     <Legend iconSize={10} wrapperStyle={{ fontSize: 12 }} />
                     <Line type="monotone" dataKey="ingress" stroke="#3b82f6" dot={false} strokeWidth={2} />
                     <Line type="monotone" dataKey="egress" stroke="#f59e0b" dot={false} strokeWidth={2} />
@@ -440,6 +449,7 @@ export default function KongGatewayPage() {
                       <th className="px-4 py-2 text-left">
                         <span className="flex items-center gap-1"><MemoryStick className="w-3 h-3" /> Memory</span>
                       </th>
+                      <th className="px-4 py-2 text-left">Storage (Image)</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
@@ -488,6 +498,9 @@ export default function KongGatewayPage() {
                               <span className="text-xs text-slate-600">{svc.memUsedMB}MB</span>
                             </div>
                           ) : <span className="text-xs text-slate-400">—</span>}
+                        </td>
+                        <td className="px-4 py-2.5 text-xs text-slate-600">
+                          {svc.storageMB != null ? `${svc.storageMB} MB` : '—'}
                         </td>
                       </tr>
                     ))}
