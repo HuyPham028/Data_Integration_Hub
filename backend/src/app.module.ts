@@ -17,6 +17,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { JobSchedulerModule } from './scheduler/job-scheduler.module';
 import { BackupModule } from './modules/backup/backup.module';
 import { NotificationModule } from './common/notification/notification.module';
+import { MetricsModule } from './modules/metrics/metrics.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { NotificationModule } from './common/notification/notification.module';
     JobSchedulerModule,
     BackupModule,
     NotificationModule,
+    MetricsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -76,6 +76,10 @@ services:
       GITHUB_OWNER: ${GITHUB_OWNER}
       GITHUB_REPO: ${GITHUB_REPO}
       GITHUB_BRANCH: ${GITHUB_BRANCH:-master}
+      PROMETHEUS_URL: http://prometheus:9090
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /tmp/wg-status.json:/app/wg-status.json:ro
     ports:
       - "4000:4000"
     restart: always
@@ -188,8 +192,14 @@ services:
       GF_SMTP_PASSWORD: ${GRAFANA_SMTP_PASSWORD}
       GF_SMTP_FROM_ADDRESS: ${GRAFANA_SMTP_USER}
       GF_SMTP_SKIP_VERIFY: "true"
+      GF_SECURITY_ALLOW_EMBEDDING: "true"
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: "Viewer"
+      GF_AUTH_DISABLE_LOGIN_FORM: "false"
     ports:
       - "5000:3000"
+    volumes:
+      - ./backend/grafana/provisioning:/etc/grafana/provisioning
     networks:
       - univ_hub_network
 
@@ -199,6 +209,7 @@ services:
       context: ./frontend
       args:
         NEXT_PUBLIC_KONG_URL: ${NEXT_PUBLIC_KONG_URL}
+        NEXT_PUBLIC_GRAFANA_URL: ${NEXT_PUBLIC_GRAFANA_URL}
     # image: ${DOCKER_USERNAME:-local}/hub-frontend:latest
     container_name: hub-frontend
     restart: always

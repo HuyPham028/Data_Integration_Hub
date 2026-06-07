@@ -33,7 +33,7 @@ export function Sidebar({ isAdmin }: SidebarProps) {
     { key: 'nav.backup', href: '/backup', icon: DatabaseBackup },
     { key: 'nav.sourceConfig', href: '/source_config', icon: ServerCog },
     { key: 'nav.dataMgmt', href: '/data-management', icon: TableProperties },
-    // { key: 'nav.gateway', href: '/gateway', icon: Network },
+    { key: 'nav.gateway', href: '/gateway', icon: Network },
   ] as const;
 
   const visibleNavItems = isAdmin ? navItems : [];
