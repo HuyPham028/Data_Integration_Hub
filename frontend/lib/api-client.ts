@@ -349,7 +349,7 @@ export const AccessControlAPI = {
   },
 
   setVpnIp: async (userId: number, vpnIp: string | null) => {
-    return (await apiClient.patch(`/users/${userId}`, { vpnIp })).data;
+    return (await apiClient.patch(`/users/${userId}/vpn-ip`, { vpnIp })).data;
   },
 };
 

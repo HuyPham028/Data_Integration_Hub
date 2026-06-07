@@ -1,6 +1,6 @@
 import {
   Controller, Get, Post, Body, Param,
-  Put, UseGuards, ParseIntPipe,
+  Put, Patch, UseGuards, ParseIntPipe,
 } from '@nestjs/common';
 import { UsersService, RoleSettings } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -66,6 +66,17 @@ export class UsersController {
   @Get(':id/permissions')
   getPermissions(@Param('id', ParseIntPipe) id: number) {
     return this.usersService.getUserPermissionSummary(id);
+  }
+
+  // PATCH /users/:id/vpn-ip — gán hoặc xóa VPN IP
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Patch(':id/vpn-ip')
+  setVpnIp(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { vpnIp: string | null },
+  ) {
+    return this.usersService.setVpnIp(id, body.vpnIp ?? null);
   }
 
   // POST /users/:id/permissions — overwrite roleSettings
