@@ -766,6 +766,18 @@ model User {
   @@map("users")
 }
 
+model ViewDefinition {
+  id          Int      @id @default(autoincrement())
+  viewName    String   @unique @map("view_name") @db.VarChar(100)
+  description String?  @db.VarChar(500)
+  sqlQuery    String   @map("sql_query") @db.Text
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("view_definitions")
+}
+
 model ApiAccessLog {
   id             Int      @id @default(autoincrement())
   userId         Int?

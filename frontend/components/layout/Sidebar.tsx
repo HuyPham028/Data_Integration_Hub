@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Database, Activity, Network, Clock, Shield, DatabaseBackup, TableProperties, ServerCog, ScrollText } from 'lucide-react';
+import { LayoutDashboard, Database, Activity, Network, Clock, Shield, DatabaseBackup, TableProperties, ServerCog, ScrollText, Layers } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n';
 
 type SidebarProps = {
@@ -34,6 +34,7 @@ export function Sidebar({ isAdmin }: SidebarProps) {
     { key: 'nav.sourceConfig', href: '/source_config', icon: ServerCog },
     { key: 'nav.dataMgmt', href: '/data-management', icon: TableProperties },
     { key: 'nav.accessLogs', href: '/access-logs', icon: ScrollText },
+    { key: 'nav.views', href: '/views', icon: Layers },
     { key: 'nav.gateway', href: '/gateway', icon: Network },
   ] as const;
 
