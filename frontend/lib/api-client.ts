@@ -353,6 +353,38 @@ export const AccessControlAPI = {
   },
 };
 
+export interface ViewDefinition {
+  id: number;
+  viewName: string;
+  description: string | null;
+  sqlQuery: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ViewPreviewResult {
+  columns: string[];
+  rows: Record<string, unknown>[];
+}
+
+export const ViewsAPI = {
+  list: async (): Promise<ViewDefinition[]> =>
+    (await apiClient.get('/views')).data,
+
+  create: async (data: { viewName: string; sqlQuery: string; description?: string }): Promise<ViewDefinition> =>
+    (await apiClient.post('/views', data)).data,
+
+  update: async (id: number, data: { sqlQuery: string; description?: string }): Promise<ViewDefinition> =>
+    (await apiClient.put(`/views/${id}`, data)).data,
+
+  drop: async (id: number): Promise<{ deleted: boolean; viewName: string }> =>
+    (await apiClient.delete(`/views/${id}`)).data,
+
+  preview: async (sqlQuery: string, limit = 20): Promise<ViewPreviewResult> =>
+    (await apiClient.post(`/views/preview?limit=${limit}`, { sqlQuery })).data,
+};
+
 export const SourceConfigAPI = {
   getAll: async () => {
     try {

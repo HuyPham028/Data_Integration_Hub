@@ -59,9 +59,54 @@ export class MasterDataService {
     limit: number = 10,
     search?: string,
   ) {
-    const model = this.getModel(tableName);
-    const skip = (Number(page) - 1) * Number(limit);
+    // Validate tableName to prevent SQL injection in raw fallback
+    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(tableName)) {
+      throw new BadRequestException(`Tên bảng không hợp lệ: "${tableName}"`);
+    }
 
+    // Try Prisma model first (for registered tables)
+    let model: any;
+    try {
+      model = this.getModel(tableName);
+    } catch {
+      model = null;
+    }
+
+    // Fallback: raw query for PostgreSQL views (not in Prisma schema)
+    if (!model) {
+      const skip = (Number(page) - 1) * Number(limit);
+      const safeLimit = Number(limit);
+
+      const [countResult, data] = await Promise.all([
+        this.prisma.$queryRawUnsafe<[{ count: bigint }]>(
+          `SELECT COUNT(*)::bigint AS count FROM "${tableName}"`,
+        ),
+        this.prisma.$queryRawUnsafe<Record<string, unknown>[]>(
+          `SELECT * FROM "${tableName}" LIMIT ${safeLimit} OFFSET ${skip}`,
+        ),
+      ]);
+
+      const total = Number(countResult[0].count);
+      const rows = data.map((row) => {
+        const out: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(row)) {
+          out[k] = typeof v === 'bigint' ? Number(v) : v;
+        }
+        return out;
+      });
+
+      return {
+        data: rows,
+        meta: {
+          total,
+          page: Number(page),
+          limit: safeLimit,
+          totalPages: Math.ceil(total / safeLimit),
+        },
+      };
+    }
+
+    const skip = (Number(page) - 1) * Number(limit);
     const modelFields = this.getModelFields(tableName);
 
     const orConditions: any[] = [];
@@ -179,15 +224,6 @@ export class MasterDataService {
   }
 
   async getAllowedTablesForUser(user: any) {
-    const allSchemas = await this.schemaRegistryService.getAllSchema();
-
-    const mappedSchemas = allSchemas.map((schema) => ({
-      id: schema.tableName,
-      name: schema.tableName,
-      description: schema.description || `Dữ liệu bảng ${schema.tableName}`,
-    }));
-
-
     const settings = user.roleSettings as RoleSettings | null;
     if (!settings) return [];
 
@@ -198,17 +234,33 @@ export class MasterDataService {
 
     if (allowedPatterns.length === 0) return [];
 
-    const allowedTables = mappedSchemas.filter((table) => {
-      return allowedPatterns.some((pattern) => {
-        try {
-          const regex = new RegExp(pattern);
-          return regex.test(table.id);
-        } catch (e) {
-          return false;
-        }
+    const matchesPattern = (name: string) =>
+      allowedPatterns.some((pattern) => {
+        try { return new RegExp(pattern).test(name); } catch { return false; }
       });
-    });
 
-    return allowedTables;
+    // Tables from schema registry
+    const allSchemas = await this.schemaRegistryService.getAllSchema();
+    const allowedTables = allSchemas
+      .filter((s) => matchesPattern(s.tableName))
+      .map((s) => ({
+        id: s.tableName,
+        name: s.tableName,
+        description: s.description || `Dữ liệu bảng ${s.tableName}`,
+        type: 'table' as const,
+      }));
+
+    // Views from ViewDefinition
+    const allViews = await this.prisma.viewDefinition.findMany({ where: { isActive: true } });
+    const allowedViews = allViews
+      .filter((v) => matchesPattern(v.viewName))
+      .map((v) => ({
+        id: v.viewName,
+        name: v.viewName,
+        description: v.description || `View: ${v.viewName}`,
+        type: 'view' as const,
+      }));
+
+    return [...allowedTables, ...allowedViews];
   }
 }

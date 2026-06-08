@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Database, Search, LayoutGrid, FileDown, Loader2, ChevronLeft, ChevronRight, Lock, LogOut, Zap, Copy, Check, Eye, EyeOff } from "lucide-react";
+import { Database, Search, LayoutGrid, FileDown, Loader2, ChevronLeft, ChevronRight, Lock, LogOut, Zap, Copy, Check, Eye, EyeOff, Layers } from "lucide-react";
 import { clearAuthSession } from '@/lib/auth-session';
 import { useLanguage } from '@/lib/i18n';
 
@@ -29,6 +29,9 @@ export default function DataExplorerPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+
+  // Left panel search
+  const [tableSearch, setTableSearch] = useState('');
 
   // Export CSV
   const [exportingCSV, setExportingCSV] = useState(false);
@@ -167,36 +170,61 @@ export default function DataExplorerPage() {
   return (
     <div className="flex h-[calc(100vh-4rem)] gap-6">
       
-      {/* CỘT TRÁI: Danh sách bảng được cấp quyền */}
+      {/* CỘT TRÁI: Danh sách bảng + view được cấp quyền */}
       <Card className="w-1/4 flex flex-col border-slate-200 h-full overflow-hidden">
         <CardHeader className="bg-slate-50 border-b py-4">
           <CardTitle className="text-lg flex items-center text-slate-800">
             <Lock className="w-4 h-4 mr-2 text-green-600" /> {t('explorer.accessTitle')}
           </CardTitle>
+          {/* Search box */}
+          <div className="relative mt-2">
+            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Tìm bảng hoặc view..."
+              className="w-full pl-8 pr-3 py-1.5 text-xs rounded-md border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+              value={tableSearch}
+              onChange={(e) => setTableSearch(e.target.value)}
+            />
+          </div>
         </CardHeader>
         <CardContent className="p-2 overflow-y-auto flex-1">
           {loadingTables ? (
              <div className="flex justify-center p-4"><Loader2 className="animate-spin w-5 h-5 text-blue-500" /></div>
           ) : (
             <div className="space-y-1">
-              {allowedTables.map((table) => (
-                <button
-                  key={table.id}
-                  onClick={() => handleSelectTable(table)}
-                  className={`w-full text-left p-3 rounded-lg transition-all ${
-                    selectedTable?.id === table.id 
-                      ? 'bg-blue-50 border border-blue-200 shadow-sm' 
-                      : 'hover:bg-slate-100 border border-transparent'
-                  }`}
-                >
-                  <div className="flex items-center font-semibold text-sm text-slate-800">
-                    <Database className={`w-4 h-4 mr-2 ${selectedTable?.id === table.id ? 'text-blue-600' : 'text-slate-400'}`} />
-                    {table.name}
-                  </div>
-                  <div className="text-xs text-slate-500 mt-1 pl-6 line-clamp-1">{table.description}</div>
-                </button>
-              ))}
-              {allowedTables.length === 0 && (
+              {allowedTables
+                .filter((t) => t.name.toLowerCase().includes(tableSearch.toLowerCase()))
+                .map((table) => {
+                  const isView = (table as any).type === 'view';
+                  const isSelected = selectedTable?.id === table.id;
+                  return (
+                    <button
+                      key={table.id}
+                      onClick={() => handleSelectTable(table)}
+                      className={`w-full text-left p-3 rounded-lg transition-all ${
+                        isSelected
+                          ? 'bg-blue-50 border border-blue-200 shadow-sm'
+                          : 'hover:bg-slate-100 border border-transparent'
+                      }`}
+                    >
+                      <div className="flex items-center font-semibold text-sm text-slate-800">
+                        {isView
+                          ? <Layers className={`w-4 h-4 mr-2 flex-shrink-0 ${isSelected ? 'text-violet-600' : 'text-violet-400'}`} />
+                          : <Database className={`w-4 h-4 mr-2 flex-shrink-0 ${isSelected ? 'text-blue-600' : 'text-slate-400'}`} />
+                        }
+                        <span className="truncate">{table.name}</span>
+                        {isView && (
+                          <span className="ml-auto text-[10px] bg-violet-100 text-violet-600 px-1.5 py-0.5 rounded font-normal flex-shrink-0">
+                            view
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-slate-500 mt-1 pl-6 line-clamp-1">{table.description}</div>
+                    </button>
+                  );
+                })}
+              {allowedTables.filter((t) => t.name.toLowerCase().includes(tableSearch.toLowerCase())).length === 0 && (
                 <div className="text-center p-4 text-sm text-slate-500">{t('explorer.noTables')}</div>
               )}
             </div>
@@ -228,19 +256,6 @@ export default function DataExplorerPage() {
               </div>
               
               <div className="flex items-center gap-3">
-                <div className="relative w-64">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
-                  <Input 
-                    type="text" 
-                    placeholder={t('explorer.search')}
-                    className="pl-9"
-                    value={searchTerm}
-                    onChange={(e) => {
-                      setSearchTerm(e.target.value);
-                      setCurrentPage(1); // Gõ search thì quay về trang 1
-                    }}
-                  />
-                </div>
                 <Button
                   variant="outline"
                   className="text-blue-600 border-blue-200 hover:bg-blue-50"

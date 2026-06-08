@@ -40,6 +40,7 @@ services:
           - /source-configs
           - /notifications
           - /api-logs
+          - /views
         strip_path: false
 
   - name: metrics-internal-service

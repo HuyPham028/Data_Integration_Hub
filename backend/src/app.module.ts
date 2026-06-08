@@ -19,6 +19,7 @@ import { BackupModule } from './modules/backup/backup.module';
 import { NotificationModule } from './common/notification/notification.module';
 import { MetricsModule } from './modules/metrics/metrics.module';
 import { ApiLogModule } from './modules/api-log/api-log.module';
+import { ViewsModule } from './modules/views/views.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { ApiLogModule } from './modules/api-log/api-log.module';
     NotificationModule,
     MetricsModule,
     ApiLogModule,
+    ViewsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
