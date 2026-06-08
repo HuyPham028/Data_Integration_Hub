@@ -8,9 +8,9 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { BackupAPI, IntegrationAPI } from "@/lib/api-client";
+import { BackupAPI, IntegrationAPI, type RetentionPolicy } from "@/lib/api-client";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, ArrowLeft, Download, RefreshCcw, Database, FolderArchive, Tags, CloudUpload, Trash2 } from "lucide-react";
+import { Plus, ArrowLeft, Download, RefreshCcw, Database, FolderArchive, Tags, CloudUpload, Trash2, Settings2, Infinity, Clock, Pencil, Check, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import BackupSelect from "@/components/modals/BackupSelect";
 import ConfirmDialog from "@/components/modals/ConfirmModal";
@@ -55,6 +55,34 @@ export default function BackupPage() {
   const [syncingKey, setSyncingKey] = useState<string | null>(null);
   const [isSyncingAllS3, setIsSyncingAllS3] = useState(false);
 
+  // Retention policies
+  const [retentions, setRetentions] = useState<RetentionPolicy[]>([]);
+  const [editingTrigger, setEditingTrigger] = useState<string | null>(null);
+  const [editingDays, setEditingDays] = useState<string>('');
+  const [savingRetention, setSavingRetention] = useState(false);
+
+  const fetchRetentions = async () => {
+    try {
+      const data = await BackupAPI.getRetentionPolicies();
+      setRetentions(data);
+    } catch { /* silent */ }
+  };
+
+  const handleSaveRetention = async (trigger: string) => {
+    setSavingRetention(true);
+    try {
+      const days = editingDays === '' || editingDays === '∞' ? null : parseInt(editingDays);
+      await BackupAPI.updateRetentionPolicy(trigger, days);
+      toast.success(`Đã cập nhật retention cho "${trigger}"`);
+      setEditingTrigger(null);
+      await fetchRetentions();
+    } catch {
+      toast.error('Cập nhật thất bại');
+    } finally {
+      setSavingRetention(false);
+    }
+  };
+
   // 1. Fetch Backups based on Tab
   const fetchBackups = async (tab: string) => {
     setIsLoading(true);
@@ -85,6 +113,7 @@ export default function BackupPage() {
 
   useEffect(() => {
     fetchSchemas();
+    void fetchRetentions();
   }, []);
 
   const uniqueTables = Array.from(
@@ -113,10 +142,7 @@ export default function BackupPage() {
 
   const handleDownload = async (key: string) => {
     try {
-      const response = await BackupAPI.getDownloadUrl(key);
-
-      window.open(response.url, '_blank');
-
+      await BackupAPI.downloadBackup(key);
       toast.success(t('backup.toastDownload'));
     } catch (error) {
       toast.error(t('backup.toastErrLink'));
@@ -379,6 +405,115 @@ export default function BackupPage() {
           </div>
         )}
       </div>
+
+      {/* ── Retention Policy ── */}
+      {retentions.length > 0 && (
+        <Card>
+          <div className="flex items-center gap-2 px-6 py-4 border-b">
+            <Settings2 className="w-4 h-4 text-slate-600" />
+            <span className="font-semibold text-slate-800">Chính sách lưu trữ (Retention Policy)</span>
+            <span className="ml-auto text-xs text-slate-400">Sau khi hết hạn → backup tự động bị xóa khi chạy cleanup</span>
+          </div>
+          <CardContent className="p-0">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-xs text-slate-500 uppercase tracking-wide border-b bg-slate-50">
+                  <th className="px-6 py-3 text-left">Loại backup</th>
+                  <th className="px-6 py-3 text-left">Mô tả</th>
+                  <th className="px-6 py-3 text-left">Giữ trong</th>
+                  <th className="px-6 py-3 text-left">Cập nhật lần cuối</th>
+                  <th className="px-6 py-3"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {retentions.map((r) => {
+                  const meta: Record<string, { label: string; desc: string; color: string }> = {
+                    'manual':        { label: 'Manual',        desc: 'Backup thủ công do admin tạo',             color: 'blue' },
+                    'scheduled':     { label: 'Scheduled',     desc: 'Backup tự động hàng tuần (CN 2:00 AM)',    color: 'purple' },
+                    'pre-sync':      { label: 'Pre-Sync',      desc: 'Snapshot trước mỗi lần đồng bộ dữ liệu',  color: 'orange' },
+                    'schema-change': { label: 'Schema Change', desc: 'Snapshot khi cấu trúc bảng thay đổi',     color: 'green' },
+                  };
+                  const m = meta[r.trigger] ?? { label: r.trigger, desc: '', color: 'slate' };
+                  const colorMap: Record<string, string> = {
+                    blue: 'bg-blue-50 text-blue-700', purple: 'bg-purple-50 text-purple-700',
+                    orange: 'bg-orange-50 text-orange-700', green: 'bg-green-50 text-green-700',
+                    slate: 'bg-slate-100 text-slate-600',
+                  };
+                  const isEditing = editingTrigger === r.trigger;
+
+                  return (
+                    <tr key={r.trigger} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-6 py-3">
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${colorMap[m.color]}`}>
+                          {m.label}
+                        </span>
+                      </td>
+                      <td className="px-6 py-3 text-xs text-slate-500">{m.desc}</td>
+                      <td className="px-6 py-3">
+                        {isEditing ? (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              min={1}
+                              value={editingDays}
+                              onChange={(e) => setEditingDays(e.target.value)}
+                              placeholder="∞ = mãi mãi"
+                              className="w-28 border rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') void handleSaveRetention(r.trigger);
+                                if (e.key === 'Escape') setEditingTrigger(null);
+                              }}
+                            />
+                            <span className="text-xs text-slate-400">ngày (để trống = vĩnh viễn)</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            {r.days === null ? (
+                              <><Infinity className="w-4 h-4 text-green-600" /><span className="text-green-700 font-medium text-sm">Vĩnh viễn</span></>
+                            ) : (
+                              <><Clock className="w-4 h-4 text-blue-500" /><span className="font-medium text-sm">{r.days} ngày</span></>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-3 text-xs text-slate-400">
+                        {new Date(r.updatedAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}
+                      </td>
+                      <td className="px-6 py-3 text-right">
+                        {isEditing ? (
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => void handleSaveRetention(r.trigger)}
+                              disabled={savingRetention}
+                              className="p-1.5 rounded hover:bg-green-50 text-green-600 disabled:opacity-50"
+                            >
+                              <Check className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => setEditingTrigger(null)}
+                              className="p-1.5 rounded hover:bg-red-50 text-red-500"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => { setEditingTrigger(r.trigger); setEditingDays(r.days?.toString() ?? ''); }}
+                            className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-slate-800"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+      )}
 
       <BackupSelect
         isOpen={isModalOpen}

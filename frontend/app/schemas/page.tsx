@@ -155,6 +155,22 @@ export default function SchemaRegistryPage() {
 
   const hasBreakingChange = diffData.stats.removed > 0 || diffData.stats.changed > 0;
 
+  // Group schemas by table name prefix
+  const schemaGroups = useMemo(() => {
+    const groups: { label: string; color: string; match: (name: string) => boolean; items: any[] }[] = [
+      { label: 'Tổ chức Nhân sự (TCNS)', color: 'purple', match: (n) => n.startsWith('tcns_'), items: [] },
+      { label: 'Nhóm Người học (NH)', color: 'blue', match: (n) => n.startsWith('nh_') || n === 'nguoi_hoc', items: [] },
+      { label: 'Nhóm Cán bộ (CB)', color: 'orange', match: (n) => n.startsWith('cb_'), items: [] },
+      { label: 'Danh mục (DM)', color: 'emerald', match: (n) => n.startsWith('dm_'), items: [] },
+      { label: 'Khác', color: 'slate', match: () => true, items: [] },
+    ];
+    for (const schema of schemas) {
+      const group = groups.find(g => g.match(schema.tableName));
+      if (group) group.items.push(schema);
+    }
+    return groups.filter(g => g.items.length > 0);
+  }, [schemas]);
+
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-10">
       <div>
@@ -162,97 +178,124 @@ export default function SchemaRegistryPage() {
         <p className="text-slate-500 mt-1">{t('schema.subtitle')}</p>
       </div>
 
-      {/* Bảng danh sách Schema */}
-      <Card className="border-slate-200 shadow-sm">
-        <CardHeader className="bg-slate-50/50 border-b pb-4">
-          <CardTitle className="text-lg">Metadata Models</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {loading ? (
-             <div className="flex justify-center p-12"><Loader2 className="animate-spin text-blue-500" /></div>
-          ) : (
-            <Table>
-              <TableHeader className="bg-slate-50">
-                <TableRow>
-                  <TableHead className="pl-6">{t('schema.colTable')}</TableHead>
-                  <TableHead>{t('schema.colSource')}</TableHead>
-                  <TableHead>{t('schema.colFields')}</TableHead>
-                  <TableHead>{t('schema.colStatus')}</TableHead>
-                  <TableHead>Chiến thuật đồng bộ</TableHead>
-                  <TableHead className="text-right pr-6">Hành động</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {schemas.map((schema) => (
-                  <TableRow key={schema._id} className="hover:bg-slate-50/50">
-                    <TableCell className="pl-6 font-mono text-sm font-semibold text-slate-700">
-                      {schema.tableName}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="bg-white text-slate-500 border-slate-200">
-                        <Server className="w-3 h-3 mr-1"/> {schema.dataFrom || 'Unknown'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-slate-500">{schema.fieldsCount} fields</TableCell>
-                    <TableCell>
-                      {schema.status === 'stable' && <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200"><CheckCircle className="w-3 h-3 mr-1"/> Stable</Badge>}
-                      {schema.status === 'new' && <Badge className="bg-blue-50 text-blue-700 border-blue-200"><FileJson className="w-3 h-3 mr-1"/> New Model</Badge>}
-                      {schema.status === 'changed' && <Badge className="bg-amber-50 text-amber-700 border-amber-200"><AlertTriangle className="w-3 h-3 mr-1"/> Schema Drift</Badge>}
-                    </TableCell>
-                    <TableCell>
-                      <div className="relative">
-                        <select
-                          value={schema.syncStrategy || 'upsert'}
-                          disabled={updatingStrategy.has(schema.tableName)}
-                          onChange={(e) =>
-                            handleStrategyChange(
-                              schema.tableName,
-                              e.target.value as 'upsert' | 'overwrite' | 'incremental',
-                            )
-                          }
-                          className={`
-                            text-xs font-medium px-2 py-1.5 pr-7 rounded-md border appearance-none cursor-pointer
-                            bg-white border-slate-200 text-slate-700
-                            hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-                            disabled:opacity-50 disabled:cursor-not-allowed
-                            transition-colors
-                          `}
-                        >
-                          <option value="upsert">upsert</option>
-                          <option value="overwrite">overwrite</option>
-                          <option value="incremental">incremental</option>
-                        </select>
-                        <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-400">
-                          {updatingStrategy.has(schema.tableName) ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : (
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                          )}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right pr-6">
-                      {schema.status !== 'stable' ? (
-                        <Button 
-                          size="sm" 
-                          className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
-                          onClick={() => setSelectedSchema(schema)}
-                        >
-                          Review & Apply <ArrowRight className="w-4 h-4 ml-1" />
-                        </Button>
-                      ) : (
-                        <span className="text-xs font-medium text-slate-400">{t('schema.synced')}</span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      {/* Schema Groups */}
+      {loading ? (
+        <div className="flex justify-center p-12"><Loader2 className="animate-spin text-blue-500" /></div>
+      ) : (
+        <div className="space-y-6">
+          {schemaGroups.map((group) => {
+            const borderColor: Record<string, string> = {
+              blue: 'border-blue-200', purple: 'border-purple-200',
+              emerald: 'border-emerald-200', slate: 'border-slate-200',
+              orange: 'border-orange-200',
+            };
+            const headerBg: Record<string, string> = {
+              blue: 'bg-blue-50 text-blue-800',
+              purple: 'bg-purple-50 text-purple-800',
+              emerald: 'bg-emerald-50 text-emerald-800',
+              slate: 'bg-slate-50 text-slate-700',
+              orange: 'bg-orange-50 text-orange-800',
+            };
+            const badgeStyle: Record<string, string> = {
+              blue: 'bg-blue-100 text-blue-700',
+              purple: 'bg-purple-100 text-purple-700',
+              emerald: 'bg-emerald-100 text-emerald-700',
+              slate: 'bg-slate-200 text-slate-600',
+              orange: 'bg-orange-100 text-orange-700',
+            };
+
+            return (
+              <Card key={group.label} className={`border shadow-sm ${borderColor[group.color]}`}>
+                <CardHeader className={`py-3 px-5 border-b ${headerBg[group.color]}`}>
+                  <CardTitle className="text-sm font-semibold flex items-center">
+                    {group.label}
+                    <span className={`ml-auto text-xs px-2 py-0.5 rounded-full font-medium ${badgeStyle[group.color]}`}>
+                      {group.items.length} bảng
+                    </span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader className="bg-slate-50/60">
+                      <TableRow>
+                        <TableHead className="pl-5">{t('schema.colTable')}</TableHead>
+                        <TableHead>{t('schema.colSource')}</TableHead>
+                        <TableHead>{t('schema.colFields')}</TableHead>
+                        <TableHead>{t('schema.colStatus')}</TableHead>
+                        <TableHead>Chiến thuật đồng bộ</TableHead>
+                        <TableHead className="text-right pr-5">Hành động</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {group.items.map((schema) => (
+                        <TableRow key={schema._id} className="hover:bg-slate-50/50">
+                          <TableCell className="pl-5 font-mono text-sm font-semibold text-slate-700">
+                            {schema.tableName}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="bg-white text-slate-500 border-slate-200">
+                              <Server className="w-3 h-3 mr-1"/> {schema.dataFrom || 'Unknown'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-slate-500">
+                            {(Array.isArray(schema.details) ? schema.details.length : schema.fieldsCount) ?? 0} fields
+                          </TableCell>
+                          <TableCell>
+                            {schema.status === 'stable' && <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200"><CheckCircle className="w-3 h-3 mr-1"/> Stable</Badge>}
+                            {schema.status === 'new' && <Badge className="bg-blue-50 text-blue-700 border-blue-200"><FileJson className="w-3 h-3 mr-1"/> New Model</Badge>}
+                            {schema.status === 'changed' && <Badge className="bg-amber-50 text-amber-700 border-amber-200"><AlertTriangle className="w-3 h-3 mr-1"/> Schema Drift</Badge>}
+                          </TableCell>
+                          <TableCell>
+                            <div className="relative">
+                              <select
+                                value={schema.syncStrategy || 'upsert'}
+                                disabled={updatingStrategy.has(schema.tableName)}
+                                onChange={(e) =>
+                                  handleStrategyChange(
+                                    schema.tableName,
+                                    e.target.value as 'upsert' | 'overwrite' | 'incremental',
+                                  )
+                                }
+                                className="text-xs font-medium px-2 py-1.5 pr-7 rounded-md border appearance-none cursor-pointer bg-white border-slate-200 text-slate-700 hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                              >
+                                <option value="upsert">upsert</option>
+                                <option value="overwrite">overwrite</option>
+                                <option value="incremental">incremental</option>
+                              </select>
+                              <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-400">
+                                {updatingStrategy.has(schema.tableName) ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                  </svg>
+                                )}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right pr-5">
+                            {schema.status !== 'stable' ? (
+                              <Button
+                                size="sm"
+                                className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                                onClick={() => setSelectedSchema(schema)}
+                              >
+                                Review & Apply <ArrowRight className="w-4 h-4 ml-1" />
+                              </Button>
+                            ) : (
+                              <span className="text-xs font-medium text-slate-400">{t('schema.synced')}</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
 
       {/* GitOps Live Apply Modal */}
       <Dialog

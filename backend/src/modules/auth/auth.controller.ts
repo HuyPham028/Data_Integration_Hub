@@ -5,7 +5,9 @@ import {
   Get,
   UseGuards,
   Request,
+  Req,
 } from '@nestjs/common';
+import { Request as ExpressRequest } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -16,8 +18,14 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+  login(@Body() dto: LoginDto, @Req() req: ExpressRequest) {
+    // Lấy IP thực từ X-Real-IP (Kong forward) hoặc X-Forwarded-For
+    const clientIp =
+      (req.headers['x-real-ip'] as string) ||
+      (req.headers['x-forwarded-for'] as string) ||
+      req.socket.remoteAddress ||
+      '';
+    return this.authService.login(dto, clientIp);
   }
 
   @Post('register')

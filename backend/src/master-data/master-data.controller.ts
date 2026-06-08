@@ -8,6 +8,7 @@ import {
   Delete,
   Query,
   UseGuards,
+  UseInterceptors,
   Request,
   BadRequestException,
 } from '@nestjs/common';
@@ -15,6 +16,7 @@ import {
 import { MasterDataService } from './master-data.service';
 import { JwtAuthGuard } from '../modules/auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../modules/auth/guards/permissions.guard';
+import { ApiLogInterceptor } from '../modules/api-log/api-log.interceptor';
 
 /**
  * Tất cả routes đều yêu cầu JWT + kiểm tra quyền theo bảng:
@@ -24,6 +26,7 @@ import { PermissionsGuard } from '../modules/auth/guards/permissions.guard';
  */
 @Controller('api/master-data')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseInterceptors(ApiLogInterceptor)
 export class MasterDataController {
   constructor(private readonly masterDataService: MasterDataService) {}
 

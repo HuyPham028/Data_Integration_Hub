@@ -53,6 +53,7 @@ export class UsersService {
       email: user.email,
       role: user.role,
       roleSettings: user.roleSettings ?? null,
+      vpnIp: user.vpnIp ?? null,
     };
   }
 
@@ -65,7 +66,20 @@ export class UsersService {
       email: u.email,
       role: u.role,
       roleSettings: u.roleSettings ?? null,
+      vpnIp: u.vpnIp ?? null,
     }));
+  }
+
+  /** Gán hoặc xóa VPN IP cho user */
+  async setVpnIp(userId: number, vpnIp: string | null) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException(`User ${userId} không tồn tại`);
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { vpnIp },
+      select: { id: true, username: true, vpnIp: true },
+    });
   }
 
   /** Gán role type cho user (admin/reader/writer) */

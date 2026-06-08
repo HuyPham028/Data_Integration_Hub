@@ -92,22 +92,55 @@ export class SyncEngineService {
   private deduplicate(dataArray: any[], primaryKeyColumn: string): any[] {
     const seen = new Map<any, any>();
     const nullPkRecords: any[] = [];
+    let updatedAtFallbackCount = 0;
+
+    const TIMESTAMP_FIELDS = ['updatedAt', 'updated_at', 'modifiedAt', 'modified_at', 'ngayCapNhat'];
+
+    const getTimestamp = (record: any): number => {
+      for (const field of TIMESTAMP_FIELDS) {
+        if (record[field] != null) {
+          const t = new Date(record[field]).getTime();
+          if (!isNaN(t)) return t;
+        }
+      }
+      return -1; // không có timestamp → không thể so sánh
+    };
 
     for (const record of dataArray) {
       const pk = record[primaryKeyColumn];
-      if (pk !== undefined && pk !== null) {
-        seen.set(pk, record); // giữ record cuối nếu trùng
-      } else {
-        nullPkRecords.push(record); // giữ lại để dead-letter trong upsert loop
+      if (pk === undefined || pk === null) {
+        nullPkRecords.push(record);
+        continue;
       }
+
+      if (!seen.has(pk)) {
+        seen.set(pk, record);
+        continue;
+      }
+
+      // Trùng PK → so sánh timestamp để giữ bản ghi mới hơn
+      const existingTs = getTimestamp(seen.get(pk));
+      const incomingTs = getTimestamp(record);
+
+      if (existingTs === -1 || incomingTs === -1) {
+        // Không có updatedAt → fallback: giữ record xuất hiện sau (cũ)
+        seen.set(pk, record);
+        updatedAtFallbackCount++;
+      } else if (incomingTs >= existingTs) {
+        seen.set(pk, record);
+      }
+      // incomingTs < existingTs → giữ nguyên existing, bỏ incoming
     }
 
     const dupCount = dataArray.length - seen.size - nullPkRecords.length;
     if (dupCount > 0) {
-      this.logger.warn(`[DEDUP] ${dupCount} duplicate records removed (pk: ${primaryKeyColumn})`);
+      this.logger.warn(
+        `[DEDUP] ${dupCount} duplicate(s) resolved by updatedAt comparison (pk: ${primaryKeyColumn})` +
+        (updatedAtFallbackCount > 0 ? ` | ${updatedAtFallbackCount} used position-fallback (no timestamp)` : ''),
+      );
     }
     if (nullPkRecords.length > 0) {
-      this.logger.warn(`[DEDUP] ${nullPkRecords.length} records with null/undefined PK detected — will be dead-lettered`);
+      this.logger.warn(`[DEDUP] ${nullPkRecords.length} records with null/undefined PK → dead-letter queue`);
     }
 
     return [...Array.from(seen.values()), ...nullPkRecords];

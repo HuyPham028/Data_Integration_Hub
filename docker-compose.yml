@@ -8,6 +8,17 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+    # PostgreSQL tuning cho EC2 4GB RAM (các container khác chiếm ~1.1GB)
+    command: >
+      postgres
+      -c shared_buffers=768MB
+      -c effective_cache_size=2048MB
+      -c work_mem=16MB
+      -c maintenance_work_mem=128MB
+      -c max_connections=50
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c random_page_cost=1.1
     ports:
       - "5432:5432"
     volumes:
@@ -76,6 +87,10 @@ services:
       GITHUB_OWNER: ${GITHUB_OWNER}
       GITHUB_REPO: ${GITHUB_REPO}
       GITHUB_BRANCH: ${GITHUB_BRANCH:-master}
+      PROMETHEUS_URL: http://prometheus:9090
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /tmp/wg-status.json:/app/wg-status.json:ro
     ports:
       - "4000:4000"
     restart: always
@@ -188,8 +203,14 @@ services:
       GF_SMTP_PASSWORD: ${GRAFANA_SMTP_PASSWORD}
       GF_SMTP_FROM_ADDRESS: ${GRAFANA_SMTP_USER}
       GF_SMTP_SKIP_VERIFY: "true"
+      GF_SECURITY_ALLOW_EMBEDDING: "true"
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: "Viewer"
+      GF_AUTH_DISABLE_LOGIN_FORM: "false"
     ports:
       - "5000:3000"
+    volumes:
+      - ./backend/grafana/provisioning:/etc/grafana/provisioning
     networks:
       - univ_hub_network
 
@@ -199,6 +220,7 @@ services:
       context: ./frontend
       args:
         NEXT_PUBLIC_KONG_URL: ${NEXT_PUBLIC_KONG_URL}
+        NEXT_PUBLIC_GRAFANA_URL: ${NEXT_PUBLIC_GRAFANA_URL}
     # image: ${DOCKER_USERNAME:-local}/hub-frontend:latest
     container_name: hub-frontend
     restart: always
