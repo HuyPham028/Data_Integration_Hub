@@ -68,6 +68,14 @@ export class SchemaMigratorService {
     // Generate SHA256 checksum exactly like Prisma does
     const checksum = crypto.createHash('sha256').update(customSql).digest('hex');
 
+    // Sanitize DROP statements: prisma migrate diff generates DROP INDEX/TABLE without
+    // IF EXISTS, which crashes if the object doesn't exist (schema.prisma ↔ DB drift).
+    // Adding IF EXISTS makes the migration idempotent and safe to re-run.
+    const safeSql = customSql
+      .replace(/DROP INDEX "([^"]+)"/g, 'DROP INDEX IF EXISTS "$1"')
+      .replace(/DROP TABLE "([^"]+)"/g, 'DROP TABLE IF EXISTS "$1" CASCADE')
+      .replace(/DROP COLUMN "([^"]+)"/g, 'DROP COLUMN IF EXISTS "$1"');
+
     // 2. Execute SQL directly on PostgreSQL using Transactions
     const pool = new Pool({ connectionString: process.env.DATABASE_URL });
     try {
@@ -85,8 +93,8 @@ export class SchemaMigratorService {
         this.logger.log(`[Migrator] Dropped view "${row.view_name}" (will recreate after migration).`);
       }
 
-      // Run the structural changes
-      await pool.query(customSql);
+      // Run the structural changes (using safeSql with IF EXISTS guards)
+      await pool.query(safeSql);
 
       // Recreate all views that were dropped above
       for (const row of viewRows.rows) {

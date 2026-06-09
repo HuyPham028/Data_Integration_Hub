@@ -299,6 +299,11 @@ export class DataIntegrationService {
     let totalSynced = 0;
     let totalSkipped = 0;
 
+    // Per-phase timing accumulators (ms)
+    let tFetchMs = 0;
+    let tValidateMs = 0;
+    let tUpsertMs = 0;
+
     // Dùng cho overwrite: gom toàn bộ records từ mọi trang trước khi ghi
     const allRecordsForOverwrite: Record<string, unknown>[] = [];
 
@@ -320,6 +325,7 @@ export class DataIntegrationService {
       );
 
       // Fetch với retry
+      const _tFetch0 = Date.now();
       const response = await this.withRetry(
         () =>
           firstValueFrom(
@@ -331,6 +337,7 @@ export class DataIntegrationService {
           ),
         `${schema.tableName} page ${currentPage}`,
       );
+      tFetchMs += Date.now() - _tFetch0;
 
       const responseData = response.data as SourceApiResponse;
 
@@ -351,6 +358,7 @@ export class DataIntegrationService {
 
       // [Guard] Schema Contract — kiểm tra payload không có field lạ so với schema.details
       // createdAt/updatedAt là system timestamps của Prisma, luôn được bỏ qua
+      const _tValidate0 = Date.now();
       if (schema.details?.length > 0 && rawDataArray.length > 0) {
         const SYSTEM_FIELDS = new Set(['createdAt', 'updatedAt']);
         const definedFields = new Set<string>(
@@ -388,6 +396,7 @@ export class DataIntegrationService {
           );
         }
       }
+      tValidateMs += Date.now() - _tValidate0;
 
       // [Guard] Page Mismatch
       if (meta.currentPage && meta.currentPage !== currentPage) {
@@ -432,22 +441,26 @@ export class DataIntegrationService {
         this.broadcastLog(
           `[INCREMENTAL] Page ${currentPage}: ${rawDataArray.length} records thay đổi từ source — upsert.`,
         );
+        const _tUpsert0 = Date.now();
         await this.syncEngine.syncTableData(
           schema.tableName,
           rawDataArray,
           primaryKey,
         );
+        tUpsertMs += Date.now() - _tUpsert0;
         totalSynced += rawDataArray.length;
       } else {
         // upsert (mặc định) — sync toàn bộ
         this.broadcastLog(
           `Syncing ${rawDataArray.length} records to database...`,
         );
+        const _tUpsert0 = Date.now();
         await this.syncEngine.syncTableData(
           schema.tableName,
           rawDataArray,
           primaryKey,
         );
+        tUpsertMs += Date.now() - _tUpsert0;
         totalSynced += rawDataArray.length;
       }
 
@@ -459,11 +472,27 @@ export class DataIntegrationService {
       this.broadcastLog(
         `[OVERWRITE] Đã fetch xong ${allRecordsForOverwrite.length} records — tiến hành xóa và ghi lại toàn bộ bảng.`,
       );
+      const _tUpsert0 = Date.now();
       await this.syncEngine.overwriteTableData(
         schema.tableName,
         allRecordsForOverwrite,
       );
+      tUpsertMs += Date.now() - _tUpsert0;
       totalSynced = allRecordsForOverwrite.length;
+    }
+
+    // Log per-phase breakdown for slide verification
+    const _totalPipelineMs = tFetchMs + tValidateMs + tUpsertMs;
+    if (_totalPipelineMs > 0) {
+      const _pct = (ms: number) => (_totalPipelineMs > 0 ? Math.round((ms / _totalPipelineMs) * 100) : 0);
+      const _throughput = _totalPipelineMs > 0 ? Math.round(totalSynced / (_totalPipelineMs / 1000)) : 0;
+      this.broadcastLog(
+        `[PHASE TIMING] ${schema.tableName} | ${totalSynced} records | ` +
+        `Fetch: ${(tFetchMs / 1000).toFixed(2)}s (${_pct(tFetchMs)}%) | ` +
+        `Transform+Validate: ${(tValidateMs / 1000).toFixed(2)}s (${_pct(tValidateMs)}%) | ` +
+        `Upsert: ${(tUpsertMs / 1000).toFixed(2)}s (${_pct(tUpsertMs)}%) | ` +
+        `Throughput: ${_throughput.toLocaleString()} records/s`,
+      );
     }
 
     // [Orphan Detection] Phát hiện records tồn tại ở destination nhưng không còn ở source
