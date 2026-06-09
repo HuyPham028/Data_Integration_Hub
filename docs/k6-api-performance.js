@@ -65,7 +65,7 @@ export function setup() {
     return { token: '' };
   }
 
-  const token = JSON.parse(res.body).access_token || '';
+  const token = JSON.parse(res.body).accessToken || '';
   console.log(`[SETUP] Login OK — token: ${token.substring(0, 20)}...`);
   return { token };
 }

@@ -233,7 +233,7 @@ model NhSinhHoatCongDan {
 }
 `;
 
-// ─── System models (auth, backup) ────────────────────────────────────────────
+// ─── System models (auth, backup, views, api logs) ───────────────────────────
 const STATIC_SYSTEM_MODELS = `
 model BackupRetentionPolicy {
   trigger   String   @id
@@ -261,8 +261,39 @@ model User {
   role         UserRole  @default(reader) @map("role")
   /// Cấu hình quyền truy cập bảng dạng YAML-like
   roleSettings Json?     @map("role_settings")
+  /// WireGuard IP được gán cho user (vd: 10.8.0.2). Nếu set, chỉ IP này mới login được.
+  vpnIp        String?   @map("vpn_ip") @db.VarChar(45)
 
   @@map("users")
+}
+
+model ViewDefinition {
+  id          Int      @id @default(autoincrement())
+  viewName    String   @unique @map("view_name") @db.VarChar(100)
+  description String?  @db.VarChar(500)
+  sqlQuery    String   @map("sql_query") @db.Text
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("view_definitions")
+}
+
+model ApiAccessLog {
+  id             Int      @id @default(autoincrement())
+  userId         Int?
+  username       String?  @db.VarChar(100)
+  tableName      String   @db.VarChar(100)
+  method         String   @db.VarChar(10)
+  statusCode     Int
+  responseTimeMs Int?
+  ipAddress      String?  @db.VarChar(45)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([tableName])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("api_access_logs")
 }
 `;
 

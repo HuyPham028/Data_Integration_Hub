@@ -72,16 +72,34 @@ export class SchemaMigratorService {
     const pool = new Pool({ connectionString: process.env.DATABASE_URL });
     try {
       await pool.query('BEGIN');
-      
+
+      // Drop all user-defined PostgreSQL views before altering tables.
+      // PostgreSQL refuses ALTER COLUMN TYPE when a view depends on that column.
+      // We read the live definitions from view_definitions, drop them, apply the
+      // migration, then recreate them — all inside one transaction.
+      const viewRows = await pool.query<{ view_name: string; sql_query: string }>(
+        `SELECT view_name, sql_query FROM view_definitions WHERE is_active = true ORDER BY id`,
+      );
+      for (const row of viewRows.rows) {
+        await pool.query(`DROP VIEW IF EXISTS "${row.view_name}" CASCADE`);
+        this.logger.log(`[Migrator] Dropped view "${row.view_name}" (will recreate after migration).`);
+      }
+
       // Run the structural changes
       await pool.query(customSql);
 
+      // Recreate all views that were dropped above
+      for (const row of viewRows.rows) {
+        await pool.query(`CREATE OR REPLACE VIEW "${row.view_name}" AS ${row.sql_query}`);
+        this.logger.log(`[Migrator] Recreated view "${row.view_name}".`);
+      }
+
       // 3. Fake Prisma's migration tracking
-      // This ensures that when CI/CD runs "prisma migrate deploy", it sees this 
+      // This ensures that when CI/CD runs "prisma migrate deploy", it sees this
       // migration folder, checks the DB, and skips it instead of crashing.
       await pool.query(`
         INSERT INTO _prisma_migrations (
-          id, checksum, finished_at, migration_name, logs, 
+          id, checksum, finished_at, migration_name, logs,
           applied_steps_count, started_at
         ) VALUES (
           gen_random_uuid(), $1, now(), $2, NULL, 1, now()
