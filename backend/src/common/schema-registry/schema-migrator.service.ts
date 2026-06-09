@@ -3,6 +3,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import * as crypto from 'crypto';
 import { Pool } from 'pg';
 import { PrismaSchemaGeneratorService } from '../prisma-schema-generator/prisma-schema-generator.service';
 import { GitHubDeployService } from '../github-deploy/github-deploy.service';
@@ -26,7 +27,9 @@ export class SchemaMigratorService {
    */
   async getMigrationPreview(tableName: string, newDetails: any[]): Promise<string> {
     const tempSchemaStr = await this.schemaGenerator.generatePreviewSchema(tableName, newDetails);
-    const tempPath = path.join(process.cwd(), 'prisma', 'schema.temp.prisma');
+    
+    const uniqueId = crypto.randomUUID();
+    const tempPath = path.join(process.cwd(), 'prisma', `schema.temp.${uniqueId}.prisma`);
     const realPath = path.join(process.cwd(), 'prisma', 'schema.prisma');
 
     await fs.writeFile(tempPath, tempSchemaStr);
@@ -37,7 +40,6 @@ export class SchemaMigratorService {
       );
       return stdout?.trim() || '-- No structural changes detected.';
     } catch (err: any) {
-      // prisma migrate diff exits with code 1 when there ARE differences — stdout still has the SQL
       if (err.stdout?.trim()) return err.stdout.trim();
       this.logger.error(`Preview generation failed: ${err.message}`);
       throw err;
@@ -48,33 +50,59 @@ export class SchemaMigratorService {
 
   /**
    * Apply the (optionally user-edited) SQL migration:
-   *  1. Execute SQL directly on PostgreSQL via pg.Pool
-   *  2. Regenerate schema.prisma locally + prisma generate
-   *  3. Hot-reload Prisma client in memory
-   *  4. Commit schema.prisma + migration.sql to GitHub
+   *  1. Create official Prisma migration name & checksum
+   *  2. Execute SQL directly on PostgreSQL in a transaction
+   *  3. Record the migration in _prisma_migrations to prevent CI/CD re-run errors
+   *  4. Regenerate schema.prisma locally + prisma generate
+   *  5. Hot-reload Prisma client in memory
+   *  6. Commit schema.prisma + migration.sql to GitHub
    */
   async applyLiveMigration(tableName: string, customSql: string): Promise<void> {
     const realPath = path.join(process.cwd(), 'prisma', 'schema.prisma');
-
     this.logger.log(`[Migrator] Applying migration for "${tableName}"...`);
 
-    // 1. Execute SQL directly on PostgreSQL (supports multiple statements)
+    // 1. Create Prisma-compliant timestamp (YYYYMMDDHHMMSS)
+    const timestamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
+    const migrationName = `${timestamp}_${tableName}`;
+    
+    // Generate SHA256 checksum exactly like Prisma does
+    const checksum = crypto.createHash('sha256').update(customSql).digest('hex');
+
+    // 2. Execute SQL directly on PostgreSQL using Transactions
     const pool = new Pool({ connectionString: process.env.DATABASE_URL });
     try {
+      await pool.query('BEGIN');
+      
+      // Run the structural changes
       await pool.query(customSql);
-      this.logger.log(`[Migrator] SQL executed successfully on PostgreSQL.`);
+
+      // 3. Fake Prisma's migration tracking
+      // This ensures that when CI/CD runs "prisma migrate deploy", it sees this 
+      // migration folder, checks the DB, and skips it instead of crashing.
+      await pool.query(`
+        INSERT INTO _prisma_migrations (
+          id, checksum, finished_at, migration_name, logs, 
+          applied_steps_count, started_at
+        ) VALUES (
+          gen_random_uuid(), $1, now(), $2, NULL, 1, now()
+        );
+      `, [checksum, migrationName]);
+
+      await pool.query('COMMIT');
+      this.logger.log(`[Migrator] SQL executed successfully and registered in Prisma history.`);
     } catch (err: any) {
-      await pool.end();
+      await pool.query('ROLLBACK');
+      this.logger.error(`[Migrator] SQL execution failed: ${err.message}`);
       throw new BadRequestException(err?.message || 'SQL execution failed.');
     } finally {
       await pool.end().catch(() => null);
     }
 
-    // 2. Generate new schema.prisma and write locally
+    // 4. Generate new schema.prisma and write locally
     const newSchemaStr = await this.schemaGenerator.generateFullSchema();
     await fs.writeFile(realPath, newSchemaStr);
 
-    // 3. Regenerate Prisma Client types
+    // 5. Regenerate Prisma Client types
     try {
       await execAsync('npx prisma generate');
       this.logger.log('[Migrator] Prisma Client regenerated.');
@@ -82,13 +110,10 @@ export class SchemaMigratorService {
       this.logger.warn(`[Migrator] prisma generate warning: ${err.message}`);
     }
 
-    // 4. Hot-reload Prisma client in NestJS memory
+    // 6. Hot-reload Prisma client in NestJS memory
     await this.prismaService.reload();
 
-    // 5. Create a migration record folder path (timestamp-based)
-    const migrationName = `${Date.now()}_${tableName}`;
-
-    // 6. Commit schema.prisma + migration.sql to GitHub
+    // 7. Commit schema.prisma + migration.sql to GitHub
     try {
       await this.githubDeploy.commitFiles(
         `chore(schema): apply drift migration for "${tableName}"`,
