@@ -61,13 +61,6 @@ export class SchemaMigratorService {
     const realPath = path.join(process.cwd(), 'prisma', 'schema.prisma');
     this.logger.log(`[Migrator] Applying migration for "${tableName}"...`);
 
-    // 1. Create Prisma-compliant timestamp (YYYYMMDDHHMMSS)
-    const timestamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
-    const migrationName = `${timestamp}_${tableName}`;
-    
-    // Generate SHA256 checksum exactly like Prisma does
-    const checksum = crypto.createHash('sha256').update(customSql).digest('hex');
-
     // Sanitize DROP statements: prisma migrate diff generates DROP INDEX/TABLE without
     // IF EXISTS, which crashes if the object doesn't exist (schema.prisma ↔ DB drift).
     // Adding IF EXISTS makes the migration idempotent and safe to re-run.
@@ -75,6 +68,12 @@ export class SchemaMigratorService {
       .replace(/DROP INDEX "([^"]+)"/g, 'DROP INDEX IF EXISTS "$1"')
       .replace(/DROP TABLE "([^"]+)"/g, 'DROP TABLE IF EXISTS "$1" CASCADE')
       .replace(/DROP COLUMN "([^"]+)"/g, 'DROP COLUMN IF EXISTS "$1"');
+
+    const timestamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
+    const migrationName = `${timestamp}_${tableName}`;
+
+    // Generate SHA256 checksum exactly like Prisma does
+    const checksum = crypto.createHash('sha256').update(safeSql).digest('hex');
 
     // 2. Execute SQL directly on PostgreSQL using Transactions
     const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -147,7 +146,7 @@ export class SchemaMigratorService {
           { path: 'backend/prisma/schema.prisma', content: newSchemaStr },
           {
             path: `backend/prisma/migrations/${migrationName}/migration.sql`,
-            content: customSql,
+            content: safeSql,
           },
         ],
       );
