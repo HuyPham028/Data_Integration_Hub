@@ -364,6 +364,7 @@ export class PrismaSchemaGeneratorService {
   private generateModel(schema: any): string {
     const modelName = toModelName(schema.tableName);
     const lines: string[] = [];
+    const emittedFieldNames = new Set<string>(['id']);
 
     lines.push(`/// Auto-generated from Schema Registry`);
     lines.push(`model ${modelName} {`);
@@ -381,6 +382,16 @@ export class PrismaSchemaGeneratorService {
       const rawType: string = (detail.type ?? 'varchar').toLowerCase();
       const prismaType = TYPE_MAP[rawType] ?? 'String';
       const camel = toCamel(detail.name);
+
+      if (emittedFieldNames.has(camel)) {
+        this.logger.warn(
+          `[SchemaGen] Skipping duplicate field "${detail.name}" in ${schema.tableName}`,
+        );
+        continue;
+      }
+
+      emittedFieldNames.add(camel);
+
       const dbHint = getDbHint(rawType, detail.length ?? null);
       const hintStr = dbHint ? ` ${dbHint}` : '';
 
@@ -405,8 +416,13 @@ export class PrismaSchemaGeneratorService {
     lines.push(``);
 
     if (pkFields.size > 0) {
-      const indexField = toCamel([...pkFields][0]);
-      lines.push(`  @@index([${indexField}])`);
+      const indexField = [...pkFields]
+        .map((field) => toCamel(field))
+        .find((field) => emittedFieldNames.has(field));
+
+      if (indexField) {
+        lines.push(`  @@index([${indexField}])`);
+      }
     }
     lines.push(`  @@map("${schema.tableName}")`);
     lines.push(`}`);
