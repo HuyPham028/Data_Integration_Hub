@@ -205,6 +205,31 @@ function ViewRow({
 }) {
   const { t } = useLanguage();
   const [expanded, setExpanded] = useState(false);
+  const [sampleData, setSampleData] = useState<ViewPreviewResult | null>(null);
+  const [sampleError, setSampleError] = useState('');
+  const [loadingSample, setLoadingSample] = useState(false);
+
+  const handleLoadSample = async () => {
+    setLoadingSample(true);
+    setSampleError('');
+    setSampleData(null);
+    try {
+      const result = await ViewsAPI.preview(view.sqlQuery, 10);
+      setSampleData(result);
+    } catch (e: any) {
+      setSampleError(e?.response?.data?.message ?? 'Không thể tải dữ liệu mẫu.');
+    } finally {
+      setLoadingSample(false);
+    }
+  };
+
+  const handleToggle = () => {
+    if (expanded) {
+      setSampleData(null);
+      setSampleError('');
+    }
+    setExpanded(!expanded);
+  };
 
   return (
     <>
@@ -215,7 +240,7 @@ function ViewRow({
         <td className="px-4 py-3">
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setExpanded(!expanded)}
+              onClick={handleToggle}
               className="rounded px-2 py-1 text-xs text-slate-500 hover:bg-slate-100"
               title="Xem SQL"
             >
@@ -239,9 +264,50 @@ function ViewRow({
         </td>
       </tr>
       {expanded && (
-        <tr className="border-b border-slate-100 bg-slate-950">
-          <td colSpan={4} className="px-4 py-3">
-            <pre className="text-xs text-green-400 whitespace-pre-wrap font-mono">{view.sqlQuery}</pre>
+        <tr className="border-b border-slate-100">
+          <td colSpan={4} className="p-0">
+            {/* SQL block */}
+            <div className="bg-slate-950 px-4 py-3">
+              <pre className="text-xs text-green-400 whitespace-pre-wrap font-mono">{view.sqlQuery}</pre>
+            </div>
+
+            {/* Sample data section */}
+            <div className="bg-slate-50 px-4 py-3 border-t border-slate-800 space-y-3">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleLoadSample}
+                  disabled={loadingSample}
+                  className="flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-60 transition-colors"
+                >
+                  {loadingSample
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    : <Play className="h-3.5 w-3.5" />}
+                  Xem dữ liệu mẫu
+                </button>
+                {sampleData && (
+                  <span className="text-xs text-slate-500">
+                    Hiển thị {sampleData.rows.length} dòng đầu tiên
+                  </span>
+                )}
+                {(sampleData || sampleError) && (
+                  <button
+                    onClick={() => { setSampleData(null); setSampleError(''); }}
+                    className="text-xs text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {sampleError && (
+                <p className="rounded-md bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-600">
+                  {sampleError}
+                </p>
+              )}
+              {sampleData && (
+                <PreviewTable data={sampleData} />
+              )}
+            </div>
           </td>
         </tr>
       )}

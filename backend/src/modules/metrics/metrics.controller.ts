@@ -40,7 +40,8 @@ export class MetricsController {
         this.queryRange(`sum by (service) (rate(kong_http_requests_total{${EXCLUDE_ROUTE}}[2m]))`, start, end, step),
         this.queryRange(`sum by (code) (rate(kong_http_requests_total{${EXCLUDE_ROUTE}}[2m]))`, start, end, step),
         this.queryRange(
-          `histogram_quantile(0.99, sum by (le, service) (rate(kong_latency_bucket{type="request",${EXCLUDE_ROUTE}}[2m])))`,
+          // Kong 3.x renamed kong_latency_bucket{type="request"} → kong_request_latency_ms_bucket
+          `histogram_quantile(0.99, sum by (le, service) (rate(kong_request_latency_ms_bucket{${EXCLUDE_ROUTE}}[2m])))`,
           start, end, step,
         ),
         this.queryInstant(`sum by (state) (kong_nginx_connections_total)`),
@@ -58,7 +59,8 @@ export class MetricsController {
       // Use per-service metrics if available, fallback to basic nginx requests
       requestRate: reqRateSeries.length ? reqRateSeries : nginxReqSeries.map(p => ({ ...p, 'total': p['unknown'] ?? p[Object.keys(p).find(k => k !== 'time')!] })),
       statusCodes: this.toStatusSeries(statusCodes),
-      latencyP99: this.toTimeSeries(latencyP99, 'service', (v) => parseFloat((v * 1000).toFixed(2))),
+      // Kong 3.x: kong_request_latency_ms_bucket đã tính bằng ms, không cần *1000
+      latencyP99: this.toTimeSeries(latencyP99, 'service', (v) => parseFloat(v.toFixed(2))),
       connections: this.toInstantMap(connections, 'state'),
       errorRate: this.toSingleValue(errorRate),
       bandwidth: this.toTimeSeries(bandwidth, 'direction', (v) => parseFloat((v / 1024 / 1024).toFixed(4))),
