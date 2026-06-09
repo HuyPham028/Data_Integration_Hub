@@ -207,6 +207,7 @@ model DmDtHinhThucCM {
   ma                   String @unique @db.VarChar(5)
   ten                  String? @db.VarChar(50)
   active               Boolean? @default(true)
+  noiDaoTao            String?
   createdAt DateTime  @default(now()) @db.Timestamp(6)
   updatedAt DateTime  @updatedAt @db.Timestamp(6)
 
