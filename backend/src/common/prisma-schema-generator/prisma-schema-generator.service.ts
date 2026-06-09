@@ -423,7 +423,7 @@ export class PrismaSchemaGeneratorService {
 
       emittedFieldNames.add(camel);
 
-      const dbHint = getDbHint(rawType, detail.length ?? null);
+      const dbHint = getDbHint(rawType, detail.length ?? null, detail.precision ?? null, detail.scale ?? null);
       const hintStr = dbHint ? ` ${dbHint}` : '';
 
       const isSourcePk = pkFields.has(detail.name);
