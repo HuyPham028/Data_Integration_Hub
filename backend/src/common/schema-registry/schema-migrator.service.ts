@@ -30,13 +30,14 @@ export class SchemaMigratorService {
     
     const uniqueId = crypto.randomUUID();
     const tempPath = path.join(process.cwd(), 'prisma', `schema.temp.${uniqueId}.prisma`);
-    const realPath = path.join(process.cwd(), 'prisma', 'schema.prisma');
 
     await fs.writeFile(tempPath, tempSchemaStr);
 
     try {
+      const dbUrl = process.env.DATABASE_URL;
+      
       const { stdout } = await execAsync(
-        `npx prisma migrate diff --from-schema ${realPath} --to-schema ${tempPath} --script`,
+        `npx prisma migrate diff --from-url "${dbUrl}" --to-schema ${tempPath} --script`,
       );
       return stdout?.trim() || '-- No structural changes detected.';
     } catch (err: any) {
@@ -67,7 +68,10 @@ export class SchemaMigratorService {
     const safeSql = customSql
       .replace(/DROP INDEX "([^"]+)"/g, 'DROP INDEX IF EXISTS "$1"')
       .replace(/DROP TABLE "([^"]+)"/g, 'DROP TABLE IF EXISTS "$1" CASCADE')
-      .replace(/DROP COLUMN "([^"]+)"/g, 'DROP COLUMN IF EXISTS "$1"');
+      .replace(/DROP COLUMN "([^"]+)"/g, 'DROP COLUMN IF EXISTS "$1"')
+      .replace(/CREATE INDEX "([^"]+)"/g, 'CREATE INDEX IF NOT EXISTS "$1"')
+      .replace(/CREATE UNIQUE INDEX "([^"]+)"/g, 'CREATE UNIQUE INDEX IF NOT EXISTS "$1"')
+      .replace(/CREATE TABLE "([^"]+)"/g, 'CREATE TABLE IF NOT EXISTS "$1"');
 
     const timestamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
     const migrationName = `${timestamp}_${tableName}`;
