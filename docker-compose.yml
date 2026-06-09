@@ -55,7 +55,7 @@ services:
   backend:
     build:
       context: ./backend
-    # image: ${DOCKER_USERNAME:-local}/hub-backend:latest
+    image: ${DOCKER_USERNAME}/hub-backend:latest
     container_name: hub-backend
     environment:
       PORT: 4000
@@ -221,7 +221,7 @@ services:
       args:
         NEXT_PUBLIC_KONG_URL: ${NEXT_PUBLIC_KONG_URL}
         NEXT_PUBLIC_GRAFANA_URL: ${NEXT_PUBLIC_GRAFANA_URL}
-    # image: ${DOCKER_USERNAME:-local}/hub-frontend:latest
+    image: ${DOCKER_USERNAME}/hub-frontend:latest
     container_name: hub-frontend
     restart: always
     ports:
