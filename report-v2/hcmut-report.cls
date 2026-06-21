@@ -43,8 +43,8 @@
   \fi
 }
 
-\newcommand{\@upperuniname}{Đại học quốc gia Thành phố Hồ Chí Minh}
-\newcommand{\@uniname}{Đại học Bách Khoa Thành phố Hồ Chí Minh}
+\newcommand{\@upperuniname}{Đại học Quốc gia TP.HCM}
+\newcommand{\@uniname}{Trường Đại học Bách Khoa}
 
 \newcommand{\@deptname}{Khoa Khoa học và Kỹ thuật Máy tính}
 \newcommand{\deptname}[1]{\renewcommand{\@deptname}{#1}}
@@ -158,41 +158,81 @@
 \fancyfoot[C]{\thepage}
 
 % Custom pages and sections
+\newcommand{\@major}{Khoa học Máy tính}
+\newcommand{\major}[1]{\renewcommand{\@major}{#1}}
+
+\newcommand{\@committee}{............}
+\newcommand{\committee}[1]{\renewcommand{\@committee}{#1}}
+
+\newcommand{\@reviewer}{.............}
+\newcommand{\reviewer}[1]{\renewcommand{\@reviewer}{#1}}
+
 \newcommand{\coverpage}{
   \pagestyle{empty}
+  \singlespacing
 
-  \vspace*{-3\baselineskip}
+  \begin{tikzpicture}[remember picture, overlay]
+    \draw[line width=2pt]
+      ($(current page.north west) + (3.0cm,-2.0cm)$)
+      rectangle
+      ($(current page.south east) + (-2.0cm,2.0cm)$);
+    \draw[line width=0.5pt]
+      ($(current page.north west) + (3.1cm,-2.1cm)$)
+      rectangle
+      ($(current page.south east) + (-2.1cm,2.1cm)$);
+  \end{tikzpicture}
+
   \begin{center}
-    \MakeUppercase{\@upperuniname}
+    {\fontsize{15}{18}\selectfont \textbf{\MakeUppercase{\@upperuniname}}} \\[0.1cm]
+    {\fontsize{15}{18}\selectfont \textbf{\MakeUppercase{\@uniname}}} \\[0.1cm]
+    {\fontsize{15}{18}\selectfont \textbf{\MakeUppercase{\@deptname}}} \\[0.6cm]
 
-    \MakeUppercase{\@uniname}
+    \includegraphics[width=2.5cm]{graphics/hcmut.png} \\[0.6cm]
 
-    \MakeUppercase{\@deptname}
-    \vfill
-    \includegraphics[scale=0.4]{graphics/hcmut.png}
-    \vfill
-    \bfseries
-    \begin{tabular}{c}
-      \Large\@coursename                                 \\
-      {}                                                 \\
-      \midrule                                           \\
-      {}                                                 \\
-      \Large\@reporttype                                 \\
-      {}                                                 \\
-      \Huge\parbox[c]{0.8\linewidth}{\centering \@title} \\
-      {}                                                 \\
-      \bottomrule
-    \end{tabular}
-    \vfill
-    \mdseries
-    \begin{tabular}{rll}
-      Giảng viên hướng dẫn: \@advisor \\
-      Sinh viên thực hiện: \@stuname \\
-    \end{tabular}
-    \vfill
-    \MakeUppercase{\@reportplace, \@reporttime}
+    {\fontsize{15}{18}\selectfont \textbf{BÁO CÁO}} \\[0.1cm]
+    {\fontsize{15}{18}\selectfont \textbf{\MakeUppercase{\@coursename}}} \\[0.8cm]
+
+    \parbox[c]{0.85\linewidth}{\centering \fontsize{17}{22}\selectfont \textbf{\@title}} \\
+
+  \end{center}
+
+  \vspace{0.6cm}
+
+  \begin{flushright}
+  \begin{minipage}{0.72\textwidth}
+  {\fontsize{15}{18}\selectfont Ngành : \@major}
+  \end{minipage}
+  \end{flushright}
+
+  \vspace{0.6cm}
+
+  \begin{flushright}
+    \begin{minipage}{0.72\textwidth}
+      \fontsize{15}{20}\selectfont
+      \textbf{HỘI ĐỒNG:} \textbf{\@committee} \\[0.2cm]
+      \textbf{GVHD:} \textbf{\@advisor} \\[0.2cm]
+      \textbf{GVPB:} \textbf{\@reviewer}
+    \end{minipage}
+
+    \begin{center}
+      \fontsize{15}{20}\selectfont
+      \textbf{---o0o---}
+    \end{center}
+    
+    \begin{minipage}{0.72\textwidth}
+      \fontsize{15}{20}\selectfont
+      \textbf{SVTH 1: Trần Mạnh Tuấn} \textbf{(2213807)} \\[0.2cm]
+      \textbf{SVTH 2: Phạm Lê Huy} \textbf{(2252260)}
+    \end{minipage}
+  \end{flushright}
+
+  \vfill
+
+  \begin{center}
+    {\fontsize{15}{18}\selectfont \MakeUppercase{TP. \@reportplace, \@reporttime}}
   \end{center}
 
   \cleardoublepage
+  \onehalfspacing
   \pagestyle{fancy}
 }
